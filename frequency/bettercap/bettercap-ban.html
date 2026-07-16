@@ -5,6 +5,120 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BETTERCAP BAN - XFORG3</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Additional styles for bettercap ban */
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 2px solid rgba(0,255,65,0.2); margin-bottom: 30px; flex-wrap: wrap; gap: 10px; }
+        .header h1 { font-size: 2rem; text-shadow: 0 0 30px rgba(0,255,65,0.3); }
+        .header .subtitle { opacity: 0.6; font-size: 0.9rem; }
+        .back-btn { color: #00ff41; text-decoration: none; padding: 8px 20px; border: 1px solid #00ff41; border-radius: 5px; transition: all 0.3s; }
+        .back-btn:hover { background: #00ff41; color: #0a0e17; }
+        
+        .status-bar { background: rgba(0,255,65,0.05); border: 1px solid rgba(0,255,65,0.2); border-radius: 8px; padding: 15px 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .status-dot.active { background: #00ff41; animation: pulse 1.5s infinite; }
+        .status-dot.inactive { background: #666; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .main-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .action-card { background: rgba(0,255,65,0.03); border: 2px solid rgba(0,255,65,0.2); border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .action-card:hover:not(.disabled) { transform: translateY(-3px); box-shadow: 0 10px 40px rgba(0,255,65,0.1); border-color: #00ff41; }
+        .action-card.disabled { opacity: 0.4; cursor: not-allowed; }
+        .action-card .icon { font-size: 3rem; margin-bottom: 10px; }
+        .action-card h3 { font-size: 1.2rem; margin-bottom: 5px; }
+        .action-card p { opacity: 0.6; font-size: 0.85rem; }
+        .action-card .badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 0.7rem; margin-top: 10px; background: rgba(0,255,65,0.1); border: 1px solid rgba(0,255,65,0.2); }
+        
+        .device-section { background: rgba(0,255,65,0.02); border: 1px solid rgba(0,255,65,0.15); border-radius: 10px; padding: 20px; margin-bottom: 30px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .scan-btn { background: transparent; color: #00ff41; border: 1px solid #00ff41; padding: 6px 18px; border-radius: 5px; cursor: pointer; font-family: 'Courier New', monospace; transition: all 0.3s; }
+        .scan-btn:hover { background: #00ff41; color: #0a0e17; }
+        .scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .device-list { max-height: 400px; overflow-y: auto; border: 1px solid rgba(0,255,65,0.1); border-radius: 5px; }
+        .device-item { display: grid; grid-template-columns: 50px 1fr 1.5fr 1fr 80px; padding: 10px 15px; border-bottom: 1px solid rgba(0,255,65,0.05); transition: all 0.2s; cursor: pointer; align-items: center; gap: 10px; }
+        .device-item:hover { background: rgba(0,255,65,0.05); }
+        .device-item.selected { background: rgba(0,255,65,0.1); border-left: 3px solid #00ff41; }
+        .device-item .no { opacity: 0.4; font-size: 0.8rem; }
+        .device-item .ip { color: #00ff41; }
+        .device-item .mac { opacity: 0.7; font-size: 0.85rem; }
+        .device-item .vendor { opacity: 0.5; font-size: 0.8rem; }
+        .select-btn { background: transparent; color: #00ff41; border: 1px solid rgba(0,255,65,0.3); padding: 3px 12px; border-radius: 3px; cursor: pointer; font-size: 0.7rem; transition: all 0.3s; }
+        .select-btn:hover { background: #00ff41; color: #0a0e17; }
+        .select-btn.selected { background: #00ff41; color: #0a0e17; }
+        
+        .target-input-section { background: rgba(0,255,65,0.02); border: 1px solid rgba(0,255,65,0.15); border-radius: 10px; padding: 20px; margin-bottom: 30px; }
+        .input-group { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        .input-group input { flex: 1; min-width: 200px; padding: 10px 15px; background: rgba(0,0,0,0.5); border: 1px solid rgba(0,255,65,0.3); border-radius: 5px; color: #00ff41; font-family: 'Courier New', monospace; font-size: 0.95rem; }
+        .input-group input:focus { outline: none; border-color: #00ff41; box-shadow: 0 0 20px rgba(0,255,65,0.1); }
+        .input-group input::placeholder { color: rgba(0,255,65,0.3); }
+        .input-hint { opacity: 0.4; font-size: 0.8rem; margin-top: 8px; }
+        #targetList { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+        #targetList span { background: rgba(0,255,65,0.1); padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(0,255,65,0.2); font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; }
+        #targetList span .remove { cursor: pointer; opacity: 0.5; }
+        #targetList span .remove:hover { opacity: 1; }
+        
+        .attack-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .attack-btn { padding: 15px; border: 2px solid rgba(0,255,65,0.2); border-radius: 8px; background: rgba(0,255,65,0.03); color: #00ff41; font-family: 'Courier New', monospace; font-size: 1rem; cursor: pointer; transition: all 0.3s; text-align: center; }
+        .attack-btn:hover:not(:disabled) { background: rgba(0,255,65,0.08); border-color: #00ff41; transform: translateY(-2px); }
+        .attack-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .attack-btn.danger { border-color: rgba(255,0,64,0.3); color: #ff0040; }
+        .attack-btn.danger:hover:not(:disabled) { border-color: #ff0040; background: rgba(255,0,64,0.08); }
+        .attack-btn .btn-icon { display: block; font-size: 1.5rem; margin-bottom: 5px; }
+        .attack-btn .btn-label { font-size: 0.85rem; opacity: 0.7; }
+        
+        .terminal-section { background: #000; border: 1px solid rgba(0,255,65,0.2); border-radius: 8px; padding: 15px; margin-bottom: 30px; }
+        .terminal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(0,255,65,0.1); }
+        .terminal-header span { opacity: 0.5; font-size: 0.8rem; }
+        .clear-btn { background: transparent; color: #00ff41; border: 1px solid rgba(0,255,65,0.2); padding: 3px 15px; border-radius: 3px; cursor: pointer; font-size: 0.7rem; transition: all 0.3s; }
+        .clear-btn:hover { background: rgba(0,255,65,0.1); }
+        .terminal-output { min-height: 150px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; color: #00ff41; white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
+        .terminal-output .glitch { color: #ff0040; }
+        .terminal-output .success { color: #00ff41; }
+        .terminal-output .info { color: #00ccff; }
+        .terminal-output .warning { color: #ffff00; }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); }
+        .modal-content { background: #0a0e17; border: 2px solid #00ff41; border-radius: 15px; margin: 10% auto; padding: 40px; width: 90%; max-width: 500px; position: relative; box-shadow: 0 0 60px rgba(0,255,65,0.1); text-align: center; }
+        .modal-content .close-btn { position: absolute; right: 20px; top: 15px; font-size: 2rem; color: #00ff41; cursor: pointer; transition: all 0.3s; }
+        .modal-content .close-btn:hover { color: #ff0040; transform: rotate(90deg); }
+        .modal-content .modal-icon { font-size: 4rem; margin-bottom: 15px; }
+        .modal-content h2 { margin-bottom: 10px; }
+        .modal-content p { opacity: 0.7; margin-bottom: 20px; white-space: pre-wrap; }
+        .modal-actions { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .modal-btn { padding: 10px 30px; border-radius: 5px; border: none; font-family: 'Courier New', monospace; font-size: 0.95rem; cursor: pointer; transition: all 0.3s; }
+        .modal-btn.confirm { background: #00ff41; color: #0a0e17; }
+        .modal-btn.confirm:hover { background: #00cc33; transform: scale(1.02); }
+        .modal-btn.cancel { background: transparent; color: #00ff41; border: 1px solid #00ff41; }
+        .modal-btn.cancel:hover { background: rgba(0,255,65,0.1); }
+        
+        #banResult { margin-top: 15px; padding: 10px; border-radius: 5px; text-align: center; }
+        #banResult.success { background: rgba(0,255,65,0.1); border: 1px solid #00ff41; color: #00ff41; }
+        #banResult.error { background: rgba(255,0,64,0.1); border: 1px solid #ff0040; color: #ff0040; }
+        #banResult.loading { background: rgba(255,255,0,0.05); border: 1px solid #ffff00; color: #ffff00; }
+        
+        .count { opacity: 0.5; font-size: 0.85rem; }
+        
+        @media (max-width: 768px) {
+            .main-actions { grid-template-columns: 1fr; }
+            .attack-controls { grid-template-columns: 1fr 1fr; }
+            .device-item { grid-template-columns: 30px 1fr 1fr; font-size: 0.8rem; padding: 8px 10px; }
+            .device-item .vendor { display: none; }
+            .header { flex-direction: column; text-align: center; }
+            .header h1 { font-size: 1.5rem; }
+            .input-group { flex-direction: column; }
+            .input-group input { width: 100%; }
+            .modal-content { margin: 20% auto; padding: 25px; width: 95%; }
+        }
+        @media (max-width: 480px) {
+            .attack-controls { grid-template-columns: 1fr; }
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,255,65,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,255,65,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ff41; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -69,10 +183,8 @@
                 <button class="scan-btn" onclick="addTarget()" style="padding: 10px 25px;">➕ Add Target</button>
                 <button class="scan-btn" onclick="clearTargets()" style="padding: 10px 25px; border-color: rgba(255,0,64,0.3); color: #ff0040;">🗑️ Clear</button>
             </div>
-            <div class="input-hint">
-                💡 Tips: Select devices from list or enter manually
-            </div>
-            <div id="targetList" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            <div class="input-hint">💡 Tips: Select devices from list or enter manually</div>
+            <div id="targetList"><span style="opacity:0.4;font-size:0.85rem;">No targets selected</span></div>
         </div>
 
         <!-- Attack Controls -->
@@ -93,6 +205,9 @@
                 <span class="btn-label">Block all devices</span>
             </button>
         </div>
+
+        <!-- Result -->
+        <div id="banResult" style="margin-bottom: 15px;"></div>
 
         <!-- Terminal Output -->
         <div class="terminal-section">
@@ -125,7 +240,6 @@
     <script>
         console.log('=== bettercap-ban.html LOADED ===');
         console.log('document.title:', document.title);
-        console.log('Current time:', new Date().toISOString());
 
         // ==================== STATE ====================
         let devices = [];
@@ -135,7 +249,6 @@
         let pendingAction = null;
 
         // ==================== INIT ====================
-        console.log('[INIT] Setting up...');
         updateStatus('Ready', 'inactive');
         appendTerminal('info', '🚀 XFORG3 Bettercap Ban Tool initialized');
         appendTerminal('info', '📌 Click "SCAN NETWORK" to discover devices');
@@ -243,9 +356,9 @@
             }
             
             container.innerHTML = selectedTargets.map(target => `
-                <span style="background:rgba(0,255,65,0.1);padding:4px 12px;border-radius:12px;border:1px solid rgba(0,255,65,0.2);font-size:0.8rem;display:inline-flex;align-items:center;gap:6px;">
+                <span>
                     ${target}
-                    <span onclick="removeTarget('${target}')" style="cursor:pointer;opacity:0.5;">×</span>
+                    <span class="remove" onclick="removeTarget('${target}')">×</span>
                 </span>
             `).join('');
             
@@ -254,6 +367,7 @@
 
         // ==================== REMOVE TARGET ====================
         function removeTarget(target) {
+            console.log('[removeTarget] Called for:', target);
             const idx = selectedTargets.indexOf(target);
             if (idx > -1) {
                 selectedTargets.splice(idx, 1);
@@ -308,13 +422,18 @@
             console.log('[executeAttack] Called');
             console.log('[executeAttack] selectedTargets:', selectedTargets);
             
+            const resultDiv = document.getElementById('banResult');
+            
             if (!selectedTargets || selectedTargets.length === 0) {
+                resultDiv.innerHTML = '❌ No targets selected!';
+                resultDiv.className = 'error';
                 appendTerminal('error', '❌ No targets selected');
-                alert('Please select at least one target!');
                 return;
             }
             
             pendingAction = 'start';
+            console.log('[executeAttack] pendingAction set to:', pendingAction);
+            
             document.getElementById('modalMessage').textContent = 
                 `This will launch ARP spoofing and ban ${selectedTargets.length} target(s).\nAre you sure you want to proceed?`;
             document.getElementById('confirmModal').style.display = 'block';
@@ -324,26 +443,49 @@
         // ==================== CONFIRM ATTACK ====================
         function confirmAttack() {
             console.log('[confirmAttack] Called');
-            closeModal();
+            console.log('[confirmAttack] pendingAction =', pendingAction);
+            console.log('[confirmAttack] type of pendingAction =', typeof pendingAction);
             
+            // Close modal first
+            document.getElementById('confirmModal').style.display = 'none';
+            
+            // Check and execute
             if (pendingAction === 'start') {
+                console.log('[confirmAttack] ✅ Condition met, calling sendBanRequest()');
                 sendBanRequest();
+            } else {
+                console.log('[confirmAttack] ❌ Condition NOT met, pendingAction is:', pendingAction);
             }
+            
+            // Reset pending action
             pendingAction = null;
+            console.log('[confirmAttack] pendingAction reset to null');
+        }
+
+        // ==================== CLOSE MODAL ====================
+        function closeModal() {
+            console.log('[closeModal] Called');
+            document.getElementById('confirmModal').style.display = 'none';
+            // Don't reset pendingAction here - let confirmAttack handle it
         }
 
         // ==================== SEND BAN REQUEST ====================
         function sendBanRequest() {
             console.log('[sendBanRequest] Called');
+            console.log('[sendBanRequest] selectedTargets:', selectedTargets);
             
+            const resultDiv = document.getElementById('banResult');
             const startBtn = document.getElementById('startBtn');
+            
+            resultDiv.innerHTML = '⏳ Blocking target(s)...';
+            resultDiv.className = 'loading';
             startBtn.disabled = true;
             
             const payload = {
                 targets: selectedTargets,
                 action: 'start'
             };
-            console.log('[sendBanRequest] Payload:', payload);
+            console.log('[sendBanRequest] Payload:', JSON.stringify(payload));
             
             appendTerminal('info', `⏳ Sending ban request for ${selectedTargets.length} target(s)...`);
             
@@ -360,19 +502,25 @@
                 console.log('[sendBanRequest] Response data:', data);
                 
                 if (data.status === 'success') {
-                    appendTerminal('success', `✅ ${data.message}`);
+                    resultDiv.innerHTML = `✅ ${data.message}`;
+                    resultDiv.className = 'success';
                     document.getElementById('attackStatus').textContent = 'Attack: Running';
-                    isAttacking = true;
                     document.getElementById('stopBtn').disabled = false;
                     document.getElementById('banAllBtn').disabled = true;
+                    isAttacking = true;
                     updateStatus('Attack Running', 'active');
+                    appendTerminal('success', `✅ ${data.message}`);
                 } else {
+                    resultDiv.innerHTML = `❌ Error: ${data.error}`;
+                    resultDiv.className = 'error';
                     appendTerminal('error', `❌ ${data.error}`);
                 }
             })
             .catch(error => {
-                console.error('[sendBanRequest] Error:', error);
-                appendTerminal('error', `❌ ${error}`);
+                console.error('[sendBanRequest] Fetch error:', error);
+                resultDiv.innerHTML = `❌ Failed: ${error.message || error}`;
+                resultDiv.className = 'error';
+                appendTerminal('error', `❌ ${error.message || error}`);
             })
             .finally(() => {
                 startBtn.disabled = false;
@@ -395,6 +543,7 @@
             
             updateStatus('Stopped', 'inactive');
             document.getElementById('attackStatus').textContent = 'Attack: Stopped';
+            document.getElementById('banResult').innerHTML = '';
             appendTerminal('warning', '⏹️ Attack stopped');
             
             fetch('/api/ban', {
@@ -422,10 +571,7 @@
         // ==================== TERMINAL ====================
         function appendTerminal(type, message) {
             const output = document.getElementById('terminalOutput');
-            if (!output) {
-                console.error('[appendTerminal] Output element not found');
-                return;
-            }
+            if (!output) return;
             
             const timestamp = new Date().toLocaleTimeString();
             let className = '';
@@ -434,7 +580,7 @@
                 case 'success': className = 'success'; break;
                 case 'info': className = 'info'; break;
                 case 'warning': className = 'warning'; break;
-                case 'error': 
+                case 'error':
                 case 'glitch': className = 'glitch'; break;
                 default: className = '';
             }
@@ -447,12 +593,6 @@
             document.getElementById('terminalOutput').innerHTML = '&gt; Terminal cleared';
         }
 
-        // ==================== MODAL ====================
-        function closeModal() {
-            document.getElementById('confirmModal').style.display = 'none';
-            pendingAction = null;
-        }
-
         // ==================== STATUS ====================
         function updateStatus(text, state) {
             const statusText = document.getElementById('statusText');
@@ -460,15 +600,11 @@
             if (statusText) statusText.textContent = text;
             if (dot) {
                 dot.className = 'status-dot';
-                if (state === 'active') {
-                    dot.classList.add('active');
-                } else {
-                    dot.classList.add('inactive');
-                }
+                dot.classList.add(state === 'active' ? 'active' : 'inactive');
             }
         }
 
-        // ==================== KEYBOARD ====================
+        // ==================== KEYBOARD SHORTCUTS ====================
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && document.activeElement === document.getElementById('targetInput')) {
                 addTarget();
@@ -478,11 +614,11 @@
             }
         });
 
-        // Close modal when clicking outside
+        // ==================== CLOSE MODAL ON OUTSIDE CLICK ====================
         window.onclick = function(event) {
             const modal = document.getElementById('confirmModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
+            if (event.target === modal) {
+                closeModal();
             }
         }
 
