@@ -743,7 +743,7 @@
               appendTerminal("success", `✅ Found ${devices.length} devices on network`);
 
               if (devices.length > 0) {
-                selectedTargets = devices.map((d) => d.mac);
+                selectedTargets = devices.map((d) => d.ip);
                 updateTargetList();
               }
             } else {
@@ -786,9 +786,9 @@
                     <span class="ip">${dev.ip || "Unknown"}</span>
                     <span class="mac">${dev.mac || "N/A"}</span>
                     <span class="vendor">${dev.vendor || "Unknown"}</span>
-                    <button class="select-btn ${selectedTargets.includes(dev.mac) ? "selected" : ""}" 
+                    <button class="select-btn ${selectedTargets.includes(dev.ip) ? "selected" : ""}" 
                             onclick="event.stopPropagation(); toggleDevice(${index})">
-                        ${selectedTargets.includes(dev.mac) ? "✓" : "Select"}
+                        ${selectedTargets.includes(dev.ip) ? "✓" : "Select"}
                     </button>
                 </div>
             `
@@ -801,11 +801,11 @@
         const dev = devices[index];
         if (!dev) return;
 
-        const idx = selectedTargets.indexOf(dev.mac);
+        const idx = selectedTargets.indexOf(dev.ip);
         if (idx > -1) {
           selectedTargets.splice(idx, 1);
         } else {
-          selectedTargets.push(dev.mac);
+          selectedTargets.push(dev.ip);
         }
 
         // Update UI
@@ -814,14 +814,14 @@
           item.classList.toggle("selected");
           const btn = item.querySelector(".select-btn");
           if (btn) {
-            btn.textContent = selectedTargets.includes(dev.mac) ? "✓" : "Select";
+            btn.textContent = selectedTargets.includes(dev.ip) ? "✓" : "Select";
             btn.classList.toggle("selected");
           }
         }
 
         updateTargetList();
         updateStatus(`Selected ${selectedTargets.length} targets`, "active");
-        appendTerminal("info", `📌 ${selectedTargets.includes(dev.mac) ? "Selected" : "Deselected"}: ${dev.ip} (${dev.mac})`);
+        appendTerminal("info", `📌 ${selectedTargets.includes(dev.ip) ? "Selected" : "Deselected"}: ${dev.ip} (${dev.mac})`);
       }
 
       // ==================== ADD TARGET MANUAL ====================
@@ -890,7 +890,7 @@
 
           // Deselect in device list
           devices.forEach((dev, index) => {
-            if (dev.mac === target) {
+            if (dev.ip === target || dev.mac === target) {
               const item = document.getElementById(`dev-${index}`);
               if (item) {
                 item.classList.remove("selected");
@@ -955,7 +955,6 @@
         appendTerminal("glitch", "⚡ STARTING ATTACK...");
         appendTerminal("info", `🎯 Targeting: ${selectedTargets.join(", ")}`);
 
-        // Simulate attack with bettercap-ban.py
         fetch("/api/ban", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -967,17 +966,14 @@
           .then((response) => response.json())
           .then((data) => {
             if (data.status === "success") {
-              appendTerminal("success", `✅ Attack started successfully!`);
+              appendTerminal("success", `✅ Attack started! PID: ${data.pid}`);
               appendTerminal("info", `📊 ${data.message}`);
 
-              // Start monitoring
-              attackInterval = setInterval(() => {
-                // Simulate attack output
-                const glitchText = getGlitchText();
-                appendTerminal("glitch", `🔴 ${glitchText}`);
-              }, 3000);
-
               document.getElementById("attackStatus").textContent = "Attack: Running";
+
+              attackInterval = setInterval(() => {
+                checkAttackStatus();
+              }, 2000);
             } else {
               appendTerminal("error", `❌ Attack failed: ${data.error}`);
               stopAttack();
@@ -987,6 +983,18 @@
             appendTerminal("error", `❌ Error: ${error}`);
             stopAttack();
           });
+      }
+
+      function checkAttackStatus() {
+        fetch("/api/bettercap/status")
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "stopped") {
+              appendTerminal("warning", "⚠️ Attack process stopped");
+              stopAttack();
+            }
+          })
+          .catch(() => {});
       }
 
       // ==================== STOP ATTACK ====================
@@ -1034,7 +1042,7 @@
       }
 
       function executeBanAll() {
-        const allTargets = devices.map((d) => d.mac);
+        const allTargets = devices.map((d) => d.ip);
         selectedTargets = allTargets;
         updateTargetList();
 

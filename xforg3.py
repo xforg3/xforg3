@@ -6,6 +6,8 @@ import sys
 import json
 import re
 import signal
+import time
+import traceback
 
 app = Flask(__name__)
 
@@ -82,13 +84,14 @@ def run_tool(tool_name):
 def ban_target():
     """Endpoint untuk bettercap-ban.py - Start/Stop attack"""
     global attack_process
-    
+
     try:
-        data = request.json
+        data = request.json or {}
+        print(f"[DEBUG] Received ban request: {data}")
+
         action = data.get('action', 'start')
-        
+
         if action == 'stop':
-            # Stop attack
             if attack_process:
                 attack_process.terminate()
                 try:
@@ -97,41 +100,48 @@ def ban_target():
                     attack_process.kill()
                 attack_process = None
             return jsonify({'status': 'success', 'message': 'Attack stopped'})
-        
-        # Start attack
+
         targets = data.get('targets', [])
         if not targets:
             return jsonify({'status': 'error', 'error': 'No targets specified'}), 400
-        
-        # Path ke bettercap-ban.py
+
         script_path = os.path.join(os.path.dirname(__file__), 'frequency', 'bettercap', 'bettercap-ban.py')
         if not os.path.exists(script_path):
             script_path = os.path.join(os.path.dirname(__file__), 'bettercap-ban.py')
-        
+
         if not os.path.exists(script_path):
             return jsonify({'status': 'error', 'error': 'bettercap-ban.py not found'}), 404
-        
-        # Build command dengan targets
+
         targets_str = ','.join(targets)
-        cmd = f"python3 {script_path} --ban {targets_str}"
-        
-        # Run in background
+        cmd = ['python3', script_path, '--ban', targets_str]
+        print(f"[DEBUG] Running: {' '.join(cmd)}")
+
         attack_process = subprocess.Popen(
             cmd,
-            shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=os.path.dirname(__file__)
+            cwd=os.path.dirname(__file__),
         )
-        
+
+        time.sleep(0.5)
+
+        if attack_process.poll() is not None:
+            stdout, stderr = attack_process.communicate()
+            error_msg = (stderr or stdout or 'Unknown error').strip()
+            attack_process = None
+            print(f"[DEBUG] Process died: {error_msg}")
+            return jsonify({'status': 'error', 'error': f'Process died: {error_msg}'}), 500
+
         return jsonify({
             'status': 'success',
             'message': f'Attack started on {len(targets)} target(s)',
-            'targets': targets_str
+            'targets': targets_str,
+            'pid': attack_process.pid,
         })
-        
+
     except Exception as e:
+        traceback.print_exc()
         return jsonify({'status': 'error', 'error': str(e)}), 500
 
 @app.route('/api/scan', methods=['GET'])
