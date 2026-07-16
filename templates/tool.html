@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ tool.upper() }} - XFORG3</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <a href="/frequency" class="back-btn">← Back to Tools</a>
+        <h1>🔧 {{ tool.upper() }}</h1>
+        <p class="subtitle">{{ description }}</p>
+      </div>
+
+      {% if tool != 'bettercap' %}
+      <div class="tool-controls">
+        <div class="control-card">
+          <h3>▶️ Run {{ tool.upper() }}</h3>
+          <button onclick="runTool()" class="run-btn">Execute</button>
+        </div>
+
+        <div class="control-card">
+          <h3>📋 Output</h3>
+          <div id="output" class="terminal">
+            <pre>Ready to execute commands...</pre>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Jika tool adalah bettercap, redirect ke halaman pilihan -->
+    {% if tool == 'bettercap' %}
+    <script>
+      window.location.href = "/tool/bettercap";
+    </script>
+    {% else %}
+    <script>
+      function runTool() {
+        const output = document.getElementById("output").querySelector("pre");
+        output.textContent = "Running {{ tool }}...\n";
+
+        fetch(`/api/run/{{ tool }}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              output.textContent = `✅ Command executed:\n$ ${data.command}\n\n${data.output}`;
+              if (data.error) {
+                output.textContent += `\n\n⚠️ Errors:\n${data.error}`;
+              }
+            } else {
+              output.textContent = `❌ Error: ${data.error}`;
+            }
+          })
+          .catch((error) => {
+            output.textContent = `❌ Failed: ${error}`;
+          });
+      }
+    </script>
+    {% endif %}
+  </body>
+</html>

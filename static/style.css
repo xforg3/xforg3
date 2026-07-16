@@ -1,0 +1,590 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #0a0e17;
+    color: #00ff41;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    width: 100%;
+    padding: 40px 20px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 50px;
+    position: relative;
+}
+
+.header h1 {
+    font-size: 4rem;
+    text-shadow: 0 0 40px rgba(0, 255, 65, 0.3);
+    letter-spacing: 5px;
+}
+
+.subtitle {
+    color: #00ff41;
+    opacity: 0.7;
+    font-size: 1.2rem;
+    margin-top: 10px;
+}
+
+.back-btn {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #00ff41;
+    text-decoration: none;
+    padding: 10px 20px;
+    border: 1px solid #00ff41;
+    border-radius: 5px;
+    transition: all 0.3s;
+}
+
+.back-btn:hover {
+    background: #00ff41;
+    color: #0a0e17;
+}
+
+/* Main Menu */
+.main-menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+}
+
+.main-btn {
+    display: inline-block;
+    padding: 40px 80px;
+    font-size: 2.5rem;
+    font-family: 'Courier New', monospace;
+    color: #00ff41;
+    text-decoration: none;
+    border: 3px solid #00ff41;
+    border-radius: 15px;
+    transition: all 0.4s;
+    position: relative;
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.main-btn:hover {
+    background: rgba(0, 255, 65, 0.15);
+    transform: scale(1.05);
+    box-shadow: 0 0 60px rgba(0, 255, 65, 0.2);
+}
+
+.main-btn .icon {
+    margin-right: 20px;
+}
+
+.main-btn .arrow {
+    margin-left: 20px;
+    opacity: 0;
+    transition: all 0.3s;
+}
+
+.main-btn:hover .arrow {
+    opacity: 1;
+    transform: translateX(10px);
+}
+
+/* Tool Grid */
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.tool-card {
+    background: rgba(0, 255, 65, 0.03);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 10px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.tool-card:hover {
+    background: rgba(0, 255, 65, 0.08);
+    transform: translateY(-5px);
+    border-color: #00ff41;
+    box-shadow: 0 10px 40px rgba(0, 255, 65, 0.1);
+}
+
+.tool-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.tool-card h3 {
+    font-size: 1.3rem;
+    color: #00ff41;
+    margin-bottom: 10px;
+}
+
+.tool-card p {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    margin-bottom: 15px;
+}
+
+.launch-btn {
+    background: transparent;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 8px 25px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    transition: all 0.3s;
+}
+
+.launch-btn:hover {
+    background: #00ff41;
+    color: #0a0e17;
+}
+
+/* Bettercap Actions */
+.bettercap-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 40px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.action-card {
+    background: rgba(0, 255, 65, 0.03);
+    border: 2px solid rgba(0, 255, 65, 0.2);
+    border-radius: 15px;
+    padding: 40px 30px;
+    text-align: center;
+    transition: all 0.3s;
+    min-height: 250px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.action-card.active {
+    cursor: pointer;
+    border-color: #00ff41;
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.action-card.active:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 50px rgba(0, 255, 65, 0.15);
+    background: rgba(0, 255, 65, 0.08);
+}
+
+.action-card.coming-soon {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.action-card.coming-soon .action-icon {
+    filter: grayscale(1);
+}
+
+.action-icon {
+    font-size: 4rem;
+    margin-bottom: 15px;
+}
+
+.action-card h2 {
+    font-size: 1.8rem;
+    color: #00ff41;
+    margin-bottom: 5px;
+}
+
+.action-card p {
+    color: #00ff41;
+    opacity: 0.7;
+    font-size: 1rem;
+    margin-bottom: 15px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    background: rgba(0, 255, 65, 0.1);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+    margin-bottom: 10px;
+}
+
+.action-card.coming-soon .status-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.action-hint {
+    font-size: 0.8rem;
+    opacity: 0.5;
+    margin-top: 10px;
+}
+
+.action-card.coming-soon .action-hint {
+    opacity: 0.2;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: #0a0e17;
+    border: 2px solid #00ff41;
+    border-radius: 15px;
+    margin: 5% auto;
+    padding: 40px;
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    box-shadow: 0 0 60px rgba(0, 255, 65, 0.1);
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.close-btn {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 2rem;
+    color: #00ff41;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.close-btn:hover {
+    color: #ff0040;
+    transform: rotate(90deg);
+}
+
+.modal-content h2 {
+    color: #00ff41;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.modal-content p {
+    color: #00ff41;
+    opacity: 0.7;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.mac-input {
+    width: 100%;
+    padding: 12px 15px;
+    background: rgba(0, 255, 65, 0.05);
+    border: 1px solid #00ff41;
+    border-radius: 8px;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    text-align: center;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+}
+
+.mac-input:focus {
+    outline: none;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+.mac-input::placeholder {
+    color: rgba(0, 255, 65, 0.3);
+    letter-spacing: 1px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.ban-execute-btn {
+    background: #00ff41;
+    color: #0a0e17;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.ban-execute-btn:hover {
+    background: #00cc33;
+    transform: scale(1.02);
+}
+
+.cancel-btn {
+    background: transparent;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.cancel-btn:hover {
+    background: rgba(0, 255, 65, 0.1);
+}
+
+.ban-result {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+}
+
+.ban-result.success {
+    background: rgba(0, 255, 65, 0.1);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+}
+
+.ban-result.error {
+    background: rgba(255, 0, 64, 0.1);
+    border: 1px solid #ff0040;
+    color: #ff0040;
+}
+
+.ban-result.loading {
+    background: rgba(255, 255, 0, 0.05);
+    border: 1px solid #ffff00;
+    color: #ffff00;
+}
+
+/* Device List di Modal */
+.device-list {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.device-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.05);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.device-item:hover {
+    background: rgba(0, 255, 65, 0.05);
+}
+
+.device-item.selected {
+    background: rgba(0, 255, 65, 0.1);
+    border-left: 3px solid #00ff41;
+}
+
+.device-item .ip {
+    color: #00ff41;
+}
+
+.device-item .mac {
+    color: rgba(0, 255, 65, 0.5);
+    font-size: 0.8rem;
+}
+
+.device-item .vendor {
+    color: rgba(0, 255, 65, 0.3);
+    font-size: 0.8rem;
+}
+
+/* Tool Controls */
+.tool-controls {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+    margin-top: 30px;
+}
+
+.control-card {
+    background: rgba(0, 255, 65, 0.03);
+    border: 1px solid rgba(0, 255, 65, 0.2);
+    border-radius: 10px;
+    padding: 25px;
+}
+
+.control-card h3 {
+    margin-bottom: 20px;
+    color: #00ff41;
+}
+
+.run-btn {
+    background: #00ff41;
+    color: #0a0e17;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.run-btn:hover {
+    background: #00cc33;
+    transform: scale(1.02);
+}
+
+.terminal {
+    background: #000;
+    border: 1px solid #00ff41;
+    border-radius: 5px;
+    padding: 15px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.terminal pre {
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    margin-top: 60px;
+    opacity: 0.4;
+    font-size: 0.8rem;
+    border-top: 1px solid rgba(0, 255, 65, 0.1);
+    padding-top: 20px;
+}
+
+/* Loading Animation */
+.loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 255, 65, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #00ff41;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00cc33;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header h1 {
+        font-size: 2.5rem;
+    }
+    
+    .main-btn {
+        padding: 25px 40px;
+        font-size: 1.8rem;
+    }
+    
+    .tool-controls {
+        grid-template-columns: 1fr;
+    }
+    
+    .bettercap-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .back-btn {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 20px;
+        transform: none;
+        top: 0;
+    }
+    
+    .modal-content {
+        margin: 10% auto;
+        padding: 25px;
+        width: 95%;
+    }
+    
+    .action-card h2 {
+        font-size: 1.4rem;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .ban-execute-btn, .cancel-btn {
+        width: 100%;
+    }
+    
+    .device-item {
+        flex-direction: column;
+        gap: 3px;
+        font-size: 0.75rem;
+    }
+}

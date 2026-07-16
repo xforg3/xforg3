@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FREQUENCY - XFORG3</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <a href="/" class="back-btn">← Back</a>
+        <h1>📡 FREQUENCY</h1>
+        <p class="subtitle">Select a tool to launch</p>
+      </div>
+
+      <div class="tool-grid">
+        {% for tool, description in tools.items() %}
+        <div class="tool-card" onclick="openTool('{{ tool }}')">
+          <div class="tool-icon">{% if tool == 'bettercap' %}🛡️ {% elif tool == 'aircrack-ng' %}🔑 {% elif tool == 'airgeddon' %}📶 {% elif tool == 'mdk4' %}💥 {% elif tool == 'frequency' %}📊 {% else %}🔧 {% endif %}</div>
+          <h3>{{ tool.upper() }}</h3>
+          <p>{{ description }}</p>
+          <button class="launch-btn">Launch →</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <script>
+      function openTool(toolName) {
+        window.location.href = `/tool/${toolName}`;
+      }
+    </script>
+  </body>
+</html>
