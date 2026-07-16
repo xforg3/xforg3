@@ -136,39 +136,44 @@ def ban_target():
 
 @app.route('/api/scan', methods=['GET'])
 def scan_network():
-    """Scan network menggunakan bettercap"""
+    """Scan network dengan timeout singkat (≤8 detik)"""
     try:
-        # Path ke bettercap-ban.py
         script_path = os.path.join(os.path.dirname(__file__), 'frequency', 'bettercap', 'bettercap-ban.py')
         if not os.path.exists(script_path):
             script_path = os.path.join(os.path.dirname(__file__), 'bettercap-ban.py')
-        
+
         if not os.path.exists(script_path):
             return jsonify({'status': 'error', 'error': 'bettercap-ban.py not found'}), 404
-        
-        # Jalankan scan
-        cmd = f"python3 {script_path} --scan"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=os.path.dirname(__file__))
-        
-        # Parse output untuk mendapatkan devices
+
+        # --quick: sleep 2s di bettercap; timeout shell + subprocess sebagai hard limit
+        cmd = f"timeout 8 python3 {script_path} --scan --quick 2>/dev/null"
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(__file__),
+            timeout=10,
+        )
+
         devices = []
-        lines = result.stdout.split('\n')
-        for line in lines:
-            # Cari pola IP, MAC, Vendor
+        for line in result.stdout.split('\n'):
             match = re.search(r'(\d+\.\d+\.\d+\.\d+)\s+([0-9A-Fa-f:]{17})\s+(.+)', line)
             if match:
                 devices.append({
                     'ip': match.group(1),
                     'mac': match.group(2),
-                    'vendor': match.group(3).strip()
+                    'vendor': match.group(3).strip(),
                 })
-        
+
         return jsonify({
             'status': 'success',
             'devices': devices,
-            'raw': result.stdout
+            'count': len(devices),
         })
-        
+
+    except subprocess.TimeoutExpired:
+        return jsonify({'status': 'error', 'error': 'Scan timed out'}), 504
     except Exception as e:
         return jsonify({'status': 'error', 'error': str(e)}), 500
 

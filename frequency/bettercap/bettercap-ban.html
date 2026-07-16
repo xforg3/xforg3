@@ -722,34 +722,45 @@
         const scanBtn = document.getElementById("scanBtn");
         const scanCard = document.getElementById("scanCard");
 
-        deviceList.innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.4;">⏳ Scanning network...</div>';
+        deviceList.innerHTML =
+          '<div style="padding: 20px; text-align: center; opacity: 0.6;">⏳ Scanning... (max 8s)</div>';
         scanBtn.disabled = true;
         scanCard.style.opacity = "0.6";
 
-        appendTerminal("info", ">> Scanning network with net.probe...");
+        appendTerminal("info", ">> Scanning network with net.probe (quick)...");
 
-        fetch("/api/scan")
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        fetch("/api/scan", { signal: controller.signal })
           .then((response) => response.json())
           .then((data) => {
+            clearTimeout(timeoutId);
             if (data.status === "success") {
               devices = data.devices || [];
               renderDevices(devices);
               document.getElementById("deviceCount").textContent = `${devices.length} devices found`;
               appendTerminal("success", `✅ Found ${devices.length} devices on network`);
 
-              // Auto-select all devices for "Ban All"
               if (devices.length > 0) {
                 selectedTargets = devices.map((d) => d.mac);
                 updateTargetList();
               }
             } else {
-              deviceList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff0040;">❌ Error: ${data.error}</div>`;
+              deviceList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff0040;">❌ ${data.error}</div>`;
               appendTerminal("error", `❌ Scan failed: ${data.error}`);
             }
           })
           .catch((error) => {
-            deviceList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff0040;">❌ Failed: ${error}</div>`;
-            appendTerminal("error", `❌ Scan error: ${error}`);
+            clearTimeout(timeoutId);
+            if (error.name === "AbortError") {
+              deviceList.innerHTML =
+                '<div style="padding: 20px; text-align: center; color: #ffff00;">⏰ Scan timeout - try again</div>';
+              appendTerminal("warning", "⏰ Scan timed out");
+            } else {
+              deviceList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff0040;">❌ ${error}</div>`;
+              appendTerminal("error", `❌ Scan error: ${error}`);
+            }
           })
           .finally(() => {
             scanBtn.disabled = false;

@@ -8,6 +8,7 @@ import subprocess
 import re
 import ipaddress
 import tempfile
+import argparse
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -58,47 +59,45 @@ def print_glitch_line(text, color=COLORS["green"], cycles=8):
         time.sleep(0.03)
     print(f"\r{color}{text}{RESET}")
 
-def jalankan_bettercap_otomatis():
-    """Menjalankan net.probe on dengan animasi LOADING... yang terus mengeglitch."""
+def jalankan_bettercap_otomatis(probe_seconds=3, silent=False):
+    """Menjalankan net.probe on. silent=True untuk CLI/API (tanpa animasi)."""
     devices = []
-    bettercap_cmds = "net.probe on; sleep 3; net.show; quit"
+    probe_seconds = max(1, int(probe_seconds))
+    bettercap_cmds = f"net.probe on; sleep {probe_seconds}; net.show; quit"
     cmd = ["bettercap", "-silent", "-eval", bettercap_cmds]
-    
-    try:
-        # Menggunakan Popen agar proses berjalan di background dan Python bisa membuat animasi
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        
-        base_text = "LOADING"
-        dots = ""
-        counter = 0
-        
-        # Loop ini akan terus berjalan selama proses Bettercap masih aktif (.poll() bernilai None)
-        while process.poll() is None:
-            counter += 1
-            if counter % 5 == 0:
-                dots = "." * ((counter // 5) % 4)  # Membuat animasi titik berjalan (...)
-            
-            # Membuat efek teks LOADING mengeglitch secara acak per frame
-            glitched_loading = []
-            full_string = f">> {base_text}{dots}"
-            
-            for char in full_string:
-                if char in [">", " "] :
-                    glitched_loading.append(char)
-                elif random.random() < 0.15:  # Peluang 15% karakter berubah jadi glitch char
-                    glitched_loading.append(random.choice(GLITCH_CHARS))
-                else:
-                    glitched_loading.append(char)
-                    
-            # Tulis efek ke terminal menggunakan \r (carriage return) agar menumpuk di baris yang sama
-            sys.stdout.write(f"\r{COLORS['red']}{''.join(glitched_loading)}{RESET}   ")
-            sys.stdout.flush()
-            time.sleep(0.08)
-            
-        # Mengambil output setelah proses selesai
-        output, _ = process.communicate()
 
-        # Membersihkan kode warna ANSI bawaan Bettercap
+    try:
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if silent:
+            output, _ = process.communicate()
+        else:
+            base_text = "LOADING"
+            dots = ""
+            counter = 0
+
+            while process.poll() is None:
+                counter += 1
+                if counter % 5 == 0:
+                    dots = "." * ((counter // 5) % 4)
+
+                glitched_loading = []
+                full_string = f">> {base_text}{dots}"
+
+                for char in full_string:
+                    if char in [">", " "]:
+                        glitched_loading.append(char)
+                    elif random.random() < 0.15:
+                        glitched_loading.append(random.choice(GLITCH_CHARS))
+                    else:
+                        glitched_loading.append(char)
+
+                sys.stdout.write(f"\r{COLORS['red']}{''.join(glitched_loading)}{RESET}   ")
+                sys.stdout.flush()
+                time.sleep(0.08)
+
+            output, _ = process.communicate()
+
         ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-9?]*[a-zA-Z])')
         clean_output = ansi_escape.sub('', output)
 
@@ -126,13 +125,15 @@ def jalankan_bettercap_otomatis():
                         "mac": mac,
                         "vendor": vendor
                     })
-                    
+
     except FileNotFoundError:
-        print(f"\n{COLORS['red']}[!] Error: 'bettercap' tidak ditemukan di sistem Anda.{RESET}")
+        if not silent:
+            print(f"\n{COLORS['red']}[!] Error: 'bettercap' tidak ditemukan di sistem Anda.{RESET}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n{COLORS['red']}[!] Terjadi kesalahan: {e}{RESET}")
-        
+        if not silent:
+            print(f"\n{COLORS['red']}[!] Terjadi kesalahan: {e}{RESET}")
+
     return devices
 
 
@@ -342,9 +343,31 @@ def run_simulation():
     return True
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Bettercap network scan & ARP ban")
+    parser.add_argument('--scan', action='store_true', help='Scan network dan tampilkan devices')
+    parser.add_argument('--ban', help='Ban target(s) with comma separated MAC/IP')
+    parser.add_argument('--quick', action='store_true', help='Quick scan (2 detik probe)')
+    args = parser.parse_args()
+
     try:
-        while run_simulation():
-            pass
+        if args.scan:
+            pastikan_root()
+            probe = 2 if args.quick else 3
+            devices = jalankan_bettercap_otomatis(probe_seconds=probe, silent=True)
+            for dev in devices:
+                print(f"{dev['ip']} {dev['mac']} {dev['vendor']}")
+            sys.exit(0)
+        elif args.ban:
+            pastikan_root()
+            targets = [t.strip() for t in args.ban.split(',') if t.strip()]
+            if not targets:
+                print("No targets provided", file=sys.stderr)
+                sys.exit(1)
+            jalankan_arp_attack(targets)
+            sys.exit(0)
+        else:
+            while run_simulation():
+                pass
     except KeyboardInterrupt:
         print("\n\nAborted.")
         sys.exit(0)
