@@ -1,1145 +1,492 @@
-<!-- frequency/bettercap/bettercap-ban.html -->
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BETTERCAP BAN - XFORG3</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        font-family: "Courier New", monospace;
-        background: #0a0e17;
-        color: #00ff41;
-        min-height: 100vh;
-      }
-
-      .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-
-      /* Header */
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px 0;
-        border-bottom: 2px solid rgba(0, 255, 65, 0.2);
-        margin-bottom: 30px;
-      }
-
-      .header h1 {
-        font-size: 2rem;
-        text-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
-      }
-
-      .header .subtitle {
-        opacity: 0.6;
-        font-size: 0.9rem;
-      }
-
-      .back-btn {
-        color: #00ff41;
-        text-decoration: none;
-        padding: 8px 20px;
-        border: 1px solid #00ff41;
-        border-radius: 5px;
-        transition: all 0.3s;
-      }
-
-      .back-btn:hover {
-        background: #00ff41;
-        color: #0a0e17;
-      }
-
-      /* Status Bar */
-      .status-bar {
-        background: rgba(0, 255, 65, 0.05);
-        border: 1px solid rgba(0, 255, 65, 0.2);
-        border-radius: 8px;
-        padding: 15px 20px;
-        margin-bottom: 30px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      .status-bar .status {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .status-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-      }
-
-      .status-dot.active {
-        background: #00ff41;
-        animation: pulse 1.5s infinite;
-      }
-
-      .status-dot.inactive {
-        background: #666;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.3;
-        }
-      }
-
-      /* Main Actions */
-      .main-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 30px;
-      }
-
-      .action-card {
-        background: rgba(0, 255, 65, 0.03);
-        border: 2px solid rgba(0, 255, 65, 0.2);
-        border-radius: 12px;
-        padding: 30px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s;
-      }
-
-      .action-card:hover:not(.disabled) {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 40px rgba(0, 255, 65, 0.1);
-        border-color: #00ff41;
-      }
-
-      .action-card.disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-
-      .action-card .icon {
-        font-size: 3rem;
-        margin-bottom: 10px;
-      }
-
-      .action-card h3 {
-        font-size: 1.2rem;
-        margin-bottom: 5px;
-      }
-
-      .action-card p {
-        opacity: 0.6;
-        font-size: 0.85rem;
-      }
-
-      .action-card .badge {
-        display: inline-block;
-        padding: 3px 12px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        margin-top: 10px;
-        background: rgba(0, 255, 65, 0.1);
-        border: 1px solid rgba(0, 255, 65, 0.2);
-      }
-
-      /* Device List */
-      .device-section {
-        background: rgba(0, 255, 65, 0.02);
-        border: 1px solid rgba(0, 255, 65, 0.15);
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 30px;
-      }
-
-      .device-section .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      .device-section .section-header h3 {
-        font-size: 1.1rem;
-      }
-
-      .device-section .section-header .count {
-        opacity: 0.5;
-        font-size: 0.85rem;
-      }
-
-      .scan-btn {
-        background: transparent;
-        color: #00ff41;
-        border: 1px solid #00ff41;
-        padding: 6px 18px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-family: "Courier New", monospace;
-        transition: all 0.3s;
-      }
-
-      .scan-btn:hover {
-        background: #00ff41;
-        color: #0a0e17;
-      }
-
-      .scan-btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-
-      .device-list {
-        max-height: 400px;
-        overflow-y: auto;
-        border: 1px solid rgba(0, 255, 65, 0.1);
-        border-radius: 5px;
-      }
-
-      .device-item {
-        display: grid;
-        grid-template-columns: 50px 1fr 1.5fr 1fr 80px;
-        padding: 10px 15px;
-        border-bottom: 1px solid rgba(0, 255, 65, 0.05);
-        transition: all 0.2s;
-        cursor: pointer;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .device-item:hover {
-        background: rgba(0, 255, 65, 0.05);
-      }
-
-      .device-item.selected {
-        background: rgba(0, 255, 65, 0.1);
-        border-left: 3px solid #00ff41;
-      }
-
-      .device-item .no {
-        opacity: 0.4;
-        font-size: 0.8rem;
-      }
-
-      .device-item .ip {
-        color: #00ff41;
-      }
-
-      .device-item .mac {
-        opacity: 0.7;
-        font-size: 0.85rem;
-      }
-
-      .device-item .vendor {
-        opacity: 0.5;
-        font-size: 0.8rem;
-      }
-
-      .device-item .select-btn {
-        background: transparent;
-        color: #00ff41;
-        border: 1px solid rgba(0, 255, 65, 0.3);
-        padding: 3px 12px;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 0.7rem;
-        transition: all 0.3s;
-      }
-
-      .device-item .select-btn:hover {
-        background: #00ff41;
-        color: #0a0e17;
-      }
-
-      .device-item .select-btn.selected {
-        background: #00ff41;
-        color: #0a0e17;
-      }
-
-      /* Target Input */
-      .target-input-section {
-        background: rgba(0, 255, 65, 0.02);
-        border: 1px solid rgba(0, 255, 65, 0.15);
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 30px;
-      }
-
-      .target-input-section .input-group {
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .target-input-section input {
-        flex: 1;
-        min-width: 200px;
-        padding: 10px 15px;
-        background: rgba(0, 0, 0, 0.5);
-        border: 1px solid rgba(0, 255, 65, 0.3);
-        border-radius: 5px;
-        color: #00ff41;
-        font-family: "Courier New", monospace;
-        font-size: 0.95rem;
-      }
-
-      .target-input-section input:focus {
-        outline: none;
-        border-color: #00ff41;
-        box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
-      }
-
-      .target-input-section input::placeholder {
-        color: rgba(0, 255, 65, 0.3);
-      }
-
-      .target-input-section .input-hint {
-        opacity: 0.4;
-        font-size: 0.8rem;
-        margin-top: 8px;
-      }
-
-      /* Attack Controls */
-      .attack-controls {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 15px;
-        margin-bottom: 30px;
-      }
-
-      .attack-btn {
-        padding: 15px;
-        border: 2px solid rgba(0, 255, 65, 0.2);
-        border-radius: 8px;
-        background: rgba(0, 255, 65, 0.03);
-        color: #00ff41;
-        font-family: "Courier New", monospace;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.3s;
-        text-align: center;
-      }
-
-      .attack-btn:hover:not(:disabled) {
-        background: rgba(0, 255, 65, 0.08);
-        border-color: #00ff41;
-        transform: translateY(-2px);
-      }
-
-      .attack-btn:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-      }
-
-      .attack-btn.danger {
-        border-color: rgba(255, 0, 64, 0.3);
-        color: #ff0040;
-      }
-
-      .attack-btn.danger:hover:not(:disabled) {
-        border-color: #ff0040;
-        background: rgba(255, 0, 64, 0.08);
-      }
-
-      .attack-btn .btn-icon {
-        display: block;
-        font-size: 1.5rem;
-        margin-bottom: 5px;
-      }
-
-      .attack-btn .btn-label {
-        font-size: 0.85rem;
-        opacity: 0.7;
-      }
-
-      /* Terminal Output */
-      .terminal-section {
-        background: #000;
-        border: 1px solid rgba(0, 255, 65, 0.2);
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 30px;
-      }
-
-      .terminal-section .terminal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid rgba(0, 255, 65, 0.1);
-      }
-
-      .terminal-section .terminal-header span {
-        opacity: 0.5;
-        font-size: 0.8rem;
-      }
-
-      .terminal-section .clear-btn {
-        background: transparent;
-        color: #00ff41;
-        border: 1px solid rgba(0, 255, 65, 0.2);
-        padding: 3px 15px;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 0.7rem;
-        transition: all 0.3s;
-      }
-
-      .terminal-section .clear-btn:hover {
-        background: rgba(0, 255, 65, 0.1);
-      }
-
-      .terminal-output {
-        min-height: 150px;
-        max-height: 300px;
-        overflow-y: auto;
-        font-family: "Courier New", monospace;
-        font-size: 0.85rem;
-        color: #00ff41;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        line-height: 1.6;
-      }
-
-      .terminal-output .glitch {
-        color: #ff0040;
-      }
-
-      .terminal-output .success {
-        color: #00ff41;
-      }
-
-      .terminal-output .info {
-        color: #00ccff;
-      }
-
-      .terminal-output .warning {
-        color: #ffff00;
-      }
-
-      /* Modal */
-      .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(5px);
-      }
-
-      .modal-content {
-        background: #0a0e17;
-        border: 2px solid #00ff41;
-        border-radius: 15px;
-        margin: 10% auto;
-        padding: 40px;
-        width: 90%;
-        max-width: 500px;
-        position: relative;
-        box-shadow: 0 0 60px rgba(0, 255, 65, 0.1);
-        text-align: center;
-      }
-
-      .modal-content .close-btn {
-        position: absolute;
-        right: 20px;
-        top: 15px;
-        font-size: 2rem;
-        color: #00ff41;
-        cursor: pointer;
-        transition: all 0.3s;
-      }
-
-      .modal-content .close-btn:hover {
-        color: #ff0040;
-        transform: rotate(90deg);
-      }
-
-      .modal-content .modal-icon {
-        font-size: 4rem;
-        margin-bottom: 15px;
-      }
-
-      .modal-content h2 {
-        margin-bottom: 10px;
-      }
-
-      .modal-content p {
-        opacity: 0.7;
-        margin-bottom: 20px;
-      }
-
-      .modal-content .modal-actions {
-        display: flex;
-        gap: 15px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-
-      .modal-content .modal-btn {
-        padding: 10px 30px;
-        border-radius: 5px;
-        border: none;
-        font-family: "Courier New", monospace;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: all 0.3s;
-      }
-
-      .modal-content .modal-btn.confirm {
-        background: #ff0040;
-        color: #fff;
-      }
-
-      .modal-content .modal-btn.confirm:hover {
-        background: #cc0033;
-        transform: scale(1.02);
-      }
-
-      .modal-content .modal-btn.cancel {
-        background: transparent;
-        color: #00ff41;
-        border: 1px solid #00ff41;
-      }
-
-      .modal-content .modal-btn.cancel:hover {
-        background: rgba(0, 255, 65, 0.1);
-      }
-
-      /* Scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-
-      ::-webkit-scrollbar-track {
-        background: rgba(0, 255, 65, 0.05);
-      }
-
-      ::-webkit-scrollbar-thumb {
-        background: rgba(0, 255, 65, 0.3);
-        border-radius: 3px;
-      }
-
-      ::-webkit-scrollbar-thumb:hover {
-        background: #00ff41;
-      }
-
-      /* Responsive */
-      @media (max-width: 768px) {
-        .main-actions {
-          grid-template-columns: 1fr;
-        }
-
-        .attack-controls {
-          grid-template-columns: 1fr 1fr;
-        }
-
-        .device-item {
-          grid-template-columns: 30px 1fr 1fr;
-          font-size: 0.8rem;
-          padding: 8px 10px;
-        }
-
-        .device-item .vendor {
-          display: none;
-        }
-
-        .header {
-          flex-direction: column;
-          gap: 10px;
-          text-align: center;
-        }
-
-        .header h1 {
-          font-size: 1.5rem;
-        }
-
-        .target-input-section .input-group {
-          flex-direction: column;
-        }
-
-        .target-input-section input {
-          width: 100%;
-        }
-
-        .modal-content {
-          margin: 20% auto;
-          padding: 25px;
-          width: 95%;
-        }
-      }
-
-      @media (max-width: 480px) {
-        .attack-controls {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-  </head>
-  <body>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
     <div class="container">
-      <!-- Header -->
-      <div class="header">
-        <div>
-          <h1>🚫 BETTERCAP BAN</h1>
-          <span class="subtitle">Network Attack & Mitigation Tool</span>
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>🚫 BETTERCAP BAN</h1>
+                <span class="subtitle">Network Attack & Mitigation Tool</span>
+            </div>
+            <a href="/tool/bettercap" class="back-btn">← Back</a>
         </div>
-        <a href="/tool/bettercap" class="back-btn">← Back</a>
-      </div>
 
-      <!-- Status Bar -->
-      <div class="status-bar">
-        <div class="status">
-          <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">Ready</span>
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Ready</span>
+            </div>
+            <div>
+                <span id="targetCount">Targets: 0</span>
+                <span style="margin: 0 10px; opacity: 0.2;">|</span>
+                <span id="attackStatus">Attack: Stopped</span>
+            </div>
         </div>
-        <div>
-          <span id="targetCount">Targets: 0</span>
-          <span style="margin: 0 10px; opacity: 0.2">|</span>
-          <span id="attackStatus">Attack: Stopped</span>
-        </div>
-      </div>
 
-      <!-- Main Actions -->
-      <div class="main-actions">
-        <div class="action-card" onclick="scanNetwork()" id="scanCard">
-          <div class="icon">📡</div>
-          <h3>SCAN NETWORK</h3>
-          <p>Discover all devices on your network</p>
-          <span class="badge">net.probe</span>
+        <!-- Main Actions -->
+        <div class="main-actions">
+            <div class="action-card" onclick="scanNetwork()" id="scanCard">
+                <div class="icon">📡</div>
+                <h3>SCAN NETWORK</h3>
+                <p>Discover all devices on your network</p>
+                <span class="badge">net.probe</span>
+            </div>
+            <div class="action-card disabled" id="attackCard">
+                <div class="icon">⚡</div>
+                <h3>ATTACK MODE</h3>
+                <p>ARP Spoof + Ban active targets</p>
+                <span class="badge">⚠️ Active Attack</span>
+            </div>
         </div>
-        <div class="action-card disabled" id="attackCard">
-          <div class="icon">⚡</div>
-          <h3>ATTACK MODE</h3>
-          <p>ARP Spoof + Ban active targets</p>
-          <span class="badge">⚠️ Active Attack</span>
-        </div>
-      </div>
 
-      <!-- Device List -->
-      <div class="device-section">
-        <div class="section-header">
-          <div>
-            <h3>📋 Network Devices</h3>
-            <span class="count" id="deviceCount">0 devices found</span>
-          </div>
-          <button class="scan-btn" onclick="scanNetwork()" id="scanBtn">🔄 Scan</button>
+        <!-- Device List -->
+        <div class="device-section">
+            <div class="section-header">
+                <div>
+                    <h3>📋 Network Devices</h3>
+                    <span class="count" id="deviceCount">0 devices found</span>
+                </div>
+                <button class="scan-btn" onclick="scanNetwork()" id="scanBtn">🔄 Scan</button>
+            </div>
+            <div class="device-list" id="deviceList">
+                <div style="padding: 20px; text-align: center; opacity: 0.4;">
+                    Click "SCAN NETWORK" or "Scan" to discover devices
+                </div>
+            </div>
         </div>
-        <div class="device-list" id="deviceList">
-          <div style="padding: 20px; text-align: center; opacity: 0.4">Click "SCAN NETWORK" or "Scan" to discover devices</div>
-        </div>
-      </div>
 
-      <!-- Target Input -->
-      <div class="target-input-section">
-        <div class="input-group">
-          <input type="text" id="targetInput" placeholder="Enter MAC or IP (e.g., 192.168.1.100 or AA:BB:CC:DD:EE:FF)" />
-          <button class="scan-btn" onclick="addTarget()" style="padding: 10px 25px">➕ Add Target</button>
-          <button class="scan-btn" onclick="clearTargets()" style="padding: 10px 25px; border-color: rgba(255, 0, 64, 0.3); color: #ff0040">🗑️ Clear</button>
+        <!-- Target Input -->
+        <div class="target-input-section">
+            <div class="input-group">
+                <input type="text" id="targetInput" placeholder="Enter MAC or IP">
+                <button class="scan-btn" onclick="addTarget()" style="padding: 10px 25px;">➕ Add Target</button>
+                <button class="scan-btn" onclick="clearTargets()" style="padding: 10px 25px; border-color: rgba(255,0,64,0.3); color: #ff0040;">🗑️ Clear</button>
+            </div>
+            <div class="input-hint">
+                💡 Tips: Select devices from list or enter manually
+            </div>
+            <div id="targetList" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;"></div>
         </div>
-        <div class="input-hint">💡 Tips: Use format "1-4" for range, "1,3,5" for multiple, or leave empty for ALL</div>
-        <div id="targetList" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px"></div>
-      </div>
 
-      <!-- Attack Controls -->
-      <div class="attack-controls">
-        <button class="attack-btn" onclick="startAttack()" id="startBtn">
-          <span class="btn-icon">▶️</span>
-          START ATTACK
-          <span class="btn-label">Ban selected targets</span>
-        </button>
-        <button class="attack-btn danger" onclick="stopAttack()" id="stopBtn" disabled>
-          <span class="btn-icon">⏹️</span>
-          STOP ATTACK
-          <span class="btn-label">Disconnect all</span>
-        </button>
-        <button class="attack-btn" onclick="banAll()" id="banAllBtn">
-          <span class="btn-icon">🚫</span>
-          BAN ALL
-          <span class="btn-label">Block all devices</span>
-        </button>
-      </div>
-
-      <!-- Terminal Output -->
-      <div class="terminal-section">
-        <div class="terminal-header">
-          <span>💻 TERMINAL OUTPUT</span>
-          <button class="clear-btn" onclick="clearTerminal()">Clear</button>
+        <!-- Attack Controls -->
+        <div class="attack-controls">
+            <button class="attack-btn" onclick="executeAttack()" id="startBtn">
+                <span class="btn-icon">▶️</span>
+                START ATTACK
+                <span class="btn-label">Ban selected targets</span>
+            </button>
+            <button class="attack-btn danger" onclick="stopAttack()" id="stopBtn" disabled>
+                <span class="btn-icon">⏹️</span>
+                STOP ATTACK
+                <span class="btn-label">Disconnect all</span>
+            </button>
+            <button class="attack-btn" onclick="banAll()" id="banAllBtn">
+                <span class="btn-icon">🚫</span>
+                BAN ALL
+                <span class="btn-label">Block all devices</span>
+            </button>
         </div>
-        <div class="terminal-output" id="terminalOutput">&gt; XFORG3 Bettercap Ban Tool v1.0 &gt; System initialized... &gt; Ready to scan and attack</div>
-      </div>
+
+        <!-- Terminal Output -->
+        <div class="terminal-section">
+            <div class="terminal-header">
+                <span>💻 TERMINAL OUTPUT</span>
+                <button class="clear-btn" onclick="clearTerminal()">Clear</button>
+            </div>
+            <div class="terminal-output" id="terminalOutput">
+                &gt; XFORG3 Bettercap Ban Tool v1.0
+                &gt; System initialized...
+                &gt; Ready to scan and attack
+            </div>
+        </div>
     </div>
 
     <!-- Confirmation Modal -->
     <div id="confirmModal" class="modal">
-      <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <div class="modal-icon">⚠️</div>
-        <h2>Confirm Attack</h2>
-        <p id="modalMessage">Are you sure you want to start the attack?</p>
-        <div class="modal-actions">
-          <button class="modal-btn confirm" onclick="confirmAttack()">Yes, Proceed</button>
-          <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div class="modal-icon">⚠️</div>
+            <h2>Confirm Attack</h2>
+            <p id="modalMessage">Are you sure you want to start the attack?</p>
+            <div class="modal-actions">
+                <button class="modal-btn confirm" onclick="confirmAttack()">Yes, Proceed</button>
+                <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+            </div>
         </div>
-      </div>
     </div>
 
     <script>
-      // State
-      let devices = [];
-      let selectedTargets = [];
-      let isAttacking = false;
-      let attackInterval = null;
-      let pendingAction = null;
+        console.log('=== bettercap-ban.html LOADED ===');
+        console.log('document.title:', document.title);
+        console.log('Current time:', new Date().toISOString());
 
-      // ==================== NETWORK SCAN ====================
-      function scanNetwork() {
-        const deviceList = document.getElementById("deviceList");
-        const scanBtn = document.getElementById("scanBtn");
-        const scanCard = document.getElementById("scanCard");
+        // ==================== STATE ====================
+        let devices = [];
+        let selectedTargets = [];
+        let isAttacking = false;
+        let attackInterval = null;
+        let pendingAction = null;
 
-        deviceList.innerHTML =
-          '<div style="padding: 20px; text-align: center; opacity: 0.6;">⏳ Scanning... (max 8s)</div>';
-        scanBtn.disabled = true;
-        scanCard.style.opacity = "0.6";
+        // ==================== INIT ====================
+        console.log('[INIT] Setting up...');
+        updateStatus('Ready', 'inactive');
+        appendTerminal('info', '🚀 XFORG3 Bettercap Ban Tool initialized');
+        appendTerminal('info', '📌 Click "SCAN NETWORK" to discover devices');
+        console.log('[INIT] Done');
 
-        appendTerminal("info", ">> Scanning network with net.probe (quick)...");
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        fetch("/api/scan", { signal: controller.signal })
-          .then((response) => response.json())
-          .then((data) => {
-            clearTimeout(timeoutId);
-            if (data.status === "success") {
-              devices = data.devices || [];
-              renderDevices(devices);
-              document.getElementById("deviceCount").textContent = `${devices.length} devices found`;
-              appendTerminal("success", `✅ Found ${devices.length} devices on network`);
-
-              if (devices.length > 0) {
-                selectedTargets = devices.map((d) => d.ip);
-                updateTargetList();
-              }
-            } else {
-              deviceList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff0040;">❌ ${data.error}</div>`;
-              appendTerminal("error", `❌ Scan failed: ${data.error}`);
-            }
-          })
-          .catch((error) => {
-            clearTimeout(timeoutId);
-            if (error.name === "AbortError") {
-              deviceList.innerHTML =
-                '<div style="padding: 20px; text-align: center; color: #ffff00;">⏰ Scan timeout - try again</div>';
-              appendTerminal("warning", "⏰ Scan timed out");
-            } else {
-              deviceList.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff0040;">❌ ${error}</div>`;
-              appendTerminal("error", `❌ Scan error: ${error}`);
-            }
-          })
-          .finally(() => {
-            scanBtn.disabled = false;
-            scanCard.style.opacity = "1";
-            updateStatus("Ready", "inactive");
-          });
-      }
-
-      // ==================== RENDER DEVICES ====================
-      function renderDevices(devices) {
-        const deviceList = document.getElementById("deviceList");
-
-        if (!devices || devices.length === 0) {
-          deviceList.innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.4;">No devices found</div>';
-          return;
+        // ==================== SCAN NETWORK ====================
+        function scanNetwork() {
+            console.log('[scanNetwork] Called');
+            const deviceList = document.getElementById('deviceList');
+            const scanBtn = document.getElementById('scanBtn');
+            
+            deviceList.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.6;">⏳ Scanning...</div>';
+            scanBtn.disabled = true;
+            
+            appendTerminal('info', '>> Scanning network...');
+            
+            fetch('/api/scan')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('[scanNetwork] Response:', data);
+                    if (data.status === 'success') {
+                        devices = data.devices || [];
+                        renderDevices(devices);
+                        document.getElementById('deviceCount').textContent = `${devices.length} devices found`;
+                        appendTerminal('success', `✅ Found ${devices.length} devices`);
+                    } else {
+                        deviceList.innerHTML = `<div style="padding:20px;text-align:center;color:#ff0040;">❌ ${data.error}</div>`;
+                        appendTerminal('error', `❌ ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('[scanNetwork] Error:', error);
+                    deviceList.innerHTML = `<div style="padding:20px;text-align:center;color:#ff0040;">❌ ${error}</div>`;
+                    appendTerminal('error', `❌ ${error}`);
+                })
+                .finally(() => {
+                    scanBtn.disabled = false;
+                    updateStatus('Ready', 'inactive');
+                });
         }
 
-        deviceList.innerHTML = devices
-          .map(
-            (dev, index) => `
+        // ==================== RENDER DEVICES ====================
+        function renderDevices(devices) {
+            console.log('[renderDevices] Rendering', devices.length, 'devices');
+            const deviceList = document.getElementById('deviceList');
+            
+            if (!devices || devices.length === 0) {
+                deviceList.innerHTML = '<div style="padding:20px;text-align:center;opacity:0.4;">No devices found</div>';
+                return;
+            }
+            
+            deviceList.innerHTML = devices.map((dev, index) => `
                 <div class="device-item" onclick="toggleDevice(${index})" id="dev-${index}">
                     <span class="no">#${index + 1}</span>
-                    <span class="ip">${dev.ip || "Unknown"}</span>
-                    <span class="mac">${dev.mac || "N/A"}</span>
-                    <span class="vendor">${dev.vendor || "Unknown"}</span>
-                    <button class="select-btn ${selectedTargets.includes(dev.ip) ? "selected" : ""}" 
+                    <span class="ip">${dev.ip || 'Unknown'}</span>
+                    <span class="mac">${dev.mac || 'N/A'}</span>
+                    <span class="vendor">${dev.vendor || 'Unknown'}</span>
+                    <button class="select-btn ${selectedTargets.includes(dev.mac) ? 'selected' : ''}" 
                             onclick="event.stopPropagation(); toggleDevice(${index})">
-                        ${selectedTargets.includes(dev.ip) ? "✓" : "Select"}
+                        ${selectedTargets.includes(dev.mac) ? '✓' : 'Select'}
                     </button>
                 </div>
-            `
-          )
-          .join("");
-      }
-
-      // ==================== TOGGLE DEVICE SELECTION ====================
-      function toggleDevice(index) {
-        const dev = devices[index];
-        if (!dev) return;
-
-        const idx = selectedTargets.indexOf(dev.ip);
-        if (idx > -1) {
-          selectedTargets.splice(idx, 1);
-        } else {
-          selectedTargets.push(dev.ip);
+            `).join('');
+            console.log('[renderDevices] Done');
         }
 
-        // Update UI
-        const item = document.getElementById(`dev-${index}`);
-        if (item) {
-          item.classList.toggle("selected");
-          const btn = item.querySelector(".select-btn");
-          if (btn) {
-            btn.textContent = selectedTargets.includes(dev.ip) ? "✓" : "Select";
-            btn.classList.toggle("selected");
-          }
-        }
-
-        updateTargetList();
-        updateStatus(`Selected ${selectedTargets.length} targets`, "active");
-        appendTerminal("info", `📌 ${selectedTargets.includes(dev.ip) ? "Selected" : "Deselected"}: ${dev.ip} (${dev.mac})`);
-      }
-
-      // ==================== ADD TARGET MANUAL ====================
-      function addTarget() {
-        const input = document.getElementById("targetInput");
-        const value = input.value.trim();
-
-        if (!value) {
-          appendTerminal("warning", "⚠️ Please enter a MAC or IP address");
-          return;
-        }
-
-        // Check if it's a MAC or IP
-        const isMac = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/.test(value);
-        const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(value);
-
-        if (!isMac && !isIp) {
-          appendTerminal("error", `❌ Invalid format: ${value}`);
-          return;
-        }
-
-        // Add to selected targets
-        if (!selectedTargets.includes(value)) {
-          selectedTargets.push(value);
-          updateTargetList();
-          appendTerminal("success", `✅ Added target: ${value}`);
-          updateStatus(`Selected ${selectedTargets.length} targets`, "active");
-        } else {
-          appendTerminal("warning", `⚠️ Target already selected: ${value}`);
-        }
-
-        input.value = "";
-      }
-
-      // ==================== UPDATE TARGET LIST ====================
-      function updateTargetList() {
-        const container = document.getElementById("targetList");
-        if (selectedTargets.length === 0) {
-          container.innerHTML = '<span style="opacity: 0.4; font-size: 0.85rem;">No targets selected</span>';
-          document.getElementById("targetCount").textContent = "Targets: 0";
-          return;
-        }
-
-        container.innerHTML = selectedTargets
-          .map(
-            (target) => `
-                <span style="background: rgba(0,255,65,0.1); padding: 4px 12px; border-radius: 12px; border: 1px solid rgba(0,255,65,0.2); font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
-                    ${target}
-                    <span onclick="removeTarget('${target}')" style="cursor: pointer; opacity: 0.5; hover:opacity:1;">×</span>
-                </span>
-            `
-          )
-          .join("");
-
-        document.getElementById("targetCount").textContent = `Targets: ${selectedTargets.length}`;
-      }
-
-      // ==================== REMOVE TARGET ====================
-      function removeTarget(target) {
-        const idx = selectedTargets.indexOf(target);
-        if (idx > -1) {
-          selectedTargets.splice(idx, 1);
-          updateTargetList();
-          updateStatus(`Selected ${selectedTargets.length} targets`, "active");
-          appendTerminal("info", `🗑️ Removed target: ${target}`);
-
-          // Deselect in device list
-          devices.forEach((dev, index) => {
-            if (dev.ip === target || dev.mac === target) {
-              const item = document.getElementById(`dev-${index}`);
-              if (item) {
-                item.classList.remove("selected");
-                const btn = item.querySelector(".select-btn");
-                if (btn) {
-                  btn.textContent = "Select";
-                  btn.classList.remove("selected");
-                }
-              }
+        // ==================== TOGGLE DEVICE ====================
+        function toggleDevice(index) {
+            console.log('[toggleDevice] Called for index:', index);
+            const dev = devices[index];
+            if (!dev) {
+                console.error('[toggleDevice] Device not found at index:', index);
+                return;
             }
-          });
-        }
-      }
-
-      // ==================== CLEAR TARGETS ====================
-      function clearTargets() {
-        selectedTargets = [];
-        updateTargetList();
-        document.querySelectorAll(".device-item").forEach((el) => {
-          el.classList.remove("selected");
-          const btn = el.querySelector(".select-btn");
-          if (btn) {
-            btn.textContent = "Select";
-            btn.classList.remove("selected");
-          }
-        });
-        updateStatus("Ready", "inactive");
-        appendTerminal("info", "🗑️ Cleared all targets");
-      }
-
-      // ==================== START ATTACK ====================
-      function startAttack() {
-        if (selectedTargets.length === 0) {
-          appendTerminal("warning", "⚠️ No targets selected! Please select targets first.");
-          showModal("No targets selected", "Please select at least one device or enter a target manually.");
-          return;
-        }
-
-        pendingAction = "start";
-        showModal("🚨 Start Attack?", `This will launch ARP spoofing and ban ${selectedTargets.length} target(s).\nAre you sure you want to proceed?`);
-      }
-
-      function confirmAttack() {
-        closeModal();
-
-        if (pendingAction === "start") {
-          executeAttack();
-        } else if (pendingAction === "banAll") {
-          executeBanAll();
-        }
-        pendingAction = null;
-      }
-
-      function executeAttack() {
-        isAttacking = true;
-        document.getElementById("startBtn").disabled = true;
-        document.getElementById("stopBtn").disabled = false;
-        document.getElementById("banAllBtn").disabled = true;
-        document.getElementById("attackCard").classList.remove("disabled");
-
-        updateStatus("ATTACKING", "active");
-        appendTerminal("glitch", "⚡ STARTING ATTACK...");
-        appendTerminal("info", `🎯 Targeting: ${selectedTargets.join(", ")}`);
-
-        fetch("/api/ban", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targets: selectedTargets,
-            action: "start",
-          }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.status === "success") {
-              appendTerminal("success", `✅ Attack started! PID: ${data.pid}`);
-              appendTerminal("info", `📊 ${data.message}`);
-
-              document.getElementById("attackStatus").textContent = "Attack: Running";
-
-              attackInterval = setInterval(() => {
-                checkAttackStatus();
-              }, 2000);
+            
+            const idx = selectedTargets.indexOf(dev.mac);
+            if (idx > -1) {
+                selectedTargets.splice(idx, 1);
             } else {
-              appendTerminal("error", `❌ Attack failed: ${data.error}`);
-              stopAttack();
+                selectedTargets.push(dev.mac);
             }
-          })
-          .catch((error) => {
-            appendTerminal("error", `❌ Error: ${error}`);
-            stopAttack();
-          });
-      }
-
-      function checkAttackStatus() {
-        fetch("/api/bettercap/status")
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.status === "stopped") {
-              appendTerminal("warning", "⚠️ Attack process stopped");
-              stopAttack();
+            
+            const item = document.getElementById(`dev-${index}`);
+            if (item) {
+                item.classList.toggle('selected');
+                const btn = item.querySelector('.select-btn');
+                if (btn) {
+                    btn.textContent = selectedTargets.includes(dev.mac) ? '✓' : 'Select';
+                    btn.classList.toggle('selected');
+                }
             }
-          })
-          .catch(() => {});
-      }
-
-      // ==================== STOP ATTACK ====================
-      function stopAttack() {
-        if (attackInterval) {
-          clearInterval(attackInterval);
-          attackInterval = null;
+            
+            updateTargetList();
+            updateStatus(`Selected ${selectedTargets.length} targets`, 'active');
+            appendTerminal('info', `📌 ${selectedTargets.includes(dev.mac) ? 'Selected' : 'Deselected'}: ${dev.ip}`);
         }
 
-        isAttacking = false;
-        document.getElementById("startBtn").disabled = false;
-        document.getElementById("stopBtn").disabled = true;
-        document.getElementById("banAllBtn").disabled = false;
-        document.getElementById("attackCard").classList.add("disabled");
-
-        updateStatus("Stopped", "inactive");
-        document.getElementById("attackStatus").textContent = "Attack: Stopped";
-        appendTerminal("warning", "⏹️ Attack stopped");
-
-        // Send stop command
-        fetch("/api/ban", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "stop" }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.status === "success") {
-              appendTerminal("info", "✅ Cleanup completed");
+        // ==================== UPDATE TARGET LIST ====================
+        function updateTargetList() {
+            const container = document.getElementById('targetList');
+            if (selectedTargets.length === 0) {
+                container.innerHTML = '<span style="opacity:0.4;font-size:0.85rem;">No targets selected</span>';
+                document.getElementById('targetCount').textContent = 'Targets: 0';
+                return;
             }
-          })
-          .catch(() => {});
-      }
-
-      // ==================== BAN ALL ====================
-      function banAll() {
-        if (devices.length === 0) {
-          appendTerminal("warning", "⚠️ No devices to ban. Scan network first.");
-          showModal("No devices", "Please scan the network first to get device list.");
-          return;
+            
+            container.innerHTML = selectedTargets.map(target => `
+                <span style="background:rgba(0,255,65,0.1);padding:4px 12px;border-radius:12px;border:1px solid rgba(0,255,65,0.2);font-size:0.8rem;display:inline-flex;align-items:center;gap:6px;">
+                    ${target}
+                    <span onclick="removeTarget('${target}')" style="cursor:pointer;opacity:0.5;">×</span>
+                </span>
+            `).join('');
+            
+            document.getElementById('targetCount').textContent = `Targets: ${selectedTargets.length}`;
         }
 
-        pendingAction = "banAll";
-        showModal("🚫 Ban All Devices?", `This will ban ALL ${devices.length} devices on your network.\nAre you sure you want to proceed?`);
-      }
-
-      function executeBanAll() {
-        const allTargets = devices.map((d) => d.ip);
-        selectedTargets = allTargets;
-        updateTargetList();
-
-        appendTerminal("warning", `⚠️ BANNING ALL ${allTargets.length} DEVICES...`);
-        startAttack();
-      }
-
-      // ==================== TERMINAL ====================
-      function appendTerminal(type, message) {
-        const output = document.getElementById("terminalOutput");
-        const timestamp = new Date().toLocaleTimeString();
-        let prefix = "";
-        let className = "";
-
-        switch (type) {
-          case "glitch":
-            prefix = "⚠️";
-            className = "glitch";
-            break;
-          case "success":
-            prefix = "✅";
-            className = "success";
-            break;
-          case "info":
-            prefix = "ℹ️";
-            className = "info";
-            break;
-          case "warning":
-            prefix = "⚠️";
-            className = "warning";
-            break;
-          case "error":
-            prefix = "❌";
-            className = "glitch";
-            break;
-          default:
-            prefix = ">";
-            className = "";
+        // ==================== REMOVE TARGET ====================
+        function removeTarget(target) {
+            const idx = selectedTargets.indexOf(target);
+            if (idx > -1) {
+                selectedTargets.splice(idx, 1);
+                updateTargetList();
+                updateStatus(`Selected ${selectedTargets.length} targets`, 'active');
+                appendTerminal('info', `🗑️ Removed target: ${target}`);
+            }
         }
 
-        output.innerHTML += `\n<span class="${className}">[${timestamp}] ${prefix} ${message}</span>`;
-        output.scrollTop = output.scrollHeight;
-      }
-
-      function clearTerminal() {
-        document.getElementById("terminalOutput").innerHTML = "&gt; Terminal cleared";
-      }
-
-      // ==================== GLITCH TEXT ====================
-      function getGlitchText() {
-        const chars = "!@#$%^&*<>/\\|_+=~`";
-        let text = "ATTACKING ";
-        for (let i = 0; i < 10; i++) {
-          text += chars[Math.floor(Math.random() * chars.length)];
+        // ==================== CLEAR TARGETS ====================
+        function clearTargets() {
+            console.log('[clearTargets] Called');
+            selectedTargets = [];
+            updateTargetList();
+            document.querySelectorAll('.device-item').forEach(el => {
+                el.classList.remove('selected');
+                const btn = el.querySelector('.select-btn');
+                if (btn) {
+                    btn.textContent = 'Select';
+                    btn.classList.remove('selected');
+                }
+            });
+            updateStatus('Ready', 'inactive');
+            appendTerminal('info', '🗑️ Cleared all targets');
         }
-        return text;
-      }
 
-      // ==================== MODAL ====================
-      function showModal(title, message) {
-        document.getElementById("modalMessage").textContent = message;
-        document.querySelector(".modal-content h2").textContent = title;
-        document.getElementById("confirmModal").style.display = "block";
-      }
-
-      function closeModal() {
-        document.getElementById("confirmModal").style.display = "none";
-        pendingAction = null;
-      }
-
-      // ==================== STATUS ====================
-      function updateStatus(text, state) {
-        document.getElementById("statusText").textContent = text;
-        const dot = document.getElementById("statusDot");
-        dot.className = "status-dot";
-        if (state === "active") {
-          dot.classList.add("active");
-        } else {
-          dot.classList.add("inactive");
+        // ==================== ADD TARGET ====================
+        function addTarget() {
+            console.log('[addTarget] Called');
+            const input = document.getElementById('targetInput');
+            const value = input.value.trim();
+            
+            if (!value) {
+                appendTerminal('warning', '⚠️ Please enter a MAC or IP address');
+                return;
+            }
+            
+            if (!selectedTargets.includes(value)) {
+                selectedTargets.push(value);
+                updateTargetList();
+                appendTerminal('success', `✅ Added target: ${value}`);
+                updateStatus(`Selected ${selectedTargets.length} targets`, 'active');
+            } else {
+                appendTerminal('warning', `⚠️ Target already selected: ${value}`);
+            }
+            
+            input.value = '';
         }
-      }
 
-      // ==================== KEYBOARD SHORTCUTS ====================
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && document.activeElement === document.getElementById("targetInput")) {
-          addTarget();
+        // ==================== EXECUTE ATTACK ====================
+        function executeAttack() {
+            console.log('[executeAttack] Called');
+            console.log('[executeAttack] selectedTargets:', selectedTargets);
+            
+            if (!selectedTargets || selectedTargets.length === 0) {
+                appendTerminal('error', '❌ No targets selected');
+                alert('Please select at least one target!');
+                return;
+            }
+            
+            pendingAction = 'start';
+            document.getElementById('modalMessage').textContent = 
+                `This will launch ARP spoofing and ban ${selectedTargets.length} target(s).\nAre you sure you want to proceed?`;
+            document.getElementById('confirmModal').style.display = 'block';
+            console.log('[executeAttack] Modal opened');
         }
-        if (e.key === "Escape") {
-          closeModal();
-        }
-      });
 
-      // ==================== INIT ====================
-      updateStatus("Ready", "inactive");
-      appendTerminal("info", "🚀 XFORG3 Bettercap Ban Tool initialized");
-      appendTerminal("info", '📌 Click "SCAN NETWORK" to discover devices');
-      appendTerminal("info", '🎯 Select targets and click "START ATTACK" to begin');
+        // ==================== CONFIRM ATTACK ====================
+        function confirmAttack() {
+            console.log('[confirmAttack] Called');
+            closeModal();
+            
+            if (pendingAction === 'start') {
+                sendBanRequest();
+            }
+            pendingAction = null;
+        }
+
+        // ==================== SEND BAN REQUEST ====================
+        function sendBanRequest() {
+            console.log('[sendBanRequest] Called');
+            
+            const startBtn = document.getElementById('startBtn');
+            startBtn.disabled = true;
+            
+            const payload = {
+                targets: selectedTargets,
+                action: 'start'
+            };
+            console.log('[sendBanRequest] Payload:', payload);
+            
+            appendTerminal('info', `⏳ Sending ban request for ${selectedTargets.length} target(s)...`);
+            
+            fetch('/api/ban', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => {
+                console.log('[sendBanRequest] Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('[sendBanRequest] Response data:', data);
+                
+                if (data.status === 'success') {
+                    appendTerminal('success', `✅ ${data.message}`);
+                    document.getElementById('attackStatus').textContent = 'Attack: Running';
+                    isAttacking = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    document.getElementById('banAllBtn').disabled = true;
+                    updateStatus('Attack Running', 'active');
+                } else {
+                    appendTerminal('error', `❌ ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('[sendBanRequest] Error:', error);
+                appendTerminal('error', `❌ ${error}`);
+            })
+            .finally(() => {
+                startBtn.disabled = false;
+            });
+        }
+
+        // ==================== STOP ATTACK ====================
+        function stopAttack() {
+            console.log('[stopAttack] Called');
+            
+            if (attackInterval) {
+                clearInterval(attackInterval);
+                attackInterval = null;
+            }
+            
+            isAttacking = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('banAllBtn').disabled = false;
+            
+            updateStatus('Stopped', 'inactive');
+            document.getElementById('attackStatus').textContent = 'Attack: Stopped';
+            appendTerminal('warning', '⏹️ Attack stopped');
+            
+            fetch('/api/ban', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'stop' })
+            })
+            .catch(() => {});
+        }
+
+        // ==================== BAN ALL ====================
+        function banAll() {
+            console.log('[banAll] Called');
+            if (devices.length === 0) {
+                appendTerminal('warning', '⚠️ No devices to ban. Scan network first.');
+                return;
+            }
+            
+            selectedTargets = devices.map(d => d.mac);
+            updateTargetList();
+            appendTerminal('warning', `⚠️ BANNING ALL ${selectedTargets.length} DEVICES...`);
+            executeAttack();
+        }
+
+        // ==================== TERMINAL ====================
+        function appendTerminal(type, message) {
+            const output = document.getElementById('terminalOutput');
+            if (!output) {
+                console.error('[appendTerminal] Output element not found');
+                return;
+            }
+            
+            const timestamp = new Date().toLocaleTimeString();
+            let className = '';
+            
+            switch(type) {
+                case 'success': className = 'success'; break;
+                case 'info': className = 'info'; break;
+                case 'warning': className = 'warning'; break;
+                case 'error': 
+                case 'glitch': className = 'glitch'; break;
+                default: className = '';
+            }
+            
+            output.innerHTML += `\n<span class="${className}">[${timestamp}] ${message}</span>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearTerminal() {
+            document.getElementById('terminalOutput').innerHTML = '&gt; Terminal cleared';
+        }
+
+        // ==================== MODAL ====================
+        function closeModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            pendingAction = null;
+        }
+
+        // ==================== STATUS ====================
+        function updateStatus(text, state) {
+            const statusText = document.getElementById('statusText');
+            const dot = document.getElementById('statusDot');
+            if (statusText) statusText.textContent = text;
+            if (dot) {
+                dot.className = 'status-dot';
+                if (state === 'active') {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.add('inactive');
+                }
+            }
+        }
+
+        // ==================== KEYBOARD ====================
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement === document.getElementById('targetInput')) {
+                addTarget();
+            }
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('confirmModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        console.log('=== bettercap-ban.html FULLY LOADED ===');
     </script>
-  </body>
+</body>
 </html>
