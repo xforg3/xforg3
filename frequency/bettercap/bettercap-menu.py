@@ -20,10 +20,10 @@ RESET = "\033[0m"
 BOLD = "\033[1m"
 
 ASCII_ART = r"""
- ___ ___ _____ _____ ___ ___  ___   _   ___   __  __ ___ _  _ _   _ 
-| _ ) __|_   _|_   _| __| _ \/ __| /_\ | _ \ |  \/  | __| \| | | | |
-| _ \ _|  | |   | | | _||   / (__ / _ \|  _/ | |\/| | _|| .` | |_| |
-|___/___| |_|   |_| |___|_|_\___/_/ \_\_|   |_|  |_|___|_|\_|\___/ """
+ ___ ___ _____ _____ ___ ___  ___   _   ___ 
+| _ ) __|_   _|_   _| __| _ \/ __| /_\ | _ \
+| _ \ _|  | |   | | | _||   / (__ / _ \|  _/
+|___/___| |_|   |_| |___|_|_\___/_/ \_\_|  """
 
 
 def get_size():
@@ -56,18 +56,15 @@ def launch_ban():
         sys.exit(1)
 
 
-def launch_handshake():
+def launch_bettercap():
+    """Menjalankan sudo bettercap secara otomatis."""
     clear_screen()
-    quick_print("LAUNCHING HANDSHAKE MODULE...", CYAN)
-    
-    handshake_path = os.path.join(os.path.dirname(__file__), "bettercap-handshake.py")
-    if not os.path.exists(handshake_path):
-        handshake_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "bettercap-handshake.py"))
-        
-    if os.path.exists(handshake_path):
-        os.execvp(sys.executable, [sys.executable, handshake_path])
-    else:
-        print(f"      {YELLOW}{BOLD}Handshake script not found. Placeholder only.{RESET}")
+    quick_print("LAUNCHING SUDO BETTERCAP...", CYAN)
+    try:
+        # Menjalankan perintah 'sudo bettercap' langsung menggantikan proses saat ini
+        os.execvp("sudo", ["sudo", "bettercap"])
+    except FileNotFoundError:
+        print(f"      {RED}{BOLD}Error: 'sudo' atau 'bettercap' tidak ditemukan di sistem.{RESET}")
         sys.exit(1)
 
 
@@ -124,14 +121,14 @@ def main():
     show_menu()
     
     try:
-        choice = input(f"      {BOLD}{MAGENTA}chose your option > {RESET}")
+        choice = input(f"      {BOLD}{MAGENTA}>> option :{RESET}")
     except (KeyboardInterrupt, EOFError):
         choice = "0"
 
     if choice.strip() == "1":
         launch_ban()
     elif choice.strip() == "2":
-        launch_handshake()
+        launch_bettercap()
     elif choice.strip() == "0":
         parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frequency.py"))
         if not os.path.exists(parent):
