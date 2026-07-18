@@ -68,6 +68,7 @@
             transition: all 0.3s;
             display: inline-block;
             margin-bottom: 15px;
+            cursor: pointer;
         }
         .back-btn:hover {
             background: #00ff41;
@@ -325,7 +326,7 @@
 <body>
 
 <div class="container">
-    <a href="/frequency" class="back-btn">← Back to Tools</a>
+    <a href="#" class="back-btn" onclick="backToMenu(event)">← Back to Tools</a>
 
     <div class="glitch-title" data-text="WIFI CONTROL PANEL">WIFI CONTROL PANEL</div>
     <div class="subtitle">// wireless deauth attack interface //</div>
@@ -384,6 +385,31 @@
     let selectedChannel = null;
     let networks = [];
     let isDeauthRunning = false;
+
+    // ===== BACK TO MENU =====
+    function backToMenu(event) {
+        event.preventDefault();
+        
+        // Tampilkan status
+        document.getElementById('status-msg').innerHTML = '⏳ Cleaning up monitor mode...';
+        
+        // Panggil cleanup
+        fetch('/api/deauth/cleanup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log('[+] Cleanup response:', data);
+            // Redirect ke frequency
+            window.location.href = '/frequency';
+        })
+        .catch(err => {
+            console.log('[-] Cleanup error:', err);
+            // Tetap redirect meskipun error
+            window.location.href = '/frequency';
+        });
+    }
 
     // ===== SCAN =====
     function scanNetworks() {

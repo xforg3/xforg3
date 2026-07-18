@@ -322,3 +322,4 @@ def deauth_cleanup():
         print("[*] No monitor interface found to clean up")
     
     print("[+] Deauth cleanup complete.")
+    return {"status": "success", "message": "Cleanup complete"}

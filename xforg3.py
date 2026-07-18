@@ -226,6 +226,17 @@ def api_deauth_init():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+# ====================== DEAUTH CLEANUP ROUTE ======================
+
+@app.route('/api/deauth/cleanup', methods=['POST'])
+def api_deauth_cleanup():
+    """Cleanup monitor mode - dipanggil saat back ke menu"""
+    try:
+        result = deauth_module.deauth_cleanup()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 # ====================== CLEANUP ======================
 
 def cleanup_all():
