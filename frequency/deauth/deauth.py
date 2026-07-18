@@ -203,7 +203,10 @@ def scan_networks(adapter, duration=10):
 
 
 def stop_monitor_mode(monitor_iface):
+    # Membersihkan terminal sebelum mencetak log pemberhentian monitor mode
+    clear_screen()
     glitch_print("STOPPING MONITOR MODE...")
+    
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
         candidates.append(monitor_iface[:-3])
@@ -339,7 +342,6 @@ def main():
 
             run_deauth_attack(target, monitor_iface)
             print("\nMembersihkan sesi...")
-            clear_screen()
             stop_monitor_mode(monitor_iface)
             break
 
