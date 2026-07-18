@@ -56,10 +56,31 @@ def stop_monitor_mode(iface):
     """Stop monitor mode dan restart NetworkManager"""
     if iface:
         print(f"[*] Stopping monitor mode on {iface}...")
-        subprocess.run(["sudo", "airmon-ng", "stop", iface], check=False, capture_output=True)
+        result = subprocess.run(
+            ["sudo", "airmon-ng", "stop", iface],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        if result.stdout:
+            print(f"[*] airmon-ng output: {result.stdout.strip()}")
+        if result.stderr:
+            print(f"[*] airmon-ng stderr: {result.stderr.strip()}")
+    
     print("[*] Restarting NetworkManager...")
-    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False, capture_output=True)
-    print("[+] NetworkManager restarted")
+    result = subprocess.run(
+        ["sudo", "systemctl", "restart", "NetworkManager"],
+        capture_output=True,
+        text=True,
+        check=False
+    )
+    
+    if result.returncode == 0:
+        print("[+] NetworkManager restarted successfully")
+    else:
+        print(f"[-] NetworkManager restart failed (exit code: {result.returncode})")
+        if result.stderr:
+            print(f"[-] Error: {result.stderr.strip()}")
 
 def ensure_monitor_mode():
     global monitor_iface, original_iface
@@ -272,9 +293,22 @@ def deauth_cleanup():
     # Stop deauth attack
     deauth_stop()
     
-    # Stop monitor mode dan restart NetworkManager
-    if monitor_iface:
+    # Cari monitor interface yang aktif
+    interfaces = find_wireless_interfaces()
+    monitor_found = None
+    for iface in interfaces:
+        if is_monitor_mode(iface):
+            monitor_found = iface
+            break
+    
+    if monitor_found:
+        print(f"[*] Found active monitor interface: {monitor_found}")
+        stop_monitor_mode(monitor_found)
+    elif monitor_iface:
+        print(f"[*] Using stored monitor interface: {monitor_iface}")
         stop_monitor_mode(monitor_iface)
         monitor_iface = None
+    else:
+        print("[*] No monitor interface found to clean up")
     
     print("[+] Deauth cleanup complete.")

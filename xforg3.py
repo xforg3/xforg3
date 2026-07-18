@@ -27,42 +27,35 @@ TOOLS = {
 
 # Store running processes
 attack_process = None
+_cleanup_done = False
 
 @app.route('/')
 def index():
-    """Halaman utama XFORG3"""
     return render_template('index.html')
 
 @app.route('/frequency')
 def frequency():
-    """Halaman setelah klik FREQUENCY - menampilkan daftar tools"""
     return render_template('frequency.html', tools=TOOLS)
 
 @app.route('/tool/<tool_name>')
 def tool_page(tool_name):
-    """Halaman untuk masing-masing tool"""
     if tool_name not in TOOLS:
         return "Tool not found", 404
     
-    # Untuk bettercap, tampilkan halaman pilihan
     if tool_name == 'bettercap':
         return render_template('bettercap.html')
     
-    # Untuk deauth, kirim file HTML langsung dari folder deauth/
     if tool_name == 'deauth':
         return send_file('deauth/deauth.html')
     
-    # Untuk tools lain tetap pakai tool.html
     return render_template('tool.html', tool=tool_name, description=TOOLS[tool_name])
 
 @app.route('/tool/bettercap/ban')
 def bettercap_ban():
-    """Halaman khusus untuk bettercap ban"""
     return send_file('frequency/bettercap/bettercap-ban.html')
 
 @app.route('/api/run/<tool_name>', methods=['POST'])
 def run_tool(tool_name):
-    """Endpoint untuk menjalankan perintah tool"""
     try:
         if tool_name == 'bettercap':
             return jsonify({'error': 'Use /api/ban for bettercap'}), 400
@@ -90,7 +83,6 @@ def run_tool(tool_name):
 
 @app.route('/api/ban', methods=['POST'])
 def ban_target():
-    """Endpoint untuk bettercap-ban.py - Start/Stop attack"""
     global attack_process
 
     try:
@@ -154,7 +146,6 @@ def ban_target():
 
 @app.route('/api/scan', methods=['GET'])
 def scan_network():
-    """Scan network dengan timeout singkat (≤8 detik)"""
     try:
         script_path = os.path.join(os.path.dirname(__file__), 'frequency', 'bettercap', 'bettercap-ban.py')
         if not os.path.exists(script_path):
@@ -196,7 +187,6 @@ def scan_network():
 
 @app.route('/api/bettercap/status', methods=['GET'])
 def get_attack_status():
-    """Get current attack status"""
     global attack_process
     if attack_process and attack_process.poll() is None:
         return jsonify({'status': 'running'})
@@ -206,7 +196,6 @@ def get_attack_status():
 
 @app.route('/api/deauth/scan', methods=['GET'])
 def api_deauth_scan():
-    """Scan WiFi networks"""
     try:
         result = deauth_module.deauth_scan()
         return jsonify(result)
@@ -215,7 +204,6 @@ def api_deauth_scan():
 
 @app.route('/api/deauth/start', methods=['POST'])
 def api_deauth_start():
-    """Start deauth attack"""
     try:
         data = request.json
         targets = data.get('targets', [])
@@ -226,7 +214,6 @@ def api_deauth_start():
 
 @app.route('/api/deauth/stop', methods=['POST'])
 def api_deauth_stop():
-    """Stop deauth attack"""
     try:
         result = deauth_module.deauth_stop()
         return jsonify(result)
@@ -236,14 +223,17 @@ def api_deauth_stop():
 # ====================== CLEANUP ======================
 
 def cleanup_all():
-    """Cleanup semua proses saat shutdown"""
-    global attack_process
+    global attack_process, _cleanup_done
+    
+    if _cleanup_done:
+        return
+    
+    _cleanup_done = True
     
     print("\n" + "="*60)
     print("[*] SHUTDOWN: Cleaning up all processes...")
     print("="*60)
     
-    # Stop bettercap attack
     if attack_process:
         print("[*] Stopping bettercap attack...")
         try:
@@ -253,7 +243,6 @@ def cleanup_all():
             pass
         attack_process = None
     
-    # Stop deauth attack & cleanup monitor mode
     try:
         deauth_module.deauth_cleanup()
     except Exception as e:
@@ -262,10 +251,8 @@ def cleanup_all():
     print("[+] All cleanup complete. Goodbye!")
     print("="*60)
 
-# Register cleanup for atexit
 atexit.register(cleanup_all)
 
-# Signal handler for Ctrl+C
 def signal_handler(sig, frame):
     print("\n" + "!"*60)
     print("[!] Ctrl+C detected! Shutting down...")
@@ -288,7 +275,8 @@ if __name__ == '__main__':
     print("")
     
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        # Debug=False biar ga double process
+        app.run(host='0.0.0.0', port=5000, debug=False)
     except KeyboardInterrupt:
         print("\n[!] KeyboardInterrupt received")
         cleanup_all()
