@@ -77,7 +77,7 @@ def show_menu():
 
     options = [
         "1. BAN",
-        "2. WIFI HANDSHAKE",
+        "2. NORMAL BETTERCAP",
         "",
         "0. BACK TO MAIN MENU",
         "99. EXIT"
