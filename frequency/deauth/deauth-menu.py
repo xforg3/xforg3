@@ -6,11 +6,11 @@ import os
 # Warna Terminal
 RED = "\033[91m"
 YELLOW = "\033[93m"
-CYAN = "\033[96m"  # Menggunakan ini untuk warna tosca/hijau aqua
+CYAN = "\033[92m"  # Diubah ke \033[92m agar warnanya sama dengan FREQUENCY
 MAGENTA = "\033[95m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
-GREEN = "\033[92m"
+GREEN = "\033[92m" # Menyesuaikan kode warna tosca terminalmu
 
 
 def clear():
@@ -48,14 +48,13 @@ def show_menu():
  |  '--'  / |  `---.|  | |  |('  '-'(_.-'   |  |   |  | |  |       |  |   |  |  |  `---.|  | \   | ('  '-'(_.-' 
  `-------'  `------'`--' `--'  `-----'      `--'   `--' `--'       `--'   `--'  `------'`--'  `--'   `-----'    
 """
-    print(f"{CYAN}{ascii_art}{RESET}")
+    print(f"{GREEN}{ascii_art}{RESET}")  # Menyesuaikan warna banner deauth menjadi tosca
     print(f"{GREEN}{'=' * 112}{RESET}")
-    # Diganti ke CYAN + BOLD agar identik dengan FREQUENCY
     print(f"{GREEN}{BOLD}1. DEAUTH{RESET}")    
     print(f"")    
     print(f"{RED}{BOLD}0. BACK TO MAIN MENU{RESET}")
     print(f"{RED}{BOLD}99. EXIT{RESET}")
-    print(f"{CYAN}{'=' * 112}{RESET}")
+    print(f"{GREEN}{'=' * 112}{RESET}")
 
 
 def main():

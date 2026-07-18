@@ -16,8 +16,8 @@ SHOW_CURSOR = "\033[?25h"
 CLEAR = "\033[2J\033[H"
 
 RED = "\033[38;5;196m"
-CYAN = "\033[92m"  
-GREEN = "\033[96m"  
+CYAN = "\033[92m"  # Diubah ke \033[92m agar warnanya sama dengan FREQUENCY
+GREEN = "\033[92m" # Disamakan juga agar banner sewarna
 YELLOW = "\033[93m"
 
 ASCII_ART = r""" (    (                          )           )  
@@ -84,7 +84,6 @@ def draw_menu():
     row += 1
     
     for i, opt in enumerate(MENU_OPTIONS, start=1):
-        # Diganti ke CYAN agar sewarna dengan FREQUENCY
         print_at(row, LEFT_MARGIN, f"{i}. {opt}", CYAN + BOLD)
         row += 1
 
