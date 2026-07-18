@@ -160,6 +160,60 @@ def get_ssid_file_path():
     return None
 
 
+def show_post_attack_menu(monitor_iface):
+    """Menampilkan menu setelah serangan dihentikan"""
+    print(f"\n{BOLD}{CYAN}╔══════════════════════════════════════════════════╗{RESET}")
+    print(f"{BOLD}{CYAN}║              SERANGAN DIHENTIKAN                 ║{RESET}")
+    print(f"{BOLD}{CYAN}╚══════════════════════════════════════════════════╝{RESET}")
+    print(f"\n{BOLD}1.{RESET} Attack Again")
+    print(f"{BOLD}0.{RESET} Back to Menu (mdk4-menu.py)")
+    print(f"{BOLD}99.{RESET} Exit")
+    
+    while True:
+        try:
+            choice = input(f"\n{BOLD}{YELLOW}>> Pilihan: {RESET}").strip()
+            
+            if choice == "1":
+                # Attack again - cleanup dulu lalu restart
+                print(f"\n{GREEN}Memulai ulang serangan...{RESET}")
+                stop_monitor_mode(monitor_iface)
+                time.sleep(1)
+                # Jalankan ulang script ini
+                os.execvp(sys.executable, [sys.executable, __file__])
+                
+            elif choice == "0":
+                # Back to menu - cleanup dan jalankan mdk4-menu.py
+                print(f"\n{GREEN}Kembali ke menu utama...{RESET}")
+                stop_monitor_mode(monitor_iface)
+                time.sleep(1)
+                
+                # Cari mdk4-menu.py
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                menu_path = os.path.join(script_dir, "mdk4-menu.py")
+                
+                if os.path.exists(menu_path):
+                    os.execvp(sys.executable, [sys.executable, menu_path])
+                else:
+                    print(f"{RED}mdk4-menu.py tidak ditemukan!{RESET}")
+                    sys.exit(0)
+                    
+            elif choice == "99":
+                # Exit - cleanup dan keluar
+                print(f"\n{GREEN}Keluar dari program...{RESET}")
+                stop_monitor_mode(monitor_iface)
+                time.sleep(1)
+                print(f"{GREEN}Terima kasih!{RESET}")
+                sys.exit(0)
+                
+            else:
+                print(f"{RED}Pilihan tidak valid! Silakan pilih 1, 0, atau 99.{RESET}")
+                
+        except KeyboardInterrupt:
+            print(f"\n{YELLOW}Interrupt diterima, keluar...{RESET}")
+            stop_monitor_mode(monitor_iface)
+            sys.exit(0)
+
+
 def run_beacon_attack(monitor_iface):
     ssid_file = get_ssid_file_path()
     if not ssid_file:
@@ -187,13 +241,14 @@ def run_beacon_attack(monitor_iface):
 
     try:
         result = subprocess.run(mdk4_cmd)
-        if result.returncode != 0:
+        if result.returncode != 0 and result.returncode != -2:  # -2 biasanya dari SIGINT
             print(f"{RED}MDK4 beacon attack gagal dengan kode keluar {result.returncode}.{RESET}")
+            # Tampilkan menu setelah error
+            show_post_attack_menu(monitor_iface)
     except KeyboardInterrupt:
-        print(f"\n{YELLOW}Serangan dihentikan oleh pengguna.{RESET}")
-        # Matikan monitor mode dan restart NetworkManager
-        stop_monitor_mode(monitor_iface)
-        sys.exit(0)
+        # Tangkap Ctrl+C dan tampilkan menu
+        print(f"\n\n{YELLOW}Serangan dihentikan oleh pengguna.{RESET}")
+        show_post_attack_menu(monitor_iface)
 
 
 def main():
@@ -216,7 +271,7 @@ def main():
         # Jalankan serangan
         run_beacon_attack(monitor_iface)
         
-        # Cleanup setelah serangan selesai
+        # Cleanup setelah serangan selesai normal
         print("\nMembersihkan sesi...")
         stop_monitor_mode(monitor_iface)
         
