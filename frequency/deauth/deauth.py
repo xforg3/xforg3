@@ -147,7 +147,10 @@ def start_monitor_mode(adapter):
 
 
 def scan_networks(adapter, duration=10):
+    # Membersihkan layar terminal sebelum proses scan dimulai sesuai permintaan
+    clear_screen()
     glitch_print("SCANNING WIFI NETWORKS...")
+    
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
     proc = subprocess.Popen(
@@ -316,7 +319,16 @@ def main():
                 adapter = select_interface()
                 monitor_iface = start_monitor_mode(adapter)
 
-            networks = scan_networks(monitor_iface)
+            # Meminta durasi scan custom dari user sebelum airodump berjalan
+            print(f"{CYAN}{BOLD}[?]{RESET} Mau scan WiFi berapa detik brody?")
+            scan_input = input(f"{YELLOW}>> detik (default 10): {RESET}").strip()
+            
+            if scan_input.isdigit() and int(scan_input) > 0:
+                scan_duration = int(scan_input)
+            else:
+                scan_duration = 10  # Fallback kalau input kosong atau tidak valid
+
+            networks = scan_networks(monitor_iface, duration=scan_duration)
             target = select_target(networks)
 
             if target is None:
