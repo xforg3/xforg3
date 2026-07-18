@@ -8,6 +8,7 @@ import re
 import signal
 import time
 import traceback
+import atexit
 
 # Import deauth module
 import deauth.deauth as deauth_module
@@ -47,9 +48,9 @@ def tool_page(tool_name):
     if tool_name == 'bettercap':
         return render_template('bettercap.html')
     
-    # Untuk deauth, tampilkan halaman deauth
+    # Untuk deauth, kirim file HTML langsung dari folder deauth/
     if tool_name == 'deauth':
-        return render_template('deauth.html')
+        return send_file('deauth/deauth.html')
     
     # Untuk tools lain tetap pakai tool.html
     return render_template('tool.html', tool=tool_name, description=TOOLS[tool_name])
@@ -243,7 +244,6 @@ def cleanup_all():
         pass
     print("[+] Cleanup complete.")
 
-import atexit
 atexit.register(cleanup_all)
 
 if __name__ == '__main__':
