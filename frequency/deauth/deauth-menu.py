@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-import random
 import time
 import sys
 import os
 
-GLITCH_CHARS = "!@#$%^&*<>/\\|=+~`_-;:?01アイウエオ卍卐░▒▓█"
-
+# Warna Terminal
 RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
@@ -16,68 +14,51 @@ BOLD = "\033[1m"
 
 
 def clear():
+    """Membersihkan layar terminal."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def glitch_print(text, duration=1.2, interval=0.04):
-    """Efek teks glitch sebelum settle ke teks aslinya."""
-    end_time = time.time() + duration
-    while time.time() < end_time:
-        glitched = ''.join(
-            random.choice(GLITCH_CHARS) if random.random() < 0.35 else c
-            for c in text
-        )
-        color = random.choice([RED, GREEN, YELLOW, CYAN, MAGENTA])
-        sys.stdout.write(f"\r{color}{BOLD}{glitched}{RESET}")
-        sys.stdout.flush()
-        time.sleep(interval)
-    sys.stdout.write(f"\r{GREEN}{BOLD}{text}{RESET}\n")
-    sys.stdout.flush()
-
-
-def glitch_line_flicker(text, times=6, interval=0.05):
-    """Flicker on/off buat efek layar rusak."""
-    for i in range(times):
-        sys.stdout.write("\r" + " " * (len(text) + 5))
-        sys.stdout.flush()
-        time.sleep(interval / 2)
-        color = random.choice([RED, CYAN, MAGENTA, GREEN])
-        sys.stdout.write(f"\r{color}{BOLD}{text}{RESET}")
-        sys.stdout.flush()
-        time.sleep(interval)
-    print()
-
-
-def loading_sequence():
-    clear()
-    glitch_print("LOADING AIREPLAY-NG...", duration=1.4, interval=0.05)
-    glitch_line_flicker("INITIALIZING AIREPLAY-NG...", times=5, interval=0.06)
-    time.sleep(0.3)
-    clear()
+def quick_print(text, color=GREEN):
+    """Cetak teks langsung tanpa animasi."""
+    print(f"{color}{BOLD}{text}{RESET}")
 
 
 def launch_aireplay_ng():
     clear()
-    glitch_print("LAUNCHING AIREPLAY-NG...", duration=0.9, interval=0.04)
+    quick_print("LAUNCHING AIREPLAY-NG...", CYAN)
+    
     aireplay_path = os.path.join(os.path.dirname(__file__), "deauth.py")
     if os.path.exists(aireplay_path):
         os.execvp(sys.executable, [sys.executable, aireplay_path])
+    
     print(f"{YELLOW}{BOLD}AIREPLAY-NG script not found. Placeholder only.{RESET}")
     time.sleep(0.5)
 
 
 def show_menu():
-    print(f"{CYAN}{'=' * 34}{RESET}")
-    print(f"{BOLD}{YELLOW}      AIRCRACK-NG MENU{RESET}")
-    print(f"{CYAN}{'=' * 34}{RESET}")
-    print(f"{GREEN}1. AIREPLAY-NG{RESET}")
+    # ASCII Art Menu
+    ascii_art = r"""
+ _ .-') _     ('-.   ('-.                  .-') _    ('-. .-.       _   .-')       ('-.       .-') _             
+( (  OO) )  _(  OO) ( OO ).-.             (  OO) )  ( OO )  /      ( '.( OO )_  _(  OO)     ( OO ) )            
+ \     .'_ (,------./ . --. / ,--. ,--.  /     '._ ,--. ,--.       ,--.   ,--.)(,------.,--./ ,--,' ,--. ,--.   
+ ,`'--..._) |  .---'| \-.  \  |  | |  |  |'--...__)|  | |  |       |   `.'   |  |  .---'|   \ |  |\ |  | |  |   
+ |  |  \  ' |  |   .-'-'  |  | |  | | .-')'--.  .--'|   .|  |       |         |  |  |    |    \|  | )|  | | .-') 
+ |  |   ' |(|  '--.\| |_.'  | |  |_|( OO )  |  |   |       |       |  |'.'|  | (|  '--. |  .     |/ |  |_|( OO )
+ |  |   / : |  .--' |  .-.  | |  | | `-' /  |  |   |  .-.  |       |  |   |  |  |  .--' |  |\    |  |  | | `-' /
+ |  '--'  / |  `---.|  | |  |('  '-'(_.-'   |  |   |  | |  |       |  |   |  |  |  `---.|  | \   | ('  '-'(_.-' 
+ `-------'  `------'`--' `--'  `-----'      `--'   `--' `--'       `--'   `--'  `------'`--'  `--'   `-----'    
+"""
+    print(f"{YELLOW}{ascii_art}{RESET}")
+    print(f"{CYAN}{'=' * 112}{RESET}")
+    print(f"{GREEN}1. DEAUTH{RESET}")    
+    print(f"")    
     print(f"{RED}0. BACK TO MAIN MENU{RESET}")
     print(f"{RED}99. EXIT{RESET}")
-    print(f"{CYAN}{'=' * 34}{RESET}")
+    print(f"{CYAN}{'=' * 112}{RESET}")
 
 
 def main():
-    loading_sequence()
+    clear()
     show_menu()
     choice = input(f"{BOLD}{MAGENTA}chose your option > {RESET}")
 
@@ -90,7 +71,6 @@ def main():
         os.execvp(sys.executable, [sys.executable, parent])
     elif choice.strip() == "99":
         clear()
-        glitch_print("EXITING...", duration=0.8, interval=0.04)
         sys.exit(0)
     else:
         print(f"\n{RED}{BOLD}Pilihan tidak valid!{RESET}")
