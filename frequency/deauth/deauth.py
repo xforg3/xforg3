@@ -147,7 +147,6 @@ def start_monitor_mode(adapter):
 
 
 def scan_networks(adapter, duration=10):
-    # Membersihkan layar terminal sebelum proses scan dimulai sesuai permintaan
     clear_screen()
     glitch_print("SCANNING WIFI NETWORKS...")
     
@@ -203,9 +202,7 @@ def scan_networks(adapter, duration=10):
 
 
 def stop_monitor_mode(monitor_iface):
-    # Membersihkan terminal sebelum mencetak log pemberhentian monitor mode
     clear_screen()
-    glitch_print("STOPPING MONITOR MODE...")
     
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
@@ -214,11 +211,12 @@ def stop_monitor_mode(monitor_iface):
         candidates.append(f"{monitor_iface}mon")
 
     for name in candidates:
-        result = run_command(["sudo", "airmon-ng", "stop", name], "MEMATIKAN MONITOR MODE", show_output=False)
+        result = run_command(["sudo", "airmon-ng", "stop", name], None, show_output=False)
         if result is not None:
             break
 
-    run_command(["sudo", "systemctl", "restart", "NetworkManager"], "RESTART NETWORKMANAGER", show_output=False)
+    run_command(["sudo", "systemctl", "restart", "NetworkManager"], None, show_output=False)
+    clear_screen()
 
 
 def set_monitor_channel(monitor_iface, channel):
@@ -329,7 +327,7 @@ def main():
             if scan_input.isdigit() and int(scan_input) > 0:
                 scan_duration = int(scan_input)
             else:
-                scan_duration = 10  # Fallback kalau input kosong atau tidak valid
+                scan_duration = 10
 
             networks = scan_networks(monitor_iface, duration=scan_duration)
             target = select_target(networks)
@@ -341,7 +339,6 @@ def main():
             print(f"\n{CYAN}Target terpilih:{RESET} {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
 
             run_deauth_attack(target, monitor_iface)
-            print("\nMembersihkan sesi...")
             stop_monitor_mode(monitor_iface)
             break
 
@@ -357,6 +354,7 @@ def main():
             if action == "exit":
                 if monitor_iface:
                     stop_monitor_mode(monitor_iface)
+                clear_screen()
                 sys.exit(0)
 
 
