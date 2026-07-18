@@ -53,11 +53,13 @@ def start_monitor_mode(iface):
     raise RuntimeError("Could not determine monitor interface name")
 
 def stop_monitor_mode(iface):
-    if iface and iface != original_iface:
+    """Stop monitor mode dan restart NetworkManager"""
+    if iface:
         print(f"[*] Stopping monitor mode on {iface}...")
-        subprocess.run(["sudo", "airmon-ng", "stop", iface], check=False)
+        subprocess.run(["sudo", "airmon-ng", "stop", iface], check=False, capture_output=True)
     print("[*] Restarting NetworkManager...")
-    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False)
+    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False, capture_output=True)
+    print("[+] NetworkManager restarted")
 
 def ensure_monitor_mode():
     global monitor_iface, original_iface
@@ -262,6 +264,17 @@ def deauth_stop():
     return {"status": "success", "message": "Deauth stopped"}
 
 def deauth_cleanup():
-    """Cleanup monitor interface"""
+    """Cleanup: stop deauth, stop monitor mode, restart NetworkManager"""
+    global monitor_iface
+    
+    print("\n[*] Deauth cleanup started...")
+    
+    # Stop deauth attack
+    deauth_stop()
+    
+    # Stop monitor mode dan restart NetworkManager
     if monitor_iface:
         stop_monitor_mode(monitor_iface)
+        monitor_iface = None
+    
+    print("[+] Deauth cleanup complete.")

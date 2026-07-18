@@ -237,14 +237,44 @@ def api_deauth_stop():
 
 def cleanup_all():
     """Cleanup semua proses saat shutdown"""
-    print("\n[*] Cleaning up...")
+    global attack_process
+    
+    print("\n" + "="*60)
+    print("[*] SHUTDOWN: Cleaning up all processes...")
+    print("="*60)
+    
+    # Stop bettercap attack
+    if attack_process:
+        print("[*] Stopping bettercap attack...")
+        try:
+            attack_process.terminate()
+            attack_process.wait(timeout=3)
+        except:
+            pass
+        attack_process = None
+    
+    # Stop deauth attack & cleanup monitor mode
     try:
         deauth_module.deauth_cleanup()
-    except:
-        pass
-    print("[+] Cleanup complete.")
+    except Exception as e:
+        print(f"[-] Deauth cleanup error: {e}")
+    
+    print("[+] All cleanup complete. Goodbye!")
+    print("="*60)
 
+# Register cleanup for atexit
 atexit.register(cleanup_all)
+
+# Signal handler for Ctrl+C
+def signal_handler(sig, frame):
+    print("\n" + "!"*60)
+    print("[!] Ctrl+C detected! Shutting down...")
+    print("!"*60)
+    cleanup_all()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 if __name__ == '__main__':
     print("""
@@ -254,4 +284,12 @@ if __name__ == '__main__':
     ║   http://localhost:5000                  ║
     ╚═══════════════════════════════════════════╝
     """)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    print("[*] Press Ctrl+C to shutdown and cleanup")
+    print("")
+    
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except KeyboardInterrupt:
+        print("\n[!] KeyboardInterrupt received")
+        cleanup_all()
+        sys.exit(0)
