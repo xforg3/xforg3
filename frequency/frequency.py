@@ -16,8 +16,7 @@ SHOW_CURSOR = "\033[?25h"
 CLEAR = "\033[2J\033[H"
 
 RED = "\033[38;5;196m"
-GREEN = "\033[38;5;46m"
-CYAN = "\033[96m"
+CYAN = "\033[96m"  # Warna Tosca/Hijau Aqua yang kamu mau
 YELLOW = "\033[93m"
 
 ASCII_ART = r""" (    (                          )           )  
@@ -57,17 +56,15 @@ def flush():
 
 
 MENU_OPTIONS = ["BETTERCAP", "DEAUTH", "MDK4"]
-LEFT_MARGIN = 5  # Indentasi kiri agar layout rapi dan konsisten
+LEFT_MARGIN = 5  
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Jalur pencarian Bettercap, Deauth, dan MDK4
 BETTERCAP_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "bettercap", "bettercap-menu.py"))
 AIRCRACK_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "deauth", "deauth-menu.py"))
 MDK4_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "mdk4", "mdk4-menu.py"))
 
 
 def draw_ascii_art(start_row=1):
-    """Cetak ASCII art banner langsung rata kiri."""
     lines = ASCII_ART.splitlines()
     row = start_row
     for line in lines:
@@ -77,37 +74,33 @@ def draw_ascii_art(start_row=1):
 
 
 def draw_menu():
-    """Tampilkan banner dan menu rata kiri secara instan tanpa delay."""
     clear()
 
     art_end_row = draw_ascii_art(start_row=2)
-    row = art_end_row + 2  # Jarak baris antara banner dan menu
+    row = art_end_row + 2  
     
-    # Garis pembatas atas menu
     print_at(row, LEFT_MARGIN, "=" * 112, CYAN)
     row += 1
     
     for i, opt in enumerate(MENU_OPTIONS, start=1):
-        # MENGUBAH WARNA DARI GREEN MENJADI CYAN BOLD
+        # Diganti ke CYAN agar sewarna dengan FREQUENCY
         print_at(row, LEFT_MARGIN, f"{i}. {opt}", CYAN + BOLD)
         row += 1
 
-    row += 1  # Baris kosong pembatas
+    row += 1  
     print_at(row, LEFT_MARGIN, "0. BACK TO MAIN MENU", RED + BOLD)
     row += 1
     print_at(row, LEFT_MARGIN, "99. EXIT", RED + BOLD)
     row += 1
     
-    # Garis pembatas bawah menu
     print_at(row, LEFT_MARGIN, "=" * 112, CYAN)
-    row += 2  # Jarak kosong sebelum input prompt
+    row += 2  
 
     flush()
     return row
 
 
 def clean_prompt(row, text=">> option: "):
-    """Prompt input bersih tanpa animasi kedip-kedip atau glitch."""
     print_at(row, LEFT_MARGIN, text, YELLOW + BOLD)
     flush()
     sys.stdout.write(SHOW_CURSOR)
@@ -130,13 +123,11 @@ def launch_mdk4_menu():
 
 def return_to_main_menu():
     clear()
-    
-    # Menambahkan opsi pencarian absolut berdasarkan letak direktori kerja di Kali Linux Anda
     path_options = [
-        "/home/kali/xforg3/xforg3.py",                                    # Folder ~/xforg3 langsung
-        os.path.abspath(os.path.join(THIS_DIR, "xforg3.py")),             # Folder yang sama dengan skrip ini
-        os.path.abspath(os.path.join(THIS_DIR, "..", "xforg3.py")),       # Naik 1 tingkat
-        os.path.abspath(os.path.join(THIS_DIR, "..", "..", "xforg3.py"))  # Naik 2 tingkat
+        "/home/kali/xforg3/xforg3.py",                                    
+        os.path.abspath(os.path.join(THIS_DIR, "xforg3.py")),             
+        os.path.abspath(os.path.join(THIS_DIR, "..", "xforg3.py")),       
+        os.path.abspath(os.path.join(THIS_DIR, "..", "..", "xforg3.py"))  
     ]
     
     xforg3_path = None
@@ -149,9 +140,6 @@ def return_to_main_menu():
         os.execvp(sys.executable, [sys.executable, xforg3_path])
     else:
         print(f"\n{RED}[!] Eror: File xforg3.py tidak ditemukan di sistem.{RESET}")
-        print("Lokasi pengecekan:")
-        for path in path_options:
-            print(f" -> {path}")
         input("\nTekan Enter untuk kembali...")
 
 
