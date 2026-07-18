@@ -16,7 +16,7 @@ SHOW_CURSOR = "\033[?25h"
 CLEAR = "\033[2J\033[H"
 
 RED = "\033[38;5;196m"
-CYAN = "\033[96m"  # Warna Tosca/Hijau Aqua yang kamu mau
+CYAN = "\033[92m"  
 YELLOW = "\033[93m"
 
 ASCII_ART = r""" (    (                          )           )  
