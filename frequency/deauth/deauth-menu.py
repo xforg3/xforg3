@@ -76,7 +76,7 @@ def show_menu():
     
     # Cetak ASCII banner
     for line in art_lines:
-        print(f"{col_indent}{CYAN}{line}{RESET}")
+        print(f"{col_indent}{RED}{line}{RESET}")
         
     # Garis pembatas atas
     print(f"{col_indent}{GREEN}{separator}{RESET}")
@@ -87,7 +87,7 @@ def show_menu():
             print()
             continue
             
-        color = GREEN
+        color = CYAN
         if opt.startswith(("0.", "99.")):
             color = RED
             
