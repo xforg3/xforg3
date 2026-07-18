@@ -63,12 +63,13 @@ def main_menu():
     ]
     
     col_indent = " " * 6  # Rata kiri menjorok 6 karakter
+    separator = "=" * 112
     
     # Pisahkan ASCII Art menjadi per baris
     art_lines = ASCII_ART.splitlines()
     
     # Hitung posisi vertikal agar menu dan banner tercetak rapi di tengah layar terminal
-    total_lines_len = len(art_lines) + 1 + len(options)
+    total_lines_len = len(art_lines) + 3 + len(options)
     start_row = max(1, (height // 2) - (total_lines_len // 2) - 2)
     
     # Cetak baris kosong untuk menyesuaikan posisi baris vertikal
@@ -79,6 +80,9 @@ def main_menu():
         print(f"{col_indent}{COLORS['cyan']}{BOLD}{line}{RESET}")
         
     print() # Baris kosong pemisah banner dengan menu
+    
+    # Cetak Garis Pemisah Atas
+    print(f"{col_indent}{COLORS['cyan']}{separator}{RESET}")
     
     # Cetak Pilihan Menu
     for opt in options:
@@ -91,6 +95,9 @@ def main_menu():
             color = COLORS["red"]
             
         print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
+
+    # Cetak Garis Pemisah Bawah
+    print(f"{col_indent}{COLORS['cyan']}{separator}{RESET}")
 
     print("\n")
     try:
