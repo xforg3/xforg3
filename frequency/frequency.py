@@ -40,7 +40,7 @@ def clear_screen():
     sys.stdout.flush()
 
 
-MENU_OPTIONS = ["BETTERCAP", "DEAUTH", "MDK4"]
+MENU_OPTIONS = ["BETTERCAP", "DEAUTH", "MDK4", "AIRGEDDON"]
 col_indent = " " * 6  # Spasi kiri menjorok 6 karakter agar sama dengan xforg3.py
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -87,6 +87,8 @@ def draw_menu():
         color = GREEN
         if opt.startswith(("0.", "99.")):
             color = RED
+        elif "AIRGEDDON" in opt:
+            color = YELLOW  # Warna khusus untuk Airgeddon
             
         print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
 
@@ -113,6 +115,24 @@ def launch_bettercap_menu():
 def launch_mdk4_menu():
     clear_screen()
     os.execvp(sys.executable, [sys.executable, MDK4_MENU_PATH])
+
+
+def launch_airgeddon():
+    """Menjalankan Airgeddon dengan sudo"""
+    clear_screen()
+    print(f"{GREEN}Menjalankan Airgeddon...{RESET}\n")
+    
+    # Cek apakah airgeddon terinstall
+    try:
+        # Jalankan sudo airgeddon
+        os.execvp("sudo", ["sudo", "airgeddon"])
+    except FileNotFoundError:
+        print(f"{RED}Airgeddon tidak ditemukan!{RESET}")
+        print(f"{YELLOW}Install Airgeddon dengan:{RESET}")
+        print(f"{CYAN}git clone https://github.com/v1s1t0r1sh3r3/airgeddon.git{RESET}")
+        print(f"{CYAN}cd airgeddon && sudo bash airgeddon.sh{RESET}")
+        input(f"\n{YELLOW}Tekan Enter untuk kembali...{RESET}")
+        return
 
 
 def return_to_main_menu():
@@ -154,6 +174,8 @@ def main():
             os.execvp(sys.executable, [sys.executable, AIRCRACK_MENU_PATH])
         elif choice.strip() == "3":
             launch_mdk4_menu()
+        elif choice.strip() == "4":
+            launch_airgeddon()
         elif choice.strip() == "0":
             return_to_main_menu()
         elif choice.strip() == "99":
