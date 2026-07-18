@@ -141,14 +141,14 @@ def select_interface():
 
 
 def get_ssid_file_path():
-    """Mencari file ssid_list.txt di folder ssid_fake"""
+    """Mencari file ssid_list.txt di folder ssid-fake"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Coba cari di folder ssid_fake di direktori yang sama dengan script
+    # Coba cari di folder ssid-fake di direktori yang sama dengan script
     possible_paths = [
-        os.path.join(script_dir, "ssid_fake", "ssid_list.txt"),
+        os.path.join(script_dir, "ssid-fake", "ssid_list.txt"),
         os.path.join(script_dir, "ssid_list.txt"),
-        os.path.join(os.path.dirname(script_dir), "ssid_fake", "ssid_list.txt"),
+        os.path.join(os.path.dirname(script_dir), "ssid-fake", "ssid_list.txt"),
     ]
     
     for path in possible_paths:
@@ -156,7 +156,7 @@ def get_ssid_file_path():
             return path
     
     print(f"{RED}File ssid_list.txt tidak ditemukan!{RESET}")
-    print(f"{YELLOW}Pastikan file ada di: ssid_fake/ssid_list.txt{RESET}")
+    print(f"{YELLOW}Pastikan file ada di: ssid-fake/ssid_list.txt{RESET}")
     return None
 
 
