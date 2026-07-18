@@ -10,17 +10,15 @@ import time
 import traceback
 import atexit
 
-# Import deauth module
-import deauth.deauth as deauth_module
+# Import deauth module - PATH BARU (di dalam frequency)
+import frequency.deauth.deauth as deauth_module
 
 app = Flask(__name__)
 
-# Daftar tools yang tersedia
+# Daftar tools yang tersedia - HAPUS aircrack-ng & airgeddon
 TOOLS = {
     'bettercap': 'Network monitoring & MITM attacks',
     'deauth': 'WiFi deauthentication attack',
-    'aircrack-ng': 'WEP/WPA/WPA2 password cracking',
-    'airgeddon': 'WiFi pentesting suite',
     'mdk4': 'WiFi flooding & deauthentication attacks',
     'frequency': 'Frequency analysis tool'
 }
@@ -46,7 +44,8 @@ def tool_page(tool_name):
         return render_template('bettercap.html')
     
     if tool_name == 'deauth':
-        return send_file('deauth/deauth.html')
+        # PATH BARU - di dalam frequency/deauth/
+        return send_file('frequency/deauth/deauth.html')
     
     return render_template('tool.html', tool=tool_name, description=TOOLS[tool_name])
 
@@ -59,10 +58,6 @@ def run_tool(tool_name):
     try:
         if tool_name == 'bettercap':
             return jsonify({'error': 'Use /api/ban for bettercap'}), 400
-        elif tool_name == 'aircrack-ng':
-            cmd = "aircrack-ng --help"
-        elif tool_name == 'airgeddon':
-            cmd = "python3 airgeddon/airgeddon_menu.py"
         elif tool_name == 'mdk4':
             cmd = "mdk4 --help"
         elif tool_name == 'frequency':
