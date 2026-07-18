@@ -82,6 +82,10 @@ def draw_menu():
     art_end_row = draw_ascii_art(start_row=2)
     row = art_end_row + 2  # Jarak baris antara banner dan menu
     
+    # Garis pembatas atas menu
+    print_at(row, LEFT_MARGIN, "=" * 112, CYAN)
+    row += 1
+    
     for i, opt in enumerate(MENU_OPTIONS, start=1):
         print_at(row, LEFT_MARGIN, f"{i}. {opt}", GREEN + BOLD)
         row += 1
@@ -90,7 +94,11 @@ def draw_menu():
     print_at(row, LEFT_MARGIN, "0. BACK TO MAIN MENU", RED + BOLD)
     row += 1
     print_at(row, LEFT_MARGIN, "99. EXIT", RED + BOLD)
-    row += 2  # Baris kosong sebelum input prompt
+    row += 1
+    
+    # Garis pembatas bawah menu
+    print_at(row, LEFT_MARGIN, "=" * 112, CYAN)
+    row += 2  # Jarak kosong sebelum input prompt
 
     flush()
     return row
