@@ -101,7 +101,7 @@ def show_menu():
 def main():
     show_menu()
     try:
-        choice = input(f"      {BOLD}{MAGENTA}chose your option > {RESET}")
+        choice = input(f"      {BOLD}{YELLOW}>> option : {RESET}")
     except (KeyboardInterrupt, EOFError):
         choice = "0"
 
