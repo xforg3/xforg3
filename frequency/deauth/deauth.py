@@ -319,7 +319,7 @@ def main():
                 adapter = select_interface()
                 monitor_iface = start_monitor_mode(adapter)
 
-            # Meminta durasi scan custom dari user sebelum airodump berjalan
+            os.system("clear")
             print(f"{CYAN}{BOLD}[?]{RESET} Mau scan WiFi berapa detik brody?")
             scan_input = input(f"{YELLOW}>> detik (default 10): {RESET}").strip()
             
