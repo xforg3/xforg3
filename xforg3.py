@@ -215,6 +215,17 @@ def api_deauth_stop():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+# ====================== DEAUTH INIT ROUTE ======================
+
+@app.route('/api/deauth/init', methods=['GET'])
+def api_deauth_init():
+    """Inisialisasi monitor mode"""
+    try:
+        result = deauth_module.init_deauth()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 # ====================== CLEANUP ======================
 
 def cleanup_all():

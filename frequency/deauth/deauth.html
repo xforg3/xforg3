@@ -505,6 +505,24 @@
     document.addEventListener('DOMContentLoaded', function() {
         updateSelectedCount();
         document.getElementById('deauth-status').innerText = 'stopped';
+        
+        // ===== INIT MONITOR MODE =====
+        document.getElementById('status-msg').innerHTML = '⏳ Initializing monitor mode...';
+        fetch('/api/deauth/init')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('[+] Monitor mode ready:', data.interface);
+                    document.getElementById('status-msg').innerHTML = '✅ Monitor: ' + data.interface;
+                } else {
+                    console.log('[-] Monitor mode init failed:', data.message);
+                    document.getElementById('status-msg').innerHTML = '❌ Error: ' + data.message;
+                }
+            })
+            .catch(err => {
+                console.log('[-] Init error:', err);
+                document.getElementById('status-msg').innerHTML = '❌ Init error';
+            });
     });
 </script>
 

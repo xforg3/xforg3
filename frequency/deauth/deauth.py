@@ -114,6 +114,16 @@ def get_monitor_interface():
             return monitor_iface
     return ensure_monitor_mode()
 
+def init_deauth():
+    """Inisialisasi: pastikan monitor mode aktif"""
+    try:
+        interface = get_monitor_interface()
+        print(f"[+] Monitor interface ready: {interface}")
+        return {"status": "success", "interface": interface}
+    except Exception as e:
+        print(f"[-] Failed to init monitor mode: {e}")
+        return {"status": "error", "message": str(e)}
+
 def set_channel(iface, channel):
     try:
         subprocess.run(["iwconfig", iface, "channel", str(channel)], check=True, capture_output=True)
