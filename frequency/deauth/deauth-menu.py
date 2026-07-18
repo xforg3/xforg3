@@ -2,40 +2,48 @@
 import time
 import sys
 import os
+import shutil
 
 # Warna Terminal
 RED = "\033[91m"
 YELLOW = "\033[93m"
-CYAN = "\033[92m"  # Diubah ke \033[92m agar warnanya sama dengan FREQUENCY
+CYAN = "\033[96m"  
 MAGENTA = "\033[95m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
-GREEN = "\033[92m" # Menyesuaikan kode warna tosca terminalmu
+GREEN = "\033[92m"
 
 
-def clear():
+def get_size():
+    return shutil.get_terminal_size(fallback=(80, 24))
+
+
+def clear_screen():
     """Membersihkan layar terminal."""
-    os.system('cls' if os.name == 'nt' else 'clear')
+    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.flush()
 
 
 def quick_print(text, color=CYAN):
-    """Cetak teks langsung tanpa animasi."""
     print(f"{color}{BOLD}{text}{RESET}")
 
 
 def launch_aireplay_ng():
-    clear()
+    clear_screen()
     quick_print("LAUNCHING AIREPLAY-NG...", CYAN)
     
     aireplay_path = os.path.join(os.path.dirname(__file__), "deauth.py")
     if os.path.exists(aireplay_path):
         os.execvp(sys.executable, [sys.executable, aireplay_path])
     
-    print(f"{YELLOW}{BOLD}AIREPLAY-NG script not found. Placeholder only.{RESET}")
+    print(f"      {YELLOW}{BOLD}AIREPLAY-NG script not found. Placeholder only.{RESET}")
     time.sleep(0.5)
 
 
 def show_menu():
+    clear_screen()
+    _, height = get_size()
+
     # ASCII Art Menu
     ascii_art = r"""
  _ .-') _     ('-.   ('-.                  .-') _    ('-. .-.       _   .-')       ('-.       .-') _             
@@ -46,21 +54,56 @@ def show_menu():
  |  |   ' |(|  '--.\| |_.'  | |  |_|( OO )  |  |   |       |       |  |'.'|  | (|  '--. |  .     |/ |  |_|( OO )
  |  |   / : |  .--' |  .-.  | |  | | `-' /  |  |   |  .-.  |       |  |   |  |  |  .--' |  |\    |  |  | | `-' /
  |  '--'  / |  `---.|  | |  |('  '-'(_.-'   |  |   |  | |  |       |  |   |  |  |  `---.|  | \   | ('  '-'(_.-' 
- `-------'  `------'`--' `--'  `-----'      `--'   `--' `--'       `--'   `--'  `------'`--'  `--'   `-----'    
-"""
-    print(f"{GREEN}{ascii_art}{RESET}")  # Menyesuaikan warna banner deauth menjadi tosca
-    print(f"{GREEN}{'=' * 112}{RESET}")
-    print(f"{GREEN}{BOLD}1. DEAUTH{RESET}")    
-    print(f"")    
-    print(f"{RED}{BOLD}0. BACK TO MAIN MENU{RESET}")
-    print(f"{RED}{BOLD}99. EXIT{RESET}")
-    print(f"{GREEN}{'=' * 112}{RESET}")
+ `-------'  `------'`--' `--'  `-----'      `--'   `--' `--'       `--'   `--'  `------'`--'  `--'   `-----'    """
+
+    options = [
+        "1. DEAUTH",
+        "",
+        "0. BACK TO MAIN MENU",
+        "99. EXIT"
+    ]
+    
+    col_indent = " " * 6  # Spasi kiri menjorok 6 karakter agar sama dengan xforg3.py
+    separator = "=" * 112
+    art_lines = ascii_art.splitlines()
+    
+    # Hitung posisi tengah vertikal
+    total_lines_len = len(art_lines) + 3 + len(options)
+    start_row = max(1, (height // 2) - (total_lines_len // 2) - 2)
+    
+    # Cetak spasi atas layar
+    print("\n" * (start_row - 1))
+    
+    # Cetak ASCII banner
+    for line in art_lines:
+        print(f"{col_indent}{CYAN}{line}{RESET}")
+        
+    # Garis pembatas atas
+    print(f"{col_indent}{GREEN}{separator}{RESET}")
+    
+    # Cetak Menu Pilihan
+    for opt in options:
+        if not opt:
+            print()
+            continue
+            
+        color = GREEN
+        if opt.startswith(("0.", "99.")):
+            color = RED
+            
+        print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
+        
+    # Garis pembatas bawah
+    print(f"{col_indent}{GREEN}{separator}{RESET}")
+    print("\n")
 
 
 def main():
-    clear()
     show_menu()
-    choice = input(f"{BOLD}{MAGENTA}chose your option > {RESET}")
+    try:
+        choice = input(f"      {BOLD}{MAGENTA}chose your option > {RESET}")
+    except (KeyboardInterrupt, EOFError):
+        choice = "0"
 
     if choice.strip() == "1":
         launch_aireplay_ng()
@@ -70,10 +113,11 @@ def main():
             parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frequency.py"))
         os.execvp(sys.executable, [sys.executable, parent])
     elif choice.strip() == "99":
-        clear()
+        clear_screen()
         sys.exit(0)
     else:
-        print(f"\n{RED}{BOLD}Pilihan tidak valid!{RESET}")
+        print(f"      {RED}{BOLD}Pilihan tidak valid!{RESET}")
+        time.sleep(0.6)
 
 
 if __name__ == "__main__":

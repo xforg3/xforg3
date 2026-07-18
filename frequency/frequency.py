@@ -3,7 +3,7 @@
 Clean Loading + Menu - Terminal
 ---------------------------------
 Seluruh animasi loading, glitch burst, screen shake, dan efek penundaan waktu dihapus.
-Menu dan banner langsung tercetak instan saat dijalankan.
+Menu dan banner langsung tercetak instan saat dijalankan dengan kalkulasi posisi tengah.
 """
 
 import os
@@ -16,8 +16,8 @@ SHOW_CURSOR = "\033[?25h"
 CLEAR = "\033[2J\033[H"
 
 RED = "\033[38;5;196m"
-CYAN = "\033[92m"  # Diubah ke \033[92m agar warnanya sama dengan FREQUENCY
-GREEN = "\033[92m" # Disamakan juga agar banner sewarna
+CYAN = "\033[92m"  
+GREEN = "\033[96m"  
 YELLOW = "\033[93m"
 
 ASCII_ART = r""" (    (                          )           )  
@@ -35,29 +35,13 @@ def get_size():
     return size.columns, size.lines
 
 
-def move(row, col):
-    sys.stdout.write(f"\033[{row};{col}H")
-
-
-def clear():
+def clear_screen():
     sys.stdout.write(CLEAR)
-
-
-def print_at(row, col, text, color=""):
-    if row < 1:
-        row = 1
-    if col < 1:
-        col = 1
-    move(row, col)
-    sys.stdout.write(f"{color}{text}{RESET}")
-
-
-def flush():
     sys.stdout.flush()
 
 
 MENU_OPTIONS = ["BETTERCAP", "DEAUTH", "MDK4"]
-LEFT_MARGIN = 5  
+col_indent = " " * 6  # Spasi kiri menjorok 6 karakter agar sama dengan xforg3.py
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 BETTERCAP_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "bettercap", "bettercap-menu.py"))
@@ -65,46 +49,56 @@ AIRCRACK_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "deauth", "deauth-me
 MDK4_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "mdk4", "mdk4-menu.py"))
 
 
-def draw_ascii_art(start_row=1):
-    lines = ASCII_ART.splitlines()
-    row = start_row
-    for line in lines:
-        print_at(row, LEFT_MARGIN, line, GREEN + BOLD)
-        row += 1
-    return row
-
-
 def draw_menu():
-    clear()
-
-    art_end_row = draw_ascii_art(start_row=2)
-    row = art_end_row + 2  
+    """Tampilkan banner dan menu rapi di tengah terminal menggunakan mekanik xforg3.py."""
+    clear_screen()
+    _, height = get_size()
     
-    print_at(row, LEFT_MARGIN, "=" * 112, CYAN)
-    row += 1
-    
+    options = []
     for i, opt in enumerate(MENU_OPTIONS, start=1):
-        print_at(row, LEFT_MARGIN, f"{i}. {opt}", CYAN + BOLD)
-        row += 1
+        options.append(f"{i}. {opt}")
+    options.extend(["", "0. BACK TO MAIN MENU", "99. EXIT"])
 
-    row += 1  
-    print_at(row, LEFT_MARGIN, "0. BACK TO MAIN MENU", RED + BOLD)
-    row += 1
-    print_at(row, LEFT_MARGIN, "99. EXIT", RED + BOLD)
-    row += 1
+    art_lines = ASCII_ART.splitlines()
+    separator = "=" * 112
     
-    print_at(row, LEFT_MARGIN, "=" * 112, CYAN)
-    row += 2  
+    # Hitung posisi vertikal tengah (Banner + 2 Garis Pemisah + Pilihan Menu)
+    total_lines_len = len(art_lines) + 3 + len(options)
+    start_row = max(1, (height // 2) - (total_lines_len // 2) - 2)
+    
+    # Memberikan space baris kosong di bagian atas
+    print("\n" * (start_row - 1))
+    
+    # Cetak ASCII Art banner
+    for line in art_lines:
+        print(f"{col_indent}{GREEN}{BOLD}{line}{RESET}")
+        
+    print() # Baris kosong pemisah
+    
+    # Garis pembatas atas menu
+    print(f"{col_indent}{CYAN}{separator}{RESET}")
+    
+    # Cetak Pilihan Menu
+    for opt in options:
+        if not opt:
+            print()
+            continue
+            
+        color = CYAN
+        if opt.startswith(("0.", "99.")):
+            color = RED
+            
+        print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
 
-    flush()
-    return row
+    # Garis pembatas bawah menu
+    print(f"{col_indent}{CYAN}{separator}{RESET}")
+    print("\n")
 
 
-def clean_prompt(row, text=">> option: "):
-    print_at(row, LEFT_MARGIN, text, YELLOW + BOLD)
-    flush()
+def clean_prompt():
+    sys.stdout.write(f"      {YELLOW}{BOLD}>> option : {RESET}")
     sys.stdout.write(SHOW_CURSOR)
-    flush()
+    sys.stdout.flush()
     try:
         return input()
     except (KeyboardInterrupt, EOFError):
@@ -112,17 +106,17 @@ def clean_prompt(row, text=">> option: "):
 
 
 def launch_bettercap_menu():
-    clear()
+    clear_screen()
     os.execvp(sys.executable, [sys.executable, BETTERCAP_MENU_PATH])
 
 
 def launch_mdk4_menu():
-    clear()
+    clear_screen()
     os.execvp(sys.executable, [sys.executable, MDK4_MENU_PATH])
 
 
 def return_to_main_menu():
-    clear()
+    clear_screen()
     path_options = [
         "/home/kali/xforg3/xforg3.py",                                    
         os.path.abspath(os.path.join(THIS_DIR, "xforg3.py")),             
@@ -144,19 +138,19 @@ def return_to_main_menu():
 
 
 def exit_program():
-    clear()
+    clear_screen()
     sys.exit(0)
 
 
 def main():
     try:
-        row = draw_menu()
-        choice = clean_prompt(row + 1)
+        draw_menu()
+        choice = clean_prompt()
         
         if choice.strip() == "1":
             launch_bettercap_menu()
         elif choice.strip() == "2":
-            clear()
+            clear_screen()
             os.execvp(sys.executable, [sys.executable, AIRCRACK_MENU_PATH])
         elif choice.strip() == "3":
             launch_mdk4_menu()
@@ -165,12 +159,14 @@ def main():
         elif choice.strip() == "99":
             exit_program()
         else:
-            print(f"\nPilihan salah atau tidak terdaftar: {choice}")
+            print(f"      {RED}invalid option{RESET}")
+            import time
+            time.sleep(0.6)
     except KeyboardInterrupt:
         pass
     finally:
         sys.stdout.write(SHOW_CURSOR)
-        flush()
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":
