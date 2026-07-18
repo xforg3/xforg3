@@ -59,7 +59,8 @@ def flush():
 MENU_OPTIONS = ["BETTERCAP", "DEAUTH", "MDK4"]
 LEFT_MARGIN = 5  # Indentasi kiri agar layout rapi dan konsisten
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-XFORG3_PATH = os.path.abspath(os.path.join(THIS_DIR, "..", "..", "xforg3.py"))
+
+# Jalur pencarian Bettercap, Deauth, dan MDK4
 BETTERCAP_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "bettercap", "bettercap-menu.py"))
 AIRCRACK_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "deauth", "deauth-menu.py"))
 MDK4_MENU_PATH = os.path.abspath(os.path.join(THIS_DIR, "mdk4", "mdk4-menu.py"))
@@ -128,7 +129,25 @@ def launch_mdk4_menu():
 
 def return_to_main_menu():
     clear()
-    os.execvp(sys.executable, [sys.executable, XFORG3_PATH])
+    
+    # Cari xforg3.py di beberapa kemungkinan tingkat folder agar tidak salah jalur lagi
+    path_options = [
+        os.path.abspath(os.path.join(THIS_DIR, "..", "xforg3.py")),       # Naik 1 tingkat
+        os.path.abspath(os.path.join(THIS_DIR, "..", "..", "xforg3.py")), # Naik 2 tingkat
+        os.path.abspath(os.path.join(THIS_DIR, "xforg3.py"))              # Folder yang sama
+    ]
+    
+    xforg3_path = None
+    for path in path_options:
+        if os.path.exists(path):
+            xforg3_path = path
+            break
+
+    if xforg3_path:
+        os.execvp(sys.executable, [sys.executable, xforg3_path])
+    else:
+        print(f"\n{RED}[!] Eror: File xforg3.py tidak ditemukan di struktur folder kamu.{RESET}")
+        input("\nTekan Enter untuk melanjutkan...")
 
 
 def exit_program():
