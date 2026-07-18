@@ -130,11 +130,12 @@ def launch_mdk4_menu():
 def return_to_main_menu():
     clear()
     
-    # Cari xforg3.py di beberapa kemungkinan tingkat folder agar tidak salah jalur lagi
+    # Menambahkan opsi pencarian absolut berdasarkan letak direktori kerja di Kali Linux Anda
     path_options = [
+        "/home/kali/xforg3/xforg3.py",                                    # Folder ~/xforg3 langsung
+        os.path.abspath(os.path.join(THIS_DIR, "xforg3.py")),             # Folder yang sama dengan skrip ini
         os.path.abspath(os.path.join(THIS_DIR, "..", "xforg3.py")),       # Naik 1 tingkat
-        os.path.abspath(os.path.join(THIS_DIR, "..", "..", "xforg3.py")), # Naik 2 tingkat
-        os.path.abspath(os.path.join(THIS_DIR, "xforg3.py"))              # Folder yang sama
+        os.path.abspath(os.path.join(THIS_DIR, "..", "..", "xforg3.py"))  # Naik 2 tingkat
     ]
     
     xforg3_path = None
@@ -146,8 +147,11 @@ def return_to_main_menu():
     if xforg3_path:
         os.execvp(sys.executable, [sys.executable, xforg3_path])
     else:
-        print(f"\n{RED}[!] Eror: File xforg3.py tidak ditemukan di struktur folder kamu.{RESET}")
-        input("\nTekan Enter untuk melanjutkan...")
+        print(f"\n{RED}[!] Eror: File xforg3.py tidak ditemukan di sistem.{RESET}")
+        print("Lokasi pengecekan:")
+        for path in path_options:
+            print(f" -> {path}")
+        input("\nTekan Enter untuk kembali...")
 
 
 def exit_program():
