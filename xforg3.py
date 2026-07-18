@@ -77,12 +77,12 @@ def main_menu():
     
     # Cetak ASCII Art banner
     for line in art_lines:
-        print(f"{col_indent}{COLORS['cyan']}{BOLD}{line}{RESET}")
+        print(f"{col_indent}{COLORS['red']}{BOLD}{line}{RESET}")
         
     print() # Baris kosong pemisah banner dengan menu
     
     # Cetak Garis Pemisah Atas
-    print(f"{col_indent}{COLORS['cyan']}{separator}{RESET}")
+    print(f"{col_indent}{COLORS['green']}{separator}{RESET}")
     
     # Cetak Pilihan Menu
     for opt in options:
@@ -90,14 +90,14 @@ def main_menu():
             print()
             continue
             
-        color = COLORS["green"]
+        color = COLORS["cyan"]
         if opt in {"0. EXIT", "99. REGULAR"}:
             color = COLORS["red"]
             
         print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
 
     # Cetak Garis Pemisah Bawah
-    print(f"{col_indent}{COLORS['cyan']}{separator}{RESET}")
+    print(f"{col_indent}{COLORS['green']}{separator}{RESET}")
 
     print("\n")
     try:

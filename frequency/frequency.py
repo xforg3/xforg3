@@ -71,7 +71,7 @@ def draw_menu():
     
     # Cetak ASCII Art banner
     for line in art_lines:
-        print(f"{col_indent}{GREEN}{BOLD}{line}{RESET}")
+        print(f"{col_indent}{RED}{BOLD}{line}{RESET}")
         
     print() # Baris kosong pemisah
     
@@ -84,7 +84,7 @@ def draw_menu():
             print()
             continue
             
-        color = CYAN
+        color = GREEN
         if opt.startswith(("0.", "99.")):
             color = RED
             
