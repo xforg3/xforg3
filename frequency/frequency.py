@@ -17,6 +17,7 @@ CLEAR = "\033[2J\033[H"
 
 RED = "\033[38;5;196m"
 CYAN = "\033[92m"  
+GREEN = "\033[96m"  
 YELLOW = "\033[93m"
 
 ASCII_ART = r""" (    (                          )           )  
@@ -68,7 +69,7 @@ def draw_ascii_art(start_row=1):
     lines = ASCII_ART.splitlines()
     row = start_row
     for line in lines:
-        print_at(row, LEFT_MARGIN, line, CYAN + BOLD)
+        print_at(row, LEFT_MARGIN, line, GREEN + BOLD)
         row += 1
     return row
 
