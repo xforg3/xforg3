@@ -18,7 +18,7 @@ def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def quick_print(text, color=GREEN):
+def quick_print(text, color=CYAN):
     """Cetak teks langsung tanpa animasi."""
     print(f"{color}{BOLD}{text}{RESET}")
 
@@ -50,7 +50,8 @@ def show_menu():
 """
     print(f"{YELLOW}{ascii_art}{RESET}")
     print(f"{CYAN}{'=' * 112}{RESET}")
-    print(f"{GREEN}1. DEAUTH{RESET}")    
+    # MENGUBAH WARNA DARI GREEN MENJADI CYAN BOLD
+    print(f"{CYAN}{BOLD}1. DEAUTH{RESET}")    
     print(f"")    
     print(f"{RED}0. BACK TO MAIN MENU{RESET}")
     print(f"{RED}99. EXIT{RESET}")

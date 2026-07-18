@@ -88,7 +88,8 @@ def draw_menu():
     row += 1
     
     for i, opt in enumerate(MENU_OPTIONS, start=1):
-        print_at(row, LEFT_MARGIN, f"{i}. {opt}", GREEN + BOLD)
+        # MENGUBAH WARNA DARI GREEN MENJADI CYAN BOLD
+        print_at(row, LEFT_MARGIN, f"{i}. {opt}", CYAN + BOLD)
         row += 1
 
     row += 1  # Baris kosong pembatas
