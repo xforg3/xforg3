@@ -21,6 +21,21 @@ COLORS = {
     "yellow": "\033[93m",
 }
 
+ASCII_ART = r"""                                                                            
+                      _____         _____         _____         _____    
+_____      _____ ____|\    \    ____|\    \    ___|\    \    ___|\    \   
+\    \    /    /|    | \    \ /     /\    \  |    |\    \  /    /\    \  
+ \    \  /    / |    |______//     /  \    \ |    | |    ||    |  |____| 
+  \____\/____/  |    |----'\|     |    |    ||    |/____/ |    |    ____ 
+  /    /\    \  |    |_____/|     |    |    ||    |\    \ |    |   |    |
+ /    /  \    \ |    |      |\     \  /    /||    | |    ||    |   |_,  |
+/____/ /\ \____\|____|      | \_____\/____/ ||____| |____||\ ___\___/  /|
+|    |/  \|    ||    |       \ |    ||    | /|    | |    || |   /____ / |
+|____|    |____||____|        \|____||____|/ |____| |____| \|___|    | / 
+ \(        )/    )/             \(    )/      \(     )/      \( |____|/  
+  '        '      '              '    '        '     '        '   )/     
+                                                                  '      """
+
 
 # ================= Util Layar =================
 
@@ -47,18 +62,30 @@ def main_menu():
         "99. REGULAR",
     ]
     
-    # Hitung posisi vertikal agar menu tercetak rapi di tengah layar terminal
-    start_row = max(1, (height // 2) - (len(options) // 2) - 2)
+    col_indent = " " * 6  # Rata kiri menjorok 6 karakter
+    
+    # Pisahkan ASCII Art menjadi per baris
+    art_lines = ASCII_ART.splitlines()
+    
+    # Hitung posisi vertikal agar menu dan banner tercetak rapi di tengah layar terminal
+    total_lines_len = len(art_lines) + 1 + len(options)
+    start_row = max(1, (height // 2) - (total_lines_len // 2) - 2)
     
     # Cetak baris kosong untuk menyesuaikan posisi baris vertikal
     print("\n" * (start_row - 1))
     
+    # Cetak ASCII Art banner
+    for line in art_lines:
+        print(f"{col_indent}{COLORS['cyan']}{BOLD}{line}{RESET}")
+        
+    print() # Baris kosong pemisah banner dengan menu
+    
+    # Cetak Pilihan Menu
     for opt in options:
         if not opt:
             print()
             continue
             
-        col_indent = " " * 6  # Rata kiri menjorok 6 karakter
         color = COLORS["green"]
         if opt in {"0. EXIT", "99. REGULAR"}:
             color = COLORS["red"]
