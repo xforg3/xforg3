@@ -10,6 +10,7 @@ CYAN = "\033[96m"  # Menggunakan ini untuk warna tosca/hijau aqua
 MAGENTA = "\033[95m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
+GREEN = "\033[92m"
 
 
 def clear():
@@ -47,10 +48,10 @@ def show_menu():
  |  '--'  / |  `---.|  | |  |('  '-'(_.-'   |  |   |  | |  |       |  |   |  |  |  `---.|  | \   | ('  '-'(_.-' 
  `-------'  `------'`--' `--'  `-----'      `--'   `--' `--'       `--'   `--'  `------'`--'  `--'   `-----'    
 """
-    print(f"{YELLOW}{ascii_art}{RESET}")
-    print(f"{CYAN}{'=' * 112}{RESET}")
+    print(f"{CYAN}{ascii_art}{RESET}")
+    print(f"{GREEN}{'=' * 112}{RESET}")
     # Diganti ke CYAN + BOLD agar identik dengan FREQUENCY
-    print(f"{CYAN}{BOLD}1. DEAUTH{RESET}")    
+    print(f"{GREEN}{BOLD}1. DEAUTH{RESET}")    
     print(f"")    
     print(f"{RED}{BOLD}0. BACK TO MAIN MENU{RESET}")
     print(f"{RED}{BOLD}99. EXIT{RESET}")
