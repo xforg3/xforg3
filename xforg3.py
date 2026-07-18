@@ -9,11 +9,15 @@ import signal
 import time
 import traceback
 
+# Import deauth module
+import deauth.deauth as deauth_module
+
 app = Flask(__name__)
 
 # Daftar tools yang tersedia
 TOOLS = {
     'bettercap': 'Network monitoring & MITM attacks',
+    'deauth': 'WiFi deauthentication attack',
     'aircrack-ng': 'WEP/WPA/WPA2 password cracking',
     'airgeddon': 'WiFi pentesting suite',
     'mdk4': 'WiFi flooding & deauthentication attacks',
@@ -43,13 +47,16 @@ def tool_page(tool_name):
     if tool_name == 'bettercap':
         return render_template('bettercap.html')
     
+    # Untuk deauth, tampilkan halaman deauth
+    if tool_name == 'deauth':
+        return render_template('deauth.html')
+    
     # Untuk tools lain tetap pakai tool.html
     return render_template('tool.html', tool=tool_name, description=TOOLS[tool_name])
 
 @app.route('/tool/bettercap/ban')
 def bettercap_ban():
     """Halaman khusus untuk bettercap ban"""
-    # Kirim file HTML langsung
     return send_file('frequency/bettercap/bettercap-ban.html')
 
 @app.route('/api/run/<tool_name>', methods=['POST'])
@@ -155,7 +162,6 @@ def scan_network():
         if not os.path.exists(script_path):
             return jsonify({'status': 'error', 'error': 'bettercap-ban.py not found'}), 404
 
-        # --quick: sleep 2s di bettercap; timeout shell + subprocess sebagai hard limit
         cmd = f"timeout 8 python3 {script_path} --scan --quick 2>/dev/null"
         result = subprocess.run(
             cmd,
@@ -194,6 +200,51 @@ def get_attack_status():
     if attack_process and attack_process.poll() is None:
         return jsonify({'status': 'running'})
     return jsonify({'status': 'stopped'})
+
+# ====================== DEAUTH API ROUTES ======================
+
+@app.route('/api/deauth/scan', methods=['GET'])
+def api_deauth_scan():
+    """Scan WiFi networks"""
+    try:
+        result = deauth_module.deauth_scan()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/deauth/start', methods=['POST'])
+def api_deauth_start():
+    """Start deauth attack"""
+    try:
+        data = request.json
+        targets = data.get('targets', [])
+        result = deauth_module.deauth_start(targets)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/deauth/stop', methods=['POST'])
+def api_deauth_stop():
+    """Stop deauth attack"""
+    try:
+        result = deauth_module.deauth_stop()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# ====================== CLEANUP ======================
+
+def cleanup_all():
+    """Cleanup semua proses saat shutdown"""
+    print("\n[*] Cleaning up...")
+    try:
+        deauth_module.deauth_cleanup()
+    except:
+        pass
+    print("[+] Cleanup complete.")
+
+import atexit
+atexit.register(cleanup_all)
 
 if __name__ == '__main__':
     print("""

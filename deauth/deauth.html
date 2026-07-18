@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEAUTH - XFORG3</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* ===== COPY SEMUA STYLE DARI INDEX.HTML ANDA ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #00ff41;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            padding: 20px;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 255, 65, 0.02) 0px,
+                    rgba(0, 255, 65, 0.02) 2px,
+                    transparent 2px,
+                    transparent 6px);
+            pointer-events: none;
+            z-index: 9999;
+            animation: flicker 0.12s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.2; }
+            100% { opacity: 1; }
+        }
+
+        .container {
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid #00ff41;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.15), inset 0 0 30px rgba(0, 255, 65, 0.03);
+            border-radius: 8px;
+            padding: 25px;
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(2px);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            color: #00ff41;
+            text-decoration: none;
+            padding: 8px 20px;
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            transition: all 0.3s;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .back-btn:hover {
+            background: #00ff41;
+            color: #0a0a0a;
+        }
+
+        .glitch-title {
+            font-size: 2.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: #00ff41;
+            position: relative;
+            display: inline-block;
+            text-shadow: 0 0 8px #00ff41;
+            animation: glitch-skew 0.8s ease-in-out 1;
+            margin-bottom: 0;
+        }
+
+        .glitch-title::before,
+        .glitch-title::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            overflow: hidden;
+            clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+            color: #00ff41;
+            text-shadow: -2px 0 #ff00c1, 2px 0 #00ffff;
+            pointer-events: none;
+            animation: glitch-shift 0.4s ease-in-out 1;
+        }
+
+        .glitch-title::after {
+            clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+            text-shadow: -3px 0 #ff00c1, 3px 0 #00ffff;
+            animation: glitch-shift2 0.4s ease-in-out 1;
+        }
+
+        @keyframes glitch-skew {
+            0% { transform: skew(0deg); }
+            20% { transform: skew(3deg); }
+            40% { transform: skew(-3deg); }
+            60% { transform: skew(2deg); }
+            80% { transform: skew(-2deg); }
+            100% { transform: skew(0deg); }
+        }
+
+        @keyframes glitch-shift {
+            0% { transform: translate(0, 0); }
+            20% { transform: translate(-5px, 2px); }
+            40% { transform: translate(5px, -2px); }
+            60% { transform: translate(-3px, 1px); }
+            80% { transform: translate(3px, -1px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes glitch-shift2 {
+            0% { transform: translate(0, 0); }
+            20% { transform: translate(4px, -3px); }
+            40% { transform: translate(-4px, 3px); }
+            60% { transform: translate(2px, -2px); }
+            80% { transform: translate(-2px, 2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .subtitle {
+            color: #00cc33;
+            font-size: 0.9rem;
+            border-left: 3px solid #00ff41;
+            padding-left: 15px;
+            opacity: 0.8;
+            letter-spacing: 2px;
+            margin-top: 4px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #0f0f0f;
+            border: 1px solid #1a3a1a;
+            border-radius: 4px;
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.02);
+            color: #c0dcc0;
+        }
+
+        .card h5 {
+            color: #00ff41;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px dashed #1a3a1a;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 3px;
+            border: 1px solid;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            padding: 8px 16px;
+        }
+
+        .btn-primary {
+            background: #0a0a0a;
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+        .btn-primary:hover {
+            background: #00ff41;
+            color: #0a0a0a;
+            box-shadow: 0 0 25px #00ff41;
+        }
+
+        .btn-danger {
+            background: #0a0a0a;
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #0a0a0a;
+            box-shadow: 0 0 25px #ff4444;
+        }
+
+        .btn-warning {
+            background: #0a0a0a;
+            border-color: #ffaa00;
+            color: #ffaa00;
+        }
+        .btn-warning:hover {
+            background: #ffaa00;
+            color: #0a0a0a;
+            box-shadow: 0 0 25px #ffaa00;
+        }
+
+        .btn-outline-primary {
+            background: transparent;
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+        .btn-outline-primary:hover {
+            background: #00ff41;
+            color: #0a0a0a;
+        }
+
+        .table-dark {
+            background: #0a0a0a;
+            color: #aaffaa;
+            border-color: #1a3a1a;
+        }
+        .table-dark th {
+            color: #00ff41;
+            border-bottom: 2px solid #00ff41;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .table-dark td {
+            border-color: #1a2a1a;
+        }
+        .table-dark tbody tr:hover td {
+            background: #0f1f0f;
+            color: #00ff41;
+        }
+        .table-dark code {
+            color: #00ff41;
+            background: #0a0a0a;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .checkbox-col {
+            width: 40px;
+            text-align: center;
+        }
+        input[type="checkbox"] {
+            accent-color: #00ff41;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            background: #0a0a0a;
+            border: 1px solid #00ff41;
+        }
+
+        .badge {
+            background: #0a0a0a;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .selected-count {
+            background: #0a0a0a;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        #status-msg {
+            background: #0a0a0a;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
+
+        .text-secondary {
+            color: #557755 !important;
+        }
+
+        .signal-kuat { color: #00ff41; }
+        .signal-sedang { color: #ffaa00; }
+        .signal-lemah { color: #ff6600; }
+        .signal-hilang { color: #ff4444; }
+
+        @media (max-width: 700px) {
+            .glitch-title {
+                font-size: 1.8rem;
+                letter-spacing: 3px;
+            }
+            .container {
+                padding: 15px;
+            }
+            .btn {
+                font-size: 0.8rem;
+                padding: 6px 12px;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1a3a1a;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00ff41;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/frequency" class="back-btn">← Back to Tools</a>
+
+    <div class="glitch-title" data-text="WIFI CONTROL PANEL">WIFI CONTROL PANEL</div>
+    <div class="subtitle">// wireless deauth attack interface //</div>
+
+    <p class="text-secondary">
+        <span id="status-msg" class="badge">Ready</span>
+    </p>
+
+    <!-- BARIS TOMBOL UTAMA -->
+    <div class="mb-3 d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" onclick="scanNetworks()">SCAN WIFI</button>
+        <button id="btnDeauth" class="btn btn-warning" onclick="toggleDeauth()">DEAUTH SELECTED</button>
+        <span id="selected-count" class="selected-count align-self-center">0 selected</span>
+    </div>
+
+    <!-- TABEL NETWORK -->
+    <div class="card p-3">
+        <h5>AVAILABLE NETWORKS</h5>
+        <div id="network-table" class="table-responsive">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th class="checkbox-col"><input type="checkbox" id="select-all" onchange="toggleAllCheckboxes()"></th>
+                        <th>#</th>
+                        <th>BSSID</th>
+                        <th>Channel</th>
+                        <th>ESSID</th>
+                        <th>Signal (dBm)</th>
+                        <th>Strength</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="network-body">
+                    <tr><td colspan="8" class="text-center text-secondary">Click SCAN to find networks</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- STATUS DEAUTH -->
+    <div class="card p-3 mt-3">
+        <h5>DEAUTH STATUS</h5>
+        <p class="small">Status: <span id="deauth-status">stopped</span></p>
+        <p class="small">Targets: <span id="deauth-targets">-</span></p>
+    </div>
+
+    <div class="mt-3 text-secondary small">
+        <p>Select one or more targets from the table, then press DEAUTH SELECTED (toggle to start/stop).</p>
+        <p>Deauth will attack all selected targets in round-robin.</p>
+    </div>
+
+</div>
+
+<script>
+    let selectedBSSID = null;
+    let selectedChannel = null;
+    let networks = [];
+    let isDeauthRunning = false;
+
+    // ===== SCAN =====
+    function scanNetworks() {
+        document.getElementById('status-msg').innerText = 'Scanning...';
+        fetch('/api/deauth/scan')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    networks = data.networks;
+                    renderTable(networks);
+                    document.getElementById('status-msg').innerText = 'Scan Complete';
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => alert('Scan failed: ' + err));
+    }
+
+    function renderTable(networks) {
+        let html = '';
+        networks.forEach((net, idx) => {
+            const powerDisplay = net.power !== null && net.power !== undefined ? net.power : '--';
+            const levelClass = 'signal-' + net.signal_level.toLowerCase().replace(' ', '-');
+            html += `<tr>
+                <td class="checkbox-col"><input type="checkbox" class="target-checkbox" data-bssid="${net.bssid}" data-channel="${net.channel}" onchange="updateSelectedCount()"></td>
+                <td>${idx+1}</td>
+                <td><code>${net.bssid}</code></td>
+                <td>${net.channel}</td>
+                <td>${net.essid}</td>
+                <td>${powerDisplay}</td>
+                <td class="${levelClass}">${net.signal_level}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="selectTarget('${net.bssid}', '${net.channel}')">
+                        Select
+                    </button>
+                </td>
+            </tr>`;
+        });
+        document.getElementById('network-body').innerHTML = html || '<tr><td colspan="8">No networks found</td></tr>';
+        updateSelectedCount();
+    }
+
+    function selectTarget(bssid, channel) {
+        selectedBSSID = bssid;
+        selectedChannel = channel;
+        document.getElementById('status-msg').innerText = 'Target: ' + bssid;
+    }
+
+    // ===== CHECKBOX =====
+    function toggleAllCheckboxes() {
+        const checked = document.getElementById('select-all').checked;
+        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = checked);
+        updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.target-checkbox:checked');
+        const count = checkboxes.length;
+        document.getElementById('selected-count').innerText = count + ' selected';
+        if (count > 0) {
+            const bssids = Array.from(checkboxes).map(cb => cb.dataset.bssid).join(', ');
+            document.getElementById('deauth-targets').innerText = bssids;
+        } else {
+            document.getElementById('deauth-targets').innerText = '-';
+        }
+    }
+
+    function getSelectedTargets() {
+        const checkboxes = document.querySelectorAll('.target-checkbox:checked');
+        return Array.from(checkboxes).map(cb => ({
+            bssid: cb.dataset.bssid,
+            channel: cb.dataset.channel
+        }));
+    }
+
+    // ===== DEAUTH TOGGLE =====
+    function toggleDeauth() {
+        const btn = document.getElementById('btnDeauth');
+        if (isDeauthRunning) {
+            // Stop deauth
+            fetch('/api/deauth/stop', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    isDeauthRunning = false;
+                    btn.innerText = 'DEAUTH SELECTED';
+                    btn.className = 'btn btn-warning';
+                    document.getElementById('deauth-status').innerText = 'stopped';
+                    document.getElementById('status-msg').innerText = 'Deauth stopped';
+                })
+                .catch(err => alert('Error: ' + err));
+        } else {
+            // Start deauth
+            const targets = getSelectedTargets();
+            if (targets.length === 0) {
+                alert('Select at least 1 target from the table!');
+                return;
+            }
+            document.getElementById('status-msg').innerText = 'Starting Deauth...';
+            fetch('/api/deauth/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targets: targets })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                isDeauthRunning = true;
+                btn.innerText = 'STOP DEAUTH';
+                btn.className = 'btn btn-danger';
+                document.getElementById('deauth-status').innerText = 'running on ' + targets.length + ' target(s)';
+                document.getElementById('status-msg').innerText = 'Deauth running';
+            })
+            .catch(err => alert('Error: ' + err));
+        }
+    }
+
+    // ===== INIT =====
+    document.addEventListener('DOMContentLoaded', function() {
+        updateSelectedCount();
+        document.getElementById('deauth-status').innerText = 'stopped';
+    });
+</script>
+
+</body>
+</html>

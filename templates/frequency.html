@@ -1,35 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FREQUENCY - XFORG3</title>
-    <link rel="stylesheet" href="/static/style.css" />
-  </head>
-  <body>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
     <div class="container">
-      <div class="header">
-        <a href="/" class="back-btn">← Back</a>
-        <h1>📡 FREQUENCY</h1>
-        <p class="subtitle">Select a tool to launch</p>
-      </div>
-
-      <div class="tool-grid">
-        {% for tool, description in tools.items() %}
-        <div class="tool-card" onclick="openTool('{{ tool }}')">
-          <div class="tool-icon">{% if tool == 'bettercap' %}🛡️ {% elif tool == 'aircrack-ng' %}🔑 {% elif tool == 'airgeddon' %}📶 {% elif tool == 'mdk4' %}💥 {% elif tool == 'frequency' %}📊 {% else %}🔧 {% endif %}</div>
-          <h3>{{ tool.upper() }}</h3>
-          <p>{{ description }}</p>
-          <button class="launch-btn">Launch →</button>
+        <div class="header">
+            <a href="/" class="back-btn">← Back</a>
+            <h1>📡 FREQUENCY</h1>
+            <p class="subtitle">Select a tool to launch</p>
         </div>
-        {% endfor %}
-      </div>
+        
+        <div class="tool-grid">
+            <!-- Bettercap -->
+            <div class="tool-card" onclick="openTool('bettercap')">
+                <div class="tool-icon">🛡️</div>
+                <h3>BETTERCAP</h3>
+                <p>Network monitoring & MITM attacks</p>
+                <button class="launch-btn">Launch →</button>
+            </div>
+            
+            <!-- DEAUTH (BARU) -->
+            <div class="tool-card" onclick="openTool('deauth')">
+                <div class="tool-icon">📶</div>
+                <h3>DEAUTH</h3>
+                <p>WiFi deauthentication attack</p>
+                <button class="launch-btn">Launch →</button>
+            </div>
+            
+            <!-- Aircrack-ng -->
+            <div class="tool-card" onclick="openTool('aircrack-ng')">
+                <div class="tool-icon">🔑</div>
+                <h3>AIRCRACK-NG</h3>
+                <p>WEP/WPA/WPA2 password cracking</p>
+                <button class="launch-btn">Launch →</button>
+            </div>
+            
+            <!-- Airgeddon -->
+            <div class="tool-card" onclick="openTool('airgeddon')">
+                <div class="tool-icon">📶</div>
+                <h3>AIRGEDDON</h3>
+                <p>WiFi pentesting suite</p>
+                <button class="launch-btn">Launch →</button>
+            </div>
+            
+            <!-- Mdk4 -->
+            <div class="tool-card" onclick="openTool('mdk4')">
+                <div class="tool-icon">💥</div>
+                <h3>MDK4</h3>
+                <p>WiFi flooding & deauthentication attacks</p>
+                <button class="launch-btn">Launch →</button>
+            </div>
+            
+            <!-- Frequency -->
+            <div class="tool-card" onclick="openTool('frequency')">
+                <div class="tool-icon">📊</div>
+                <h3>FREQUENCY</h3>
+                <p>Frequency analysis tool</p>
+                <button class="launch-btn">Launch →</button>
+            </div>
+        </div>
     </div>
-
+    
     <script>
-      function openTool(toolName) {
-        window.location.href = `/tool/${toolName}`;
-      }
+        function openTool(toolName) {
+            window.location.href = `/tool/${toolName}`;
+        }
     </script>
-  </body>
+</body>
 </html>
