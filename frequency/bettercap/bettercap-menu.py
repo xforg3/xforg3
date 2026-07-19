@@ -61,7 +61,6 @@ def launch_bettercap():
     clear_screen()
     quick_print("LAUNCHING SUDO BETTERCAP...", CYAN)
     try:
-        # Menjalankan perintah 'sudo bettercap' langsung menggantikan proses saat ini
         os.execvp("sudo", ["sudo", "bettercap"])
     except FileNotFoundError:
         print(f"      {RED}{BOLD}Error: 'sudo' atau 'bettercap' tidak ditemukan di sistem.{RESET}")
@@ -80,27 +79,21 @@ def show_menu():
         "99. EXIT"
     ]
     
-    col_indent = " " * 6  # Konsisten menjorok 6 karakter ke kiri
+    col_indent = " " * 6
     separator = "=" * 112
     art_lines = ASCII_ART.splitlines()
     
-    # Kalkulasi penempatan baris kosong agar berada tepat di tengah layar vertikal
     total_lines_len = len(art_lines) + 3 + len(options)
     start_row = max(1, (height // 2) - (total_lines_len // 2) - 2)
     
-    # Cetak margin spasi bagian atas
     print("\n" * (start_row - 1))
     
-    # Cetak ASCII Art banner (Warna RED)
     for line in art_lines:
         print(f"{col_indent}{RED}{BOLD}{line}{RESET}")
         
-    print()  # Jeda baris kosong antara banner dan menu
-    
-    # Cetak Garis Pemisah Atas (Warna GREEN)
+    print()
     print(f"{col_indent}{GREEN}{separator}{RESET}")
     
-    # Cetak Opsi Pilihan Menu (Warna CYAN / RED)
     for opt in options:
         if not opt:
             print()
@@ -112,7 +105,6 @@ def show_menu():
             
         print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
 
-    # Cetak Garis Pemisah Bawah (Warna GREEN)
     print(f"{col_indent}{GREEN}{separator}{RESET}")
     print("\n")
 
