@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free WiFi</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        h2 { color: #1a73e8; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { background: #1a73e8; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #1557b0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>🌐 Free WiFi</h2>
+        <p>Masukkan data Anda untuk mengakses internet</p>
+        <form method="POST" action="/">
+            <input type="text" name="name" placeholder="Nama Lengkap" required>
+            <input type="email" name="email" placeholder="Alamat Email" required>
+            <input type="text" name="phone" placeholder="Nomor HP" required>
+            <button type="submit">Kirim & Akses Internet</button>
+        </form>
+    </div>
+</body>
+</html>
