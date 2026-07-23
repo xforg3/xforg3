@@ -21,9 +21,6 @@ GLITCH_CHARS = "!@#$%^&*<>/\\|~?01"
 GLITCH_COLORS = [GREEN, RED, CYAN, MAGENTA, YELLOW]
 
 
-def clear_screen():
-    os.system('' if os.name == 'nt' else 'clear')
-
 
 def glitch_text(text):
     return f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
@@ -145,7 +142,7 @@ def start_monitor_mode(adapter):
 
 
 def scan_networks(adapter, duration=10):
-    clear_screen()
+
     glitch_print("SCANNING WIFI NETWORKS...")
     
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
@@ -200,7 +197,7 @@ def scan_networks(adapter, duration=10):
 
 
 def stop_monitor_mode(monitor_iface):
-    clear_screen()
+
     
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
@@ -214,7 +211,7 @@ def stop_monitor_mode(monitor_iface):
             break
 
     run_command(["sudo", "systemctl", "restart", "NetworkManager"], None, show_output=False)
-    clear_screen()
+
 
 
 def parse_target_selection(choice_str, total_targets):
@@ -474,7 +471,7 @@ def select_interface():
         if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
             selected = ifaces[int(choice) - 1]
             glitch_print(f"LOCKED: {selected}")
-            clear_screen()
+        
             return selected
         print("Input salah, coba lagi.")
 
@@ -489,7 +486,7 @@ def main():
                 adapter = select_interface()
                 monitor_iface = start_monitor_mode(adapter)
 
-            clear_screen()
+        
             
             # Pilih mode serangan
             attack_mode = select_attack_mode()
@@ -533,7 +530,7 @@ def main():
             if action == "exit":
                 if monitor_iface:
                     stop_monitor_mode(monitor_iface)
-                clear_screen()
+            
                 sys.exit(0)
 
 
