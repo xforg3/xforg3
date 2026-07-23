@@ -22,7 +22,7 @@ GLITCH_COLORS = [GREEN, RED, CYAN, MAGENTA, YELLOW]
 
 
 def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    os.system('' if os.name == 'nt' else 'clear')
 
 
 def glitch_text(text):
