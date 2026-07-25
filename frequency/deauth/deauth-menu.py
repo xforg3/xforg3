@@ -3,6 +3,7 @@ import time
 import sys
 import os
 import shutil
+import subprocess
 
 # Warna Terminal
 RED = "\033[91m"
@@ -40,6 +41,39 @@ def launch_aireplay_ng():
     time.sleep(0.5)
 
 
+def launch_deauth_web():
+    """Menjalankan deauth-web dari folder deauth-web/start.py dengan sudo"""
+    clear_screen()
+    quick_print("LAUNCHING DEAUTH WEB INTERFACE...", MAGENTA)
+    
+    # Path ke folder deauth-web dan start.py
+    script_dir = os.path.dirname(__file__)
+    deauth_web_dir = os.path.join(script_dir, "deauth-web")
+    start_script = os.path.join(deauth_web_dir, "start.py")
+    
+    # Cek apakah folder dan file exist
+    if os.path.exists(start_script):
+        quick_print(f"Starting deauth-web from: {start_script}", CYAN)
+        time.sleep(1)
+        
+        # Jalankan dengan sudo python3
+        try:
+            # Pindah ke direktori deauth-web terlebih dahulu
+            os.chdir(deauth_web_dir)
+            # Jalankan dengan sudo
+            subprocess.run(["sudo", "python3", "start.py"])
+        except Exception as e:
+            print(f"      {RED}{BOLD}Error running deauth-web: {e}{RESET}")
+            time.sleep(2)
+        finally:
+            # Kembali ke direktori script
+            os.chdir(script_dir)
+    else:
+        print(f"      {RED}{BOLD}deauth-web/start.py not found at: {start_script}{RESET}")
+        print(f"      {YELLOW}{BOLD}Please make sure deauth-web folder exists in the same directory.{RESET}")
+        time.sleep(2)
+
+
 def show_menu():
     clear_screen()
     _, height = get_size()
@@ -58,6 +92,7 @@ def show_menu():
 
     options = [
         "1. DEAUTH",
+        "2. DEAUTH (BUT IN WEBSITE)",
         "",
         "0. BACK TO MAIN MENU",
         "99. EXIT"
@@ -90,6 +125,8 @@ def show_menu():
         color = CYAN
         if opt.startswith(("0.", "99.")):
             color = RED
+        elif opt.startswith("2."):
+            color = MAGENTA  # Warna khusus untuk opsi deauth web
             
         print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
         
@@ -99,25 +136,32 @@ def show_menu():
 
 
 def main():
-    show_menu()
-    try:
-        choice = input(f"      {BOLD}{YELLOW}>> option : {RESET}")
-    except (KeyboardInterrupt, EOFError):
-        choice = "0"
+    while True:  # Loop agar bisa kembali ke menu setelah deauth-web selesai
+        show_menu()
+        try:
+            choice = input(f"      {BOLD}{YELLOW}>> option : {RESET}")
+        except (KeyboardInterrupt, EOFError):
+            choice = "0"
 
-    if choice.strip() == "1":
-        launch_aireplay_ng()
-    elif choice.strip() == "0":
-        parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frequency.py"))
-        if not os.path.exists(parent):
-            parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frequency.py"))
-        os.execvp(sys.executable, [sys.executable, parent])
-    elif choice.strip() == "99":
-        clear_screen()
-        sys.exit(0)
-    else:
-        print(f"      {RED}{BOLD}Pilihan tidak valid!{RESET}")
-        time.sleep(0.6)
+        if choice.strip() == "1":
+            launch_aireplay_ng()
+            break  # Exit setelah menjalankan aireplay
+        elif choice.strip() == "2":
+            launch_deauth_web()
+            # Setelah selesai, kembali ke menu utama (loop)
+            continue
+        elif choice.strip() == "0":
+            parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frequency.py"))
+            if not os.path.exists(parent):
+                parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frequency.py"))
+            os.execvp(sys.executable, [sys.executable, parent])
+            break
+        elif choice.strip() == "99":
+            clear_screen()
+            sys.exit(0)
+        else:
+            print(f"      {RED}{BOLD}Pilihan tidak valid!{RESET}")
+            time.sleep(0.6)
 
 
 if __name__ == "__main__":
