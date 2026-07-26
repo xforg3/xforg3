@@ -57,14 +57,12 @@ def print_banner():
 def get_local_ip():
     """Dapatkan IP lokal untuk akses dari perangkat lain"""
     try:
-        # Buat koneksi ke IP eksternal untuk mendapatkan IP lokal
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
         return ip
     except:
-        # Fallback: coba dari hostname
         try:
             return socket.gethostbyname(socket.gethostname())
         except:
@@ -90,10 +88,8 @@ def run_flask_as_sudo():
             bufsize=1
         )
         
-        # Tunggu Flask siap
         time.sleep(3)
         
-        # Cek apakah Flask berjalan
         try:
             import requests
             response = requests.get('http://localhost:5000', timeout=2)
@@ -116,16 +112,13 @@ def main():
     print_status("Starting MDK4 Web Interface...", "info")
     print()
     
-    # Dapatkan IP lokal
     local_ip = get_local_ip()
     
-    # Jalankan Flask
     flask_process = run_flask_as_sudo()
     if not flask_process:
         print_status("Failed to start Flask!", "error")
         sys.exit(1)
     
-    # Tampilkan URL
     print()
     print(f"{GREEN}{'='*70}{RESET}")
     print(f"{MAGENTA}{BOLD}🌐 MDK4 WEB INTERFACE READY{RESET}")
@@ -137,12 +130,11 @@ def main():
     print()
     print(f"{YELLOW}💡 Tips:{RESET}")
     print(f"   - Pastikan perangkat terhubung ke WiFi yang sama")
-    print(f"   - Matikan firewall jika perlu")
+    print(f"   - Matikan firewall jika perlu: sudo ufw disable")
     print(f"   - CTRL+Click URL di atas untuk buka di browser")
     print(f"{GREEN}{'='*70}{RESET}")
     print(f"{YELLOW}Press Ctrl+C to stop server{RESET}\n")
     
-    # Cleanup
     def cleanup(sig, frame):
         print("\n[*] Stopping Flask...")
         try:
@@ -150,14 +142,13 @@ def main():
             flask_process.wait(timeout=2)
         except:
             pass
-        subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
+        subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
         print("[+] Cleanup complete.")
         sys.exit(0)
     
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
     
-    # Loop - cek Flask masih jalan
     try:
         while True:
             if flask_process.poll() is not None:
