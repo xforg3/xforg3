@@ -88,13 +88,13 @@ def launch_mdk4_terminal():
     clear_screen()
     print(f"{CYAN}[*] Launching MDK4 Terminal Version...{RESET}")
     
-    # Cari mdk4-menu.py di direktori yang sama atau subfolder
+    # Cari file mdk4-deauth.py atau mdk4-menu.py di direktori yang sama
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
+    # Coba cari mdk4-menu.py dulu
     possible_paths = [
         os.path.join(script_dir, "mdk4-menu.py"),
         os.path.join(script_dir, "mdk4", "mdk4-menu.py"),
-        os.path.join(script_dir, "..", "mdk4", "mdk4-menu.py"),
     ]
     
     for path in possible_paths:
@@ -110,41 +110,51 @@ def launch_mdk4_terminal():
 
 
 def launch_mdk4_web():
-    """Jalankan MDK4 Web Version (start.py di folder mdk4-website)"""
+    """Jalankan MDK4 Web Version - langsung cd ke mdk4-website dan sudo python3 start.py"""
     clear_screen()
-    print(f"{MAGENTA}[*] Launching MDK4 Web Version...{RESET}")
-    print(f"{MAGENTA}[*] Starting web server...{RESET}")
+    print(f"{MAGENTA}{BOLD}╔══════════════════════════════════════════════════════════════╗{RESET}")
+    print(f"{MAGENTA}{BOLD}║              MDK4 WEB VERSION - STARTING...                  ║{RESET}")
+    print(f"{MAGENTA}{BOLD}╚══════════════════════════════════════════════════════════════╝{RESET}")
+    print()
     
-    # Cari mdk4-website/start.py
+    # Cari folder mdk4-website
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    mdk4_web_dir = os.path.join(script_dir, "mdk4-website")
     
-    possible_paths = [
-        os.path.join(script_dir, "mdk4-website", "start.py"),
-        os.path.join(script_dir, "..", "mdk4-website", "start.py"),
-        os.path.join(os.path.dirname(script_dir), "mdk4-website", "start.py"),
-    ]
+    # Cek apakah folder mdk4-website ada
+    if not os.path.exists(mdk4_web_dir):
+        print(f"{RED}[-] Folder mdk4-website not found at: {mdk4_web_dir}{RESET}")
+        print(f"{YELLOW}[!] Make sure folder mdk4-website exists{RESET}")
+        input("\nPress Enter to continue...")
+        main()
+        return
     
-    for path in possible_paths:
-        if os.path.exists(path):
-            print(f"{GREEN}[+] Found: {path}{RESET}")
-            print(f"{GREEN}[+] Starting MDK4 Web Interface...{RESET}")
-            print(f"{YELLOW}[!] Press Ctrl+C to stop server{RESET}\n")
-            
-            # Jalankan start.py dengan python3
-            os.execvp(sys.executable, [sys.executable, path])
-            return
+    # Cek apakah start.py ada
+    start_py = os.path.join(mdk4_web_dir, "start.py")
+    if not os.path.exists(start_py):
+        print(f"{RED}[-] start.py not found at: {start_py}{RESET}")
+        print(f"{YELLOW}[!] Make sure start.py exists in mdk4-website folder{RESET}")
+        input("\nPress Enter to continue...")
+        main()
+        return
     
-    # Kalau tidak ditemukan, coba cari di direktori lain
-    print(f"{RED}[-] mdk4-website/start.py not found!{RESET}")
-    print(f"{YELLOW}[!] Make sure folder mdk4-website exists with start.py{RESET}")
-    print(f"{YELLOW}[!] Structure should be:{RESET}")
-    print(f"    ./mdk4-website/")
-    print(f"    ./mdk4-website/start.py")
-    print(f"    ./mdk4-website/app.py")
-    print(f"    ./mdk4-website/templates/index.html")
+    print(f"{GREEN}[+] Found: {mdk4_web_dir}{RESET}")
+    print(f"{GREEN}[+] Found: {start_py}{RESET}")
+    print()
+    print(f"{CYAN}[*] Changing directory to: {mdk4_web_dir}{RESET}")
+    print(f"{CYAN}[*] Running: sudo python3 start.py{RESET}")
+    print()
+    print(f"{YELLOW}[!] Press Ctrl+C to stop server{RESET}\n")
+    print(f"{GREEN}{'='*70}{RESET}\n")
     
-    input("\nPress Enter to continue...")
-    main()
+    # Pindah direktori dan jalankan start.py dengan sudo
+    try:
+        os.chdir(mdk4_web_dir)
+        os.execvp("sudo", ["sudo", "python3", "start.py"])
+    except Exception as e:
+        print(f"{RED}[-] Failed to run: {e}{RESET}")
+        input("\nPress Enter to continue...")
+        main()
 
 
 def main():
