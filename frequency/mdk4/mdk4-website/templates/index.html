@@ -24,7 +24,6 @@
             margin: 0 auto;
         }
         
-        /* Header */
         .header {
             text-align: center;
             padding: 20px 0;
@@ -45,7 +44,6 @@
             margin-top: 10px;
         }
         
-        /* Grid Layout */
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -58,7 +56,6 @@
             }
         }
         
-        /* Cards */
         .card {
             background: #111;
             border: 1px solid #00ff00;
@@ -87,7 +84,6 @@
             border-radius: 10px;
         }
         
-        /* Status */
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -104,7 +100,6 @@
             50% { opacity: 0.3; }
         }
         
-        /* Interface List */
         .iface-list {
             display: flex;
             gap: 10px;
@@ -134,7 +129,6 @@
             font-size: 0.7em;
         }
         
-        /* Network Table */
         .network-table {
             width: 100%;
             border-collapse: collapse;
@@ -162,6 +156,11 @@
             background: #1a3a1a;
         }
         
+        .network-table tr.disabled td {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
         .network-table .bssid {
             color: #ff8800;
             font-size: 0.8em;
@@ -175,7 +174,6 @@
             color: #ffffff;
         }
         
-        /* Buttons */
         .btn {
             background: transparent;
             border: 1px solid #00ff00;
@@ -188,7 +186,7 @@
             transition: all 0.3s;
         }
         
-        .btn:hover {
+        .btn:hover:not(:disabled) {
             background: #00ff00;
             color: #000;
         }
@@ -198,7 +196,7 @@
             color: #ff0000;
         }
         
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: #ff0000;
             color: #000;
         }
@@ -208,7 +206,7 @@
             color: #ff8800;
         }
         
-        .btn-warning:hover {
+        .btn-warning:hover:not(:disabled) {
             background: #ff8800;
             color: #000;
         }
@@ -225,7 +223,6 @@
             margin-top: 15px;
         }
         
-        /* Attack Controls */
         .attack-controls {
             display: flex;
             flex-direction: column;
@@ -248,7 +245,7 @@
             color: #666;
         }
         
-        .attack-option:hover {
+        .attack-option:hover:not(.disabled) {
             border-color: #00ff00;
         }
         
@@ -258,7 +255,17 @@
             background: #1a3a1a;
         }
         
-        /* Log */
+        .attack-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .attack-option .hint {
+            font-size: 0.6em;
+            color: #ff8800;
+            display: block;
+        }
+        
         .log-box {
             background: #0a0a0a;
             border: 1px solid #333;
@@ -276,7 +283,6 @@
         .log-box .log-warning { color: #ff8800; }
         .log-box .log-info { color: #00ccff; }
         
-        /* Scan Duration */
         .scan-duration {
             display: flex;
             gap: 10px;
@@ -294,14 +300,16 @@
             font-family: 'Courier New', monospace;
         }
         
-        /* Selection info */
         .selection-info {
             color: #ff8800;
             font-size: 0.8em;
             margin: 5px 0;
         }
         
-        /* Scrollbar */
+        .selection-info .warning {
+            color: #ff0000;
+        }
+        
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -313,7 +321,6 @@
             border-radius: 4px;
         }
         
-        /* Loading */
         .loading {
             color: #ff8800;
             animation: blink 0.5s infinite;
@@ -322,6 +329,24 @@
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .attack-info-box {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #666;
+            min-height: 30px;
         }
     </style>
 </head>
@@ -335,13 +360,14 @@
         
         <!-- Status Bar -->
         <div class="card" style="border-color: #333;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div class="status-bar">
                 <div>
                     <span id="attackStatus">
                         <span class="status-indicator status-idle"></span>
                         <span>Idle</span>
                     </span>
                     <span style="margin-left:20px; color:#666;" id="targetInfo">No target</span>
+                    <span style="margin-left:20px; color:#666;" id="attackInfoDisplay">-</span>
                 </div>
                 <div>
                     <button class="btn btn-danger" id="stopBtn" disabled>⏹ STOP</button>
@@ -402,9 +428,18 @@
                     <div class="attack-controls">
                         <label style="color:#666; font-size:0.8em;">Select Attack Type:</label>
                         <div class="attack-options">
-                            <div class="attack-option" data-type="deauth">Deauth</div>
-                            <div class="attack-option" data-type="beacon">Beacon</div>
-                            <div class="attack-option" data-type="authdos">Auth DOS</div>
+                            <div class="attack-option" data-type="deauth" onclick="selectAttackType('deauth')">
+                                Deauth
+                                <span class="hint">multiple targets</span>
+                            </div>
+                            <div class="attack-option" data-type="beacon" onclick="selectAttackType('beacon')">
+                                Beacon
+                                <span class="hint">no target needed</span>
+                            </div>
+                            <div class="attack-option" data-type="authdos" onclick="selectAttackType('authdos')">
+                                Auth DOS
+                                <span class="hint">1 target only</span>
+                            </div>
                         </div>
                         
                         <div class="btn-group">
@@ -412,8 +447,8 @@
                             <button class="btn btn-danger" id="stopBtn2">⏹ STOP</button>
                         </div>
                         
-                        <div style="color:#666; font-size:0.75em; border-top:1px solid #1a1a1a; padding-top:10px; margin-top:5px;">
-                            <span id="attackInfo">Select targets and attack type</span>
+                        <div class="attack-info-box" id="attackInfo">
+                            Select targets and attack type
                         </div>
                     </div>
                 </div>
@@ -458,6 +493,7 @@
         const attackInfo = $('attackInfo');
         const statusText = $('statusText');
         const targetInfo = $('targetInfo');
+        const attackInfoDisplay = $('attackInfoDisplay');
         
         // ====================== LOG ======================
         function addLog(message, type = 'info') {
@@ -526,9 +562,12 @@
                 
                 if (data.status === 'success') {
                     state.networks = data.networks || [];
+                    // Reset selected targets
+                    state.selectedTargets = [];
                     renderNetworks();
                     networkCount.textContent = state.networks.length;
                     addLog(`Found ${state.networks.length} networks`, 'success');
+                    updateAttackInfo();
                 } else {
                     addLog(`Scan failed: ${data.message}`, 'error');
                     networkList.innerHTML = `<div style="color:#ff0000;">Error: ${data.message}</div>`;
@@ -545,6 +584,9 @@
                 return;
             }
             
+            // Cek apakah target selection disabled (beacon mode)
+            const isDisabled = state.attackType === 'beacon';
+            
             const html = `
                 <table class="network-table">
                     <thead>
@@ -557,36 +599,84 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${state.networks.map((net, idx) => `
-                            <tr class="${state.selectedTargets.includes(idx) ? 'selected' : ''}"
-                                onclick="toggleTarget(${idx})">
-                                <td>${idx + 1}</td>
-                                <td class="essid">${net.essid || '[Hidden]'}</td>
-                                <td class="channel">${net.channel || '?'}</td>
-                                <td class="bssid">${net.bssid}</td>
-                                <td>${net.power !== null ? net.power : '?'}</td>
-                            </tr>
-                        `).join('')}
+                        ${state.networks.map((net, idx) => {
+                            const isSelected = state.selectedTargets.includes(idx);
+                            return `
+                                <tr class="${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
+                                    onclick="${isDisabled ? '' : `toggleTarget(${idx})`}">
+                                    <td>${idx + 1}</td>
+                                    <td class="essid">${net.essid || '[Hidden]'}</td>
+                                    <td class="channel">${net.channel || '?'}</td>
+                                    <td class="bssid">${net.bssid}</td>
+                                    <td>${net.power !== null ? net.power : '?'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             `;
             networkList.innerHTML = html;
+            
+            // Tampilkan hint kalau beacon mode
+            if (isDisabled) {
+                const hint = document.createElement('div');
+                hint.style.cssText = 'color:#ff8800; font-size:0.8em; padding:5px 0;';
+                hint.textContent = 'ℹ️ Beacon mode: No targets needed';
+                networkList.appendChild(hint);
+            }
+            
             updateSelectionInfo();
         }
         
         function toggleTarget(idx) {
-            const index = state.selectedTargets.indexOf(idx);
-            if (index > -1) {
-                state.selectedTargets.splice(index, 1);
-            } else {
-                state.selectedTargets.push(idx);
+            // Cegah seleksi kalau beacon mode
+            if (state.attackType === 'beacon') {
+                return;
             }
+            
+            // 🔥 FIX: Auth DOS hanya boleh 1 target
+            if (state.attackType === 'authdos') {
+                // Kalau udah ada target yang dipilih, dan user klik target lain
+                if (state.selectedTargets.length === 1 && !state.selectedTargets.includes(idx)) {
+                    // Replace dengan target baru
+                    state.selectedTargets = [idx];
+                    addLog(`Auth DOS: Switched to target ${idx+1}`, 'warning');
+                } else if (state.selectedTargets.includes(idx)) {
+                    // Deselect
+                    state.selectedTargets = [];
+                } else {
+                    // Select first target
+                    state.selectedTargets = [idx];
+                }
+            } else {
+                // Deauth: toggle normal
+                const index = state.selectedTargets.indexOf(idx);
+                if (index > -1) {
+                    state.selectedTargets.splice(index, 1);
+                } else {
+                    state.selectedTargets.push(idx);
+                }
+            }
+            
             renderNetworks();
             updateAttackInfo();
         }
         
         function selectAll() {
-            state.selectedTargets = state.networks.map((_, i) => i);
+            // 🔥 FIX: Auth DOS hanya boleh 1 target
+            if (state.attackType === 'authdos') {
+                if (state.networks.length > 0) {
+                    state.selectedTargets = [0];
+                    addLog('Auth DOS: Only 1 target allowed', 'warning');
+                }
+            } else if (state.attackType === 'beacon') {
+                // Beacon: no targets
+                state.selectedTargets = [];
+                addLog('Beacon mode: No targets needed', 'info');
+            } else {
+                // Deauth: select all
+                state.selectedTargets = state.networks.map((_, i) => i);
+            }
             renderNetworks();
             updateAttackInfo();
         }
@@ -598,16 +688,55 @@
         }
         
         function updateSelectionInfo() {
-            selectionInfo.textContent = `${state.selectedTargets.length} targets selected`;
+            const count = state.selectedTargets.length;
+            let info = `${count} targets selected`;
+            
+            if (state.attackType === 'beacon') {
+                info = 'ℹ️ Beacon: No targets needed';
+            } else if (state.attackType === 'authdos' && count > 1) {
+                info = `⚠️ Auth DOS: Only 1 target allowed! (${count} selected, using first)`;
+            }
+            
+            selectionInfo.innerHTML = info;
         }
         
         // ====================== ATTACK ======================
         function selectAttackType(type) {
+            if (state.attackRunning) {
+                addLog('Attack is running! Stop first.', 'warning');
+                return;
+            }
+            
             state.attackType = type;
+            
+            // Update UI
             document.querySelectorAll('.attack-option').forEach(el => {
                 el.classList.toggle('active', el.dataset.type === type);
             });
+            
             attackTypeDisplay.textContent = type ? type.toUpperCase() : 'None';
+            
+            // 🔥 FIX: Handle target selection based on attack type
+            if (type === 'beacon') {
+                // Beacon: clear all targets
+                state.selectedTargets = [];
+                addLog('Beacon mode: No targets needed - auto deselected', 'info');
+            } else if (type === 'authdos') {
+                // Auth DOS: hanya boleh 1 target
+                if (state.selectedTargets.length > 1) {
+                    // Keep only first target
+                    const firstTarget = state.selectedTargets[0];
+                    state.selectedTargets = [firstTarget];
+                    addLog('Auth DOS: Only 1 target allowed - auto reduced to 1', 'warning');
+                } else if (state.selectedTargets.length === 0 && state.networks.length > 0) {
+                    // Auto select first target
+                    state.selectedTargets = [0];
+                    addLog('Auth DOS: Auto-selected first target', 'info');
+                }
+            }
+            // Deauth: keep targets as is
+            
+            renderNetworks();
             updateAttackInfo();
             addLog(`Attack type set to: ${type}`, 'info');
         }
@@ -615,17 +744,40 @@
         function updateAttackInfo() {
             const targetCount = state.selectedTargets.length;
             const type = state.attackType || 'none';
-            let info = `Type: ${type.toUpperCase()} | Targets: ${targetCount}`;
+            const totalNetworks = state.networks.length;
+            
+            let info = '';
+            let displayInfo = '';
+            
             if (type === 'beacon') {
-                info = 'Beacon flood (no targets needed)';
-            } else if (type === 'authdos' && targetCount === 0) {
-                info = '⚠️ Auth DOS needs 1 target';
-            } else if ((type === 'deauth' || type === 'authdos') && targetCount === 0) {
-                info = '⚠️ Select at least 1 target';
+                info = '📡 Beacon flood - No targets needed';
+                displayInfo = 'Beacon: Fake AP flood';
+            } else if (type === 'authdos') {
+                if (targetCount === 0) {
+                    info = '⚠️ Auth DOS needs 1 target. Select a target or use "Select All"';
+                } else if (targetCount === 1) {
+                    const target = state.networks[state.selectedTargets[0]];
+                    info = `🎯 Auth DOS: ${target.essid} (${target.bssid})`;
+                    displayInfo = `Auth DOS: ${target.essid}`;
+                } else {
+                    info = `⚠️ Auth DOS only 1 target! Using first: ${state.networks[state.selectedTargets[0]].essid}`;
+                    displayInfo = `Auth DOS: ${state.networks[state.selectedTargets[0]].essid} (+${targetCount-1} ignored)`;
+                }
+            } else if (type === 'deauth') {
+                if (targetCount === 0) {
+                    info = '⚠️ Deauth needs at least 1 target. Select targets or use "Select All"';
+                } else {
+                    info = `🎯 Deauth: ${targetCount} target(s) selected`;
+                    displayInfo = `Deauth: ${targetCount} targets`;
+                }
             } else {
-                info = `Ready: ${type.toUpperCase()} | ${targetCount} target(s)`;
+                info = 'Select targets and attack type';
+                displayInfo = '-';
             }
+            
             attackInfo.textContent = info;
+            attackInfoDisplay.textContent = displayInfo;
+            updateSelectionInfo();
         }
         
         async function startAttack() {
@@ -644,11 +796,29 @@
                 return;
             }
             
+            // 🔥 FIX: Validasi target berdasarkan tipe
             if (state.attackType === 'beacon') {
-                // Beacon doesn't need targets
-            } else if (state.selectedTargets.length === 0) {
-                addLog(`${state.attackType.toUpperCase()} needs at least 1 target!`, 'error');
-                return;
+                // Beacon: no targets needed - clear any selected
+                state.selectedTargets = [];
+                renderNetworks();
+                // Continue
+            } else if (state.attackType === 'authdos') {
+                if (state.selectedTargets.length === 0) {
+                    addLog('Auth DOS needs 1 target!', 'error');
+                    return;
+                }
+                // Auto fix: if more than 1, use only first
+                if (state.selectedTargets.length > 1) {
+                    const first = state.selectedTargets[0];
+                    state.selectedTargets = [first];
+                    addLog(`Auth DOS: Reduced to 1 target (${state.networks[first].essid})`, 'warning');
+                    renderNetworks();
+                }
+            } else if (state.attackType === 'deauth') {
+                if (state.selectedTargets.length === 0) {
+                    addLog('Deauth needs at least 1 target!', 'error');
+                    return;
+                }
             }
             
             const targets = state.selectedTargets.map(idx => state.networks[idx]);
@@ -671,9 +841,24 @@
                 if (data.status === 'success') {
                     state.attackRunning = true;
                     updateUIState();
-                    addLog(`✅ ${state.attackType} attack started successfully`, 'success');
+                    
+                    let msg = `✅ ${state.attackType} attack started`;
+                    if (data.target_count !== undefined) {
+                        msg += ` (${data.target_count} target${data.target_count > 1 ? 's' : ''})`;
+                    }
+                    
+                    if (data.warning) {
+                        addLog(`⚠️ ${data.warning}`, 'warning');
+                        if (data.ignored) {
+                            addLog(`❌ ${data.ignored} other target(s) ignored`, 'error');
+                        }
+                    }
+                    
+                    addLog(msg, 'success');
                     statusText.textContent = `Running: ${state.attackType}`;
-                    targetInfo.textContent = targets.length > 0 ? `${targets.length} targets` : 'All networks';
+                    
+                    const targetNames = targets.map(t => t.essid).join(', ');
+                    targetInfo.textContent = targets.length > 0 ? targetNames : 'All networks (beacon)';
                     
                     // Start status polling
                     startStatusPolling();
@@ -781,15 +966,6 @@
             // Interface refresh
             $('refreshInterfacesBtn').addEventListener('click', loadInterfaces);
             
-            // Attack type
-            document.querySelectorAll('.attack-option').forEach(el => {
-                el.addEventListener('click', () => {
-                    if (!state.attackRunning) {
-                        selectAttackType(el.dataset.type);
-                    }
-                });
-            });
-            
             // Start/Stop
             $('startBtn').addEventListener('click', startAttack);
             $('stopBtn').addEventListener('click', stopAttack);
@@ -825,7 +1001,6 @@
             addLog('💡 Ctrl+Enter = Start | Ctrl+S = Stop', 'info');
         });
         
-        // ====================== KEYBOARD ======================
         // Enter key on scan duration
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && document.activeElement === $('scanDuration')) {
