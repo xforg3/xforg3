@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NODE_01 - DEAUTH CONTROLLER</title>
+    <title>NODE_01 - WIFI CONTROL PANEL</title>
     <style>
         * {
             margin: 0;
@@ -12,6 +12,7 @@
         }
 
         :root {
+            /* DARK MODE (default) */
             --bg-dark: #0a0a0a;
             --bg-panel: #0d0d0d;
             --bg-input: #1a1a1a;
@@ -28,6 +29,7 @@
             --font-mono: 'Courier New', Consolas, Monaco, monospace;
         }
 
+        /* LIGHT MODE */
         [data-theme="light"] {
             --bg-dark: #f0f0f0;
             --bg-panel: #ffffff;
@@ -63,9 +65,9 @@
             gap: 12px;
         }
 
-        /* SIDEBAR */
+        /* ================= SIDEBAR KIRI ================= */
         .sidebar-left {
-            width: 200px;
+            width: 220px;
             background: var(--bg-dark);
             border: 2px solid var(--border-orange);
             display: flex;
@@ -128,6 +130,10 @@
             color: #000000;
         }
 
+        .nav-item.active .icon {
+            filter: invert(1);
+        }
+
         .nav-item:hover:not(.active) {
             background: var(--accent-orange-dim);
         }
@@ -173,7 +179,7 @@
             color: #000;
         }
 
-        /* MAIN CONTENT */
+        /* ================= KONTEN UTAMA ================= */
         .main-wrapper {
             flex-grow: 1;
             display: flex;
@@ -182,6 +188,7 @@
             overflow: hidden;
         }
 
+        /* Top Bar */
         .top-bar {
             border: 2px solid var(--border-orange);
             padding: 10px 16px;
@@ -200,10 +207,28 @@
             transition: color 0.3s;
         }
 
-        /* GRID */
+        .top-bar-icons {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            gap: 12px;
+            min-height: 0;
+        }
+        .page.active {
+            display: flex;
+        }
+
+        /* Grid Section Top & Middle */
         .grid-content {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-columns: 320px 1fr;
             grid-template-rows: auto 1fr;
             gap: 12px;
             flex-grow: 1;
@@ -232,7 +257,7 @@
             letter-spacing: 1px;
         }
 
-        /* DEAUTH STATUS */
+        /* Panel Deauth Status */
         .panel-deauth {
             grid-column: 1;
             grid-row: 1;
@@ -316,26 +341,32 @@
             cursor: not-allowed;
         }
 
-        /* STATS */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            margin-top: 12px;
-            font-size: 0.7rem;
-            color: var(--text-dim);
-            transition: color 0.3s;
-        }
-        .stats-grid .value {
-            color: var(--text-bright);
-            font-weight: bold;
-            transition: color 0.3s;
+        /* Panel Signal Strength */
+        .panel-signal {
+            grid-column: 1;
+            grid-row: 2;
+            padding-top: 24px;
         }
 
-        /* PANEL NETWORKS */
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 100%;
+            padding-top: 10px;
+            gap: 6px;
+        }
+
+        .bar {
+            background: var(--accent-orange);
+            width: 100%;
+            transition: height 0.3s, background 0.3s;
+        }
+
+        /* Panel Available Networks */
         .panel-networks {
-            grid-column: 1 / span 2;
-            grid-row: 2;
+            grid-column: 2;
+            grid-row: 1 / span 2;
             padding-top: 24px;
             display: flex;
             flex-direction: column;
@@ -385,17 +416,30 @@
             color: #000;
             font-weight: bold;
         }
+        tr.selected td .sec-badge {
+            border-color: #000;
+            color: #000;
+        }
+        tr td:first-child {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
-        .checkbox-col {
-            width: 30px;
-            text-align: center;
+        .sec-badge {
+            border: 1px solid var(--border-orange);
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            border-radius: 2px;
+            color: var(--text-main);
+            white-space: nowrap;
+            transition: border 0.3s, color 0.3s;
         }
-        input[type="checkbox"] {
-            accent-color: var(--accent-orange);
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
+
+        .sig-green { color: var(--green); }
+        .sig-red { color: var(--red); }
+        .sig-main { color: var(--text-main); }
 
         .networks-footer {
             display: flex;
@@ -408,7 +452,18 @@
             transition: color 0.3s, border 0.3s;
         }
 
-        /* CONSOLE */
+        .checkbox-col {
+            width: 30px;
+            text-align: center;
+        }
+        input[type="checkbox"] {
+            accent-color: var(--accent-orange);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* Panel Live Console */
         .panel-console {
             border: 2px solid var(--border-orange);
             padding: 12px;
@@ -416,7 +471,7 @@
             padding-top: 24px;
             display: flex;
             gap: 12px;
-            height: 100px;
+            height: 120px;
             background: var(--bg-panel);
             transition: background 0.3s, border 0.3s;
         }
@@ -450,7 +505,7 @@
         .console-actions {
             display: flex;
             gap: 10px;
-            width: 100px;
+            width: 120px;
             flex-shrink: 0;
         }
         .console-actions .btn-action {
@@ -467,28 +522,293 @@
             opacity: 0.8;
         }
 
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            body { padding: 6px; height: auto; overflow-y: auto; }
-            .dashboard-container { flex-direction: column; height: auto; gap: 8px; }
-            .sidebar-left { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 10px; align-items: center; }
-            .sidebar-left .brand-header { border-bottom: none; margin-bottom: 0; padding: 0; flex: 1; min-width: 120px; }
-            .sidebar-left .brand-header .title { font-size: 1rem; }
-            .sidebar-left .nav-menu { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-            .sidebar-left .nav-item { padding: 6px 12px; font-size: 0.7rem; width: auto; }
-            .sidebar-left .sidebar-footer { display: flex; flex-direction: row; padding: 4px 0; width: 100%; gap: 6px; }
-            .sidebar-left .sidebar-footer .btn-reboot { padding: 6px 12px; font-size: 0.65rem; flex: 1; }
-            .sidebar-left .sidebar-footer .btn-theme-toggle { padding: 6px 12px; font-size: 0.65rem; flex: 1; }
-            .grid-content { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+        /* ================= PAGE LOGS ================= */
+        .logs-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .logs-table-wrap {
+            flex-grow: 1;
+            overflow-y: auto;
+            border: 2px solid var(--border-orange);
+            background: var(--bg-panel);
+            transition: background 0.3s, border 0.3s;
+        }
+        .logs-table-wrap::-webkit-scrollbar {
+            width: 4px;
+        }
+        .logs-table-wrap::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        .logs-table-wrap::-webkit-scrollbar-thumb {
+            background: var(--accent-orange);
+        }
+
+        .logs-table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .logs-table-wrap th {
+            position: sticky;
+            top: 0;
+            background: var(--bg-panel);
+            padding: 10px 12px;
+            border-bottom: 2px solid var(--border-orange);
+            z-index: 2;
+            color: var(--text-main);
+            transition: background 0.3s, color 0.3s, border 0.3s;
+        }
+        .logs-table-wrap td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 119, 0, 0.1);
+            font-size: 0.75rem;
+            color: var(--text-bright);
+            transition: color 0.3s, border 0.3s;
+        }
+        .logs-table-wrap .log-status-success { color: var(--green); }
+        .logs-table-wrap .log-status-stopped { color: var(--accent-orange); }
+        .logs-table-wrap .log-status-error { color: var(--red); }
+
+        .logs-actions {
+            display: flex;
+            gap: 10px;
+            padding: 8px 0;
+            flex-wrap: wrap;
+        }
+        .logs-actions .btn-action {
+            padding: 6px 16px;
+            font-size: 0.65rem;
+        }
+
+        .log-count {
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            transition: color 0.3s;
+        }
+
+        /* ================= RESPONSIVE ================= */
+        @media (max-width: 1200px) {
+            .grid-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
             .panel-deauth { grid-column: 1; grid-row: 1; }
-            .panel-networks { grid-column: 1; grid-row: 2; }
-            .panel-console { flex-direction: column; height: auto; min-height: 80px; padding: 8px; padding-top: 20px; }
+            .panel-signal { grid-column: 1; grid-row: 2; height: 100px; min-height: 80px; }
+            .panel-networks { grid-column: 1; grid-row: 3; }
+            .panel-console { flex-wrap: wrap; height: auto; min-height: 100px; }
             .console-actions { width: 100%; }
-            .deauth-actions { grid-template-columns: 1fr 1fr; gap: 6px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; font-size: 0.6rem; }
-            .panel { padding: 8px; }
-            .status-big { font-size: 1.3rem; }
-            th, td { padding: 4px 6px; font-size: 0.6rem; }
+        }
+
+        @media (max-width: 992px) {
+            .sidebar-left {
+                width: 180px;
+            }
+            .brand-header .title {
+                font-size: 1.1rem;
+            }
+            .grid-content {
+                grid-template-columns: 1fr;
+            }
+            .panel-deauth { grid-column: 1; grid-row: 1; }
+            .panel-signal { grid-column: 1; grid-row: 2; height: 80px; }
+            .panel-networks { grid-column: 1; grid-row: 3; }
+        }
+
+        @media (max-width: 768px) {
+            body { 
+                padding: 6px; 
+                height: auto;
+                overflow-y: auto;
+            }
+            .dashboard-container { 
+                flex-direction: column; 
+                height: auto;
+                gap: 8px;
+            }
+            .sidebar-left { 
+                width: 100%; 
+                flex-direction: row; 
+                flex-wrap: wrap; 
+                padding: 10px;
+                align-items: center;
+            }
+            .sidebar-left .brand-header { 
+                border-bottom: none; 
+                margin-bottom: 0; 
+                padding: 0;
+                flex: 1;
+                min-width: 120px;
+            }
+            .sidebar-left .brand-header .title {
+                font-size: 1rem;
+            }
+            .sidebar-left .nav-menu { 
+                flex-direction: row; 
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .sidebar-left .nav-item {
+                padding: 6px 12px;
+                font-size: 0.7rem;
+                width: auto;
+            }
+            .sidebar-left .sidebar-footer {
+                display: flex;
+                flex-direction: row;
+                padding: 4px 0;
+                width: 100%;
+                gap: 6px;
+            }
+            .sidebar-left .sidebar-footer .btn-reboot {
+                padding: 6px 12px;
+                font-size: 0.65rem;
+                flex: 1;
+            }
+            .sidebar-left .sidebar-footer .btn-theme-toggle {
+                padding: 6px 12px;
+                font-size: 0.65rem;
+                flex: 1;
+            }
+            .top-bar { 
+                flex-wrap: wrap; 
+                gap: 6px;
+                padding: 8px 12px;
+            }
+            .top-bar-title {
+                font-size: 0.85rem;
+            }
+            .deauth-actions { 
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+            .deauth-actions .btn-action {
+                padding: 8px;
+                font-size: 0.65rem;
+            }
+            .panel-console { 
+                flex-direction: column; 
+                height: auto;
+                min-height: 80px;
+                padding: 8px;
+                padding-top: 20px;
+            }
+            .console-actions { 
+                width: 100%; 
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .console-actions .btn-action { 
+                flex: 1; 
+                min-width: 80px;
+                padding: 6px;
+                font-size: 0.6rem;
+            }
+            .panel {
+                padding: 8px;
+            }
+            .panel-badge {
+                font-size: 0.55rem;
+                padding: 1px 6px;
+            }
+            .status-big {
+                font-size: 1.3rem;
+            }
+            table {
+                font-size: 0.65rem;
+            }
+            th, td {
+                padding: 4px 6px;
+                font-size: 0.6rem;
+            }
+            .sec-badge {
+                font-size: 0.5rem;
+                padding: 1px 4px;
+            }
+            .networks-footer {
+                font-size: 0.55rem;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .checkbox-col {
+                width: 24px;
+            }
+            input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+            }
+            .panel-signal {
+                height: 60px;
+                min-height: 50px;
+                padding-top: 18px;
+            }
+            .panel-signal .panel-badge {
+                font-size: 0.5rem;
+            }
+            .chart-container {
+                padding-top: 4px;
+                gap: 4px;
+            }
+            .logs-table-wrap td {
+                font-size: 0.6rem;
+                padding: 4px 6px;
+            }
+            .logs-table-wrap th {
+                font-size: 0.6rem;
+                padding: 4px 6px;
+            }
+            .log-count {
+                font-size: 0.6rem;
+            }
+            .logs-actions .btn-action {
+                padding: 4px 10px;
+                font-size: 0.55rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 4px; }
+            .sidebar-left .nav-item {
+                font-size: 0.6rem;
+                padding: 4px 8px;
+                gap: 4px;
+            }
+            .sidebar-left .brand-header .title {
+                font-size: 0.85rem;
+            }
+            .sidebar-left .brand-header .status {
+                font-size: 0.55rem;
+            }
+            .top-bar-title {
+                font-size: 0.7rem;
+            }
+            .status-big {
+                font-size: 1rem;
+            }
+            .deauth-actions {
+                grid-template-columns: 1fr;
+            }
+            .panel-console .console-box {
+                font-size: 0.6rem;
+                padding: 4px 6px;
+                max-height: 60px;
+            }
+            .panel-deauth {
+                padding-top: 18px;
+            }
+            .panel-networks {
+                padding-top: 18px;
+            }
+            .panel-signal {
+                height: 50px;
+                min-height: 40px;
+            }
+            .chart-container {
+                gap: 3px;
+            }
         }
     </style>
 </head>
@@ -496,101 +816,161 @@
 
 <div class="dashboard-container">
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR KIRI -->
     <aside class="sidebar-left">
         <div>
             <div class="brand-header">
                 <div class="title">NODE_01</div>
                 <div class="status" id="status-text">STATUS: READY</div>
             </div>
+
             <nav class="nav-menu">
-                <button class="nav-item active" onclick="scanNetworks()">
-                    <span>📡</span> SCAN
+                <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+                    <span>田</span> DASHBOARD
+                </button>
+                <button class="nav-item" data-page="logs" onclick="showPage('logs')">
+                    <span>▤</span> LOGS
                 </button>
             </nav>
         </div>
+
         <div class="sidebar-footer">
-            <button class="btn-reboot" onclick="rebootSystem()">⟳ REBOOT</button>
-            <button class="btn-theme-toggle" onclick="toggleTheme()">☀/🌙 THEME</button>
+            <button class="btn-reboot" onclick="rebootSystem()">SYSTEM REBOOT</button>
+            <button class="btn-theme-toggle" onclick="toggleTheme()">☀ / 🌙 THEME</button>
         </div>
     </aside>
 
-    <!-- MAIN -->
+    <!-- KONTEN UTAMA -->
     <div class="main-wrapper">
 
+        <!-- TOP BAR -->
         <header class="top-bar">
-            <div class="top-bar-title">⚡ DEAUTH CONTROLLER</div>
-            <div style="font-size:0.7rem;color:var(--text-dim);">
-                <span id="method-indicator">MDK4</span>
+            <div class="top-bar-title">WIFI CONTROL PANEL</div>
+            <div class="top-bar-icons">
+                <!-- Kosong -->
             </div>
         </header>
 
-        <div class="grid-content">
+        <!-- ================= PAGE DASHBOARD ================= -->
+        <div class="page active" id="page-dashboard">
 
-            <!-- DEAUTH STATUS -->
-            <div class="panel panel-deauth">
-                <div class="panel-badge">🎯 DEAUTH</div>
-                <div class="deauth-header">
-                    <div>
-                        <div class="status-big idle" id="deauth-status-big">IDLE</div>
-                        <div class="status-sub" id="deauth-command-text">SELECT TARGETS → START</div>
+            <div class="grid-content">
+
+                <!-- PANEL DEAUTH STATUS -->
+                <div class="panel panel-deauth">
+                    <div class="panel-badge">DEAUTH STATUS</div>
+                    <div class="deauth-header">
+                        <div>
+                            <div class="status-big idle" id="deauth-status-big">IDLE</div>
+                            <div class="status-sub" id="deauth-command-text">WAITING FOR COMMAND...</div>
+                        </div>
+                    </div>
+                    <div class="deauth-actions">
+                        <button class="btn-action filled" id="btnStartDeauth" onclick="toggleDeauth()">▷ START ATTACK</button>
+                        <button class="btn-action" id="btnStopDeauth" onclick="stopDeauth()" disabled>⏹ STOP</button>
+                    </div>
+                    <div style="margin-top:10px;font-size:0.65rem;color:var(--text-dim);transition:color 0.3s;">
+                        TARGETS: <span id="deauth-target-count">0</span> selected
                     </div>
                 </div>
-                <div class="deauth-actions">
-                    <button class="btn-action filled" id="btnStartDeauth" onclick="toggleDeauth()">▶ START</button>
-                    <button class="btn-action" id="btnStopDeauth" onclick="stopDeauth()" disabled>⏹ STOP</button>
+
+                <!-- PANEL SIGNAL STRENGTH -->
+                <div class="panel panel-signal">
+                    <div class="panel-badge">SIGNAL STRENGTH</div>
+                    <div class="chart-container" id="signal-chart">
+                        <div class="bar" style="height: 10%;"></div>
+                        <div class="bar" style="height: 20%;"></div>
+                        <div class="bar" style="height: 40%;"></div>
+                        <div class="bar" style="height: 60%;"></div>
+                        <div class="bar" style="height: 80%;"></div>
+                        <div class="bar" style="height: 50%;"></div>
+                        <div class="bar" style="height: 30%;"></div>
+                        <div class="bar" style="height: 70%;"></div>
+                        <div class="bar" style="height: 90%;"></div>
+                        <div class="bar" style="height: 15%;"></div>
+                    </div>
                 </div>
-                <div class="stats-grid">
-                    <div>Targets: <span class="value" id="stats-targets">0</span></div>
-                    <div>Packets: <span class="value" id="stats-packets">0</span></div>
-                    <div>Duration: <span class="value" id="stats-duration">0s</span></div>
-                    <div>Status: <span class="value" id="stats-status">Idle</span></div>
+
+                <!-- PANEL AVAILABLE NETWORKS -->
+                <div class="panel panel-networks">
+                    <div class="panel-badge">📡 AVAILABLE NETWORKS</div>
+                    <div style="display:flex;gap:10px;margin-top:24px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
+                        <span style="font-size:0.65rem;color:var(--text-dim);transition:color 0.3s;">
+                            SELECTED: <span id="selected-count">0</span>
+                        </span>
+                        <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="selectAll()">ALL</button>
+                        <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="deselectAll()">NONE</button>
+                    </div>
+
+                    <div class="networks-table-container" id="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="checkbox-col"><input type="checkbox" id="select-all" onchange="toggleAllCheckboxes()"></th>
+                                    <th>ESSID</th>
+                                    <th>BSSID</th>
+                                    <th>CH</th>
+                                    <th>SIGNAL</th>
+                                    <th>SECURITY</th>
+                                </tr>
+                            </thead>
+                            <tbody id="network-body">
+                                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;transition:color 0.3s;">PRESS SCAN TO DISCOVER NETWORKS</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="networks-footer">
+                        <div>NETWORKS FOUND: <span id="net-found">0</span></div>
+                        <div>CPU LOAD: <span id="cpu-load">24</span>% | MEM: <span id="mem-usage">512</span>MB</div>
+                    </div>
                 </div>
+
             </div>
 
-            <!-- NETWORKS -->
-            <div class="panel panel-networks">
-                <div class="panel-badge">📡 NETWORKS</div>
-                <div style="display:flex;gap:10px;margin-top:24px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
-                    <span style="font-size:0.65rem;color:var(--text-dim);">
-                        SELECTED: <span id="selected-count">0</span>
-                    </span>
-                    <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="selectAll()">ALL</button>
-                    <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="deselectAll()">NONE</button>
+            <!-- PANEL LIVE CONSOLE -->
+            <div class="panel-console">
+                <div class="panel-badge">LIVE_CONSOLE</div>
+                <div class="console-box" id="console-box">
+                    <div class="console-line"><span class="tag-info">[INFO]</span> SYSTEM INITIALIZED. NODE_01 ONLINE.</div>
+                    <div class="console-line"><span class="tag-info">[INFO]</span> SCANNING FREQUENCIES 2.4GHz / 5GHz...</div>
+                    <div class="console-line"><span class="tag-warn">[WARN]</span> WAITING FOR TARGETS...</div>
                 </div>
-                <div class="networks-table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th class="checkbox-col"><input type="checkbox" id="select-all" onchange="toggleAllCheckboxes()"></th>
-                                <th>ESSID</th>
-                                <th>BSSID</th>
-                                <th>CH</th>
-                                <th>SIGNAL</th>
-                            </tr>
-                        </thead>
-                        <tbody id="network-body">
-                            <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:20px 0;">CLICK SCAN TO DISCOVER</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="networks-footer">
-                    <div>Found: <span id="net-found">0</span></div>
-                    <div id="scan-status">Ready</div>
+                <div class="console-actions">
+                    <button class="btn-action" onclick="scanNetworks()">SCAN</button>
                 </div>
             </div>
 
         </div>
 
-        <!-- CONSOLE -->
-        <div class="panel-console">
-            <div class="panel-badge">📟 CONSOLE</div>
-            <div class="console-box" id="console-box">
-                <div class="console-line"><span class="tag-info">[INFO]</span> NODE_01 DEAUTH CONTROLLER</div>
-                <div class="console-line"><span class="tag-info">[INFO]</span> Select targets and START</div>
-            </div>
-            <div class="console-actions">
-                <button class="btn-action" onclick="scanNetworks()">SCAN</button>
+        <!-- ================= PAGE LOGS ================= -->
+        <div class="page" id="page-logs">
+            <div class="logs-container">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <span style="font-weight:bold;letter-spacing:2px;color:var(--text-main);transition:color 0.3s;">ATTACK HISTORY</span>
+                    <span class="log-count">Total: <span id="log-total-count">0</span> entries</span>
+                </div>
+                <div class="logs-actions">
+                    <button class="btn-action" onclick="clearLogs()" style="border-color:var(--red);color:var(--red);">🗑 CLEAR ALL</button>
+                    <button class="btn-action" onclick="exportLogs()" style="border-color:var(--green);color:var(--green);">📤 EXPORT</button>
+                </div>
+                <div class="logs-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:15%;">TIME</th>
+                                <th style="width:25%;">BSSID</th>
+                                <th style="width:10%;">CH</th>
+                                <th style="width:25%;">ESSID</th>
+                                <th style="width:15%;">STATUS</th>
+                                <th style="width:10%;">DURATION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-body">
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;transition:color 0.3s;">NO ATTACK HISTORY</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -599,293 +979,480 @@
 </div>
 
 <script>
-// ============================================================
-// STATE
-// ============================================================
-let networks = [];
-let isDeauthRunning = false;
-let selectedTargets = [];
-let deauthStartTime = null;
-let statsInterval = null;
-
-// ============================================================
-// THEME
-// ============================================================
-function toggleTheme() {
-    const html = document.documentElement;
-    const current = html.getAttribute('data-theme');
-    if (current === 'light') {
-        html.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'dark');
-    } else {
-        html.setAttribute('data-theme', 'light');
-        localStorage.setItem('theme', 'light');
+    // ============================================================
+    // THEME TOGGLE
+    // ============================================================
+    function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        if (currentTheme === 'light') {
+            html.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            html.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        }
     }
-}
 
-(function loadTheme() {
-    if (localStorage.getItem('theme') === 'light') {
-        document.documentElement.setAttribute('data-theme', 'light');
+    // Load saved theme
+    (function loadTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    })();
+
+    // ============================================================
+    // STATE
+    // ============================================================
+    let networks = [];
+    let isDeauthRunning = false;
+    let selectedTargets = [];
+    let consoleLines = [];
+    let attackLogs = [];
+    let deauthStartTime = null;
+
+    // ============================================================
+    // PAGE NAVIGATION
+    // ============================================================
+    function showPage(page) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(`page-${page}`).classList.add('active');
+        document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+        if (page === 'logs') {
+            renderLogs();
+        }
     }
-})();
 
-// ============================================================
-// CONSOLE
-// ============================================================
-function addConsoleLine(message, type = 'info') {
-    const time = new Date().toTimeString().slice(0, 8);
-    const tags = { info: 'tag-info', warn: 'tag-warn', error: 'tag-error', success: 'tag-success' };
-    const box = document.getElementById('console-box');
-    box.innerHTML += `<div class="console-line"><span class="${tags[type] || 'tag-info'}">[${type.toUpperCase()}]</span> ${message}</div>`;
-    box.scrollTop = box.scrollHeight;
-    if (box.children.length > 30) box.removeChild(box.firstChild);
-}
+    // ============================================================
+    // CONSOLE
+    // ============================================================
+    function addConsoleLine(message, type = 'info') {
+        const time = new Date().toTimeString().slice(0, 8);
+        const tags = {
+            info: 'tag-info',
+            warn: 'tag-warn',
+            error: 'tag-error',
+            success: 'tag-success'
+        };
+        const line = `<div class="console-line"><span class="${tags[type] || 'tag-info'}">[${type.toUpperCase()}]</span> ${message}</div>`;
+        const box = document.getElementById('console-box');
+        box.innerHTML += line;
+        box.scrollTop = box.scrollHeight;
+        if (box.children.length > 50) {
+            box.removeChild(box.firstChild);
+        }
+    }
 
-// ============================================================
-// SCAN
-// ============================================================
-function scanNetworks() {
-    document.getElementById('status-text').textContent = 'STATUS: SCANNING...';
-    document.getElementById('scan-status').textContent = 'Scanning...';
-    addConsoleLine('Scanning networks...', 'info');
+    // ============================================================
+    // LOGS (Local Storage)
+    // ============================================================
+    function loadLogs() {
+        try {
+            const data = localStorage.getItem('deauth_logs');
+            if (data) {
+                attackLogs = JSON.parse(data);
+            } else {
+                attackLogs = [];
+            }
+        } catch {
+            attackLogs = [];
+        }
+        return attackLogs;
+    }
 
-    fetch('/scan')
+    function saveLogs() {
+        try {
+            localStorage.setItem('deauth_logs', JSON.stringify(attackLogs));
+        } catch {}
+        updateLogCount();
+    }
+
+    function addAttackLog(entry) {
+        const log = {
+            time: new Date().toISOString(),
+            bssid: entry.bssid || 'N/A',
+            channel: entry.channel || 'N/A',
+            essid: entry.essid || 'N/A',
+            status: entry.status || 'unknown',
+            duration: entry.duration || 'N/A'
+        };
+        attackLogs.unshift(log);
+        if (attackLogs.length > 1000) {
+            attackLogs = attackLogs.slice(0, 1000);
+        }
+        saveLogs();
+        renderLogs();
+    }
+
+    function renderLogs() {
+        const tbody = document.getElementById('logs-body');
+        const logs = loadLogs();
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;">NO ATTACK HISTORY</td></tr>';
+            return;
+        }
+        let html = '';
+        logs.forEach(log => {
+            const time = new Date(log.time).toLocaleString();
+            const statusClass = log.status === 'success' ? 'log-status-success' : 
+                               log.status === 'stopped' ? 'log-status-stopped' : 'log-status-error';
+            html += `<tr>
+                <td style="color:var(--text-dim);">${time}</td>
+                <td style="font-family:monospace;">${log.bssid}</td>
+                <td>${log.channel}</td>
+                <td>${log.essid}</td>
+                <td class="${statusClass}">${log.status.toUpperCase()}</td>
+                <td style="color:var(--text-dim);">${log.duration}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+        updateLogCount();
+    }
+
+    function updateLogCount() {
+        document.getElementById('log-total-count').textContent = attackLogs.length;
+    }
+
+    function clearLogs() {
+        if (confirm('Clear all attack history?')) {
+            attackLogs = [];
+            saveLogs();
+            renderLogs();
+            addConsoleLine('Attack history cleared', 'warn');
+        }
+    }
+
+    function exportLogs() {
+        const logs = loadLogs();
+        if (logs.length === 0) {
+            alert('No logs to export');
+            return;
+        }
+        const text = JSON.stringify(logs, null, 2);
+        const blob = new Blob([text], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `deauth_logs_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        addConsoleLine('Logs exported', 'success');
+    }
+
+    // ============================================================
+    // SYSTEM STATS
+    // ============================================================
+    function updateSystemStats() {
+        const cpu = Math.floor(10 + Math.random() * 30);
+        const mem = Math.floor(200 + Math.random() * 300);
+        document.getElementById('cpu-load').textContent = cpu;
+        document.getElementById('mem-usage').textContent = mem;
+        document.getElementById('net-found').textContent = networks.length;
+    }
+    setInterval(updateSystemStats, 3000);
+
+    // ============================================================
+    // SCAN NETWORKS
+    // ============================================================
+    function scanNetworks() {
+        document.getElementById('status-text').textContent = 'STATUS: SCANNING...';
+        addConsoleLine('Starting network scan...', 'info');
+
+        fetch('/scan')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    networks = data.networks;
+                    renderTable(networks);
+                    document.getElementById('status-text').textContent = 'STATUS: READY';
+                    addConsoleLine(`Scan complete. Found ${networks.length} networks.`, 'success');
+                } else {
+                    addConsoleLine(`Scan error: ${data.message}`, 'error');
+                    document.getElementById('status-text').textContent = 'STATUS: ERROR';
+                }
+            })
+            .catch(err => {
+                addConsoleLine(`Scan failed: ${err}`, 'error');
+                document.getElementById('status-text').textContent = 'STATUS: ERROR';
+            })
+            .finally(() => {
+                updateSignalChart();
+            });
+    }
+
+    function renderTable(networks) {
+        const tbody = document.getElementById('network-body');
+        if (!networks || networks.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;">NO NETWORKS FOUND</td></tr>';
+            return;
+        }
+
+        let html = '';
+        networks.forEach((net) => {
+            const powerDisplay = net.power !== null && net.power !== undefined ? `${net.power}dBm` : '--';
+            let sigClass = 'sig-main';
+            if (net.power !== null) {
+                if (net.power > -50) sigClass = 'sig-green';
+                else if (net.power < -80) sigClass = 'sig-red';
+            }
+            const security = net.security || 'WPA2/PSK';
+            const checked = selectedTargets.some(t => t.bssid === net.bssid) ? 'checked' : '';
+            const selectedClass = checked ? 'selected' : '';
+            html += `<tr class="${selectedClass}">
+                <td class="checkbox-col"><input type="checkbox" class="target-checkbox" data-bssid="${net.bssid}" data-channel="${net.channel}" data-essid="${net.essid}" ${checked} onchange="updateSelection()"></td>
+                <td title="${net.essid}">${net.essid}</td>
+                <td>${net.bssid}</td>
+                <td>${net.channel}</td>
+                <td class="${sigClass}">${powerDisplay}</td>
+                <td><span class="sec-badge">${security}</span></td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+        updateSelection();
+    }
+
+    function updateSignalChart() {
+        const bars = document.querySelectorAll('.bar');
+        if (networks.length === 0) {
+            bars.forEach((bar, i) => {
+                bar.style.height = `${5 + Math.random() * 20}%`;
+            });
+            return;
+        }
+        const sorted = [...networks].filter(n => n.power !== null).sort((a, b) => b.power - a.power);
+        bars.forEach((bar, i) => {
+            if (i < sorted.length) {
+                const power = sorted[i].power;
+                const height = Math.max(5, Math.min(95, (power + 100) * 0.95));
+                bar.style.height = `${height}%`;
+            } else {
+                bar.style.height = `${5 + Math.random() * 15}%`;
+            }
+        });
+    }
+
+    // ============================================================
+    // SELECTION
+    // ============================================================
+    function toggleAllCheckboxes() {
+        const checked = document.getElementById('select-all').checked;
+        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = checked);
+        updateSelection();
+    }
+
+    function selectAll() {
+        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = true);
+        document.getElementById('select-all').checked = true;
+        updateSelection();
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('select-all').checked = false;
+        updateSelection();
+    }
+
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.target-checkbox:checked');
+        const count = checkboxes.length;
+        selectedTargets = Array.from(checkboxes).map(cb => ({
+            bssid: cb.dataset.bssid,
+            channel: cb.dataset.channel,
+            essid: cb.dataset.essid || 'Unknown'
+        }));
+
+        document.getElementById('selected-count').textContent = count;
+        document.getElementById('deauth-target-count').textContent = count;
+
+        document.querySelectorAll('#network-body tr').forEach(row => {
+            const cb = row.querySelector('.target-checkbox');
+            if (cb && cb.checked) {
+                row.classList.add('selected');
+            } else {
+                row.classList.remove('selected');
+            }
+        });
+
+        if (count > 0) {
+            document.getElementById('deauth-command-text').textContent = `${count} TARGET(S) SELECTED`;
+        } else {
+            document.getElementById('deauth-command-text').textContent = 'WAITING FOR COMMAND...';
+        }
+    }
+
+    // ============================================================
+    // DEAUTH
+    // ============================================================
+    function toggleDeauth() {
+        if (isDeauthRunning) {
+            stopDeauth();
+        } else {
+            startDeauth();
+        }
+    }
+
+    function startDeauth() {
+        const targets = selectedTargets;
+        if (targets.length === 0) {
+            addConsoleLine('No targets selected for deauth!', 'warn');
+            alert('Select at least 1 target from the table!');
+            return;
+        }
+
+        const btn = document.getElementById('btnStartDeauth');
+        btn.disabled = true;
+        btn.textContent = 'STARTING...';
+        document.getElementById('deauth-command-text').textContent = 'INITIALIZING ATTACK...';
+        deauthStartTime = Date.now();
+
+        fetch('/start_deauth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targets: targets.map(t => ({ bssid: t.bssid, channel: t.channel })) })
+        })
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                networks = data.networks || [];
-                renderTable(networks);
-                document.getElementById('status-text').textContent = 'STATUS: READY';
-                document.getElementById('scan-status').textContent = `Found ${networks.length}`;
-                addConsoleLine(`Found ${networks.length} networks`, 'success');
+                isDeauthRunning = true;
+                document.getElementById('deauth-status-big').textContent = 'RUNNING';
+                document.getElementById('deauth-status-big').className = 'status-big running';
+                document.getElementById('deauth-command-text').textContent = `ATTACKING ${targets.length} TARGET(S)...`;
+                document.getElementById('btnStartDeauth').textContent = '● ATTACKING';
+                document.getElementById('btnStartDeauth').className = 'btn-action danger filled';
+                document.getElementById('btnStopDeauth').disabled = false;
+                document.getElementById('status-text').textContent = 'STATUS: DEAUTH ACTIVE';
+                addConsoleLine(`Deauth started on ${targets.length} target(s)`, 'success');
+                targets.forEach(t => {
+                    addConsoleLine(`→ ${t.bssid} (CH ${t.channel}) - ${t.essid}`, 'info');
+                });
             } else {
-                addConsoleLine(`Error: ${data.message}`, 'error');
+                addConsoleLine(`Deauth error: ${data.message}`, 'error');
+                resetDeauthUI();
             }
         })
         .catch(err => {
-            addConsoleLine(`Scan failed: ${err}`, 'error');
-            document.getElementById('status-text').textContent = 'STATUS: ERROR';
-        });
-}
-
-function renderTable(networks) {
-    const tbody = document.getElementById('network-body');
-    if (!networks || networks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:20px 0;">NO NETWORKS</td></tr>';
-        return;
-    }
-
-    let html = '';
-    networks.forEach(net => {
-        const power = net.power !== null ? `${net.power}dBm` : '--';
-        const checked = selectedTargets.some(t => t.bssid === net.bssid) ? 'checked' : '';
-        html += `<tr class="${checked ? 'selected' : ''}">
-            <td class="checkbox-col"><input type="checkbox" class="target-checkbox" 
-                data-bssid="${net.bssid}" data-channel="${net.channel}" data-essid="${net.essid}" 
-                ${checked} onchange="updateSelection()"></td>
-            <td>${net.essid}</td>
-            <td style="font-family:monospace;">${net.bssid}</td>
-            <td>${net.channel}</td>
-            <td>${power}</td>
-        </tr>`;
-    });
-    tbody.innerHTML = html;
-    updateSelection();
-}
-
-// ============================================================
-// SELECTION
-// ============================================================
-function toggleAllCheckboxes() {
-    const checked = document.getElementById('select-all').checked;
-    document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = checked);
-    updateSelection();
-}
-
-function selectAll() {
-    document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = true);
-    document.getElementById('select-all').checked = true;
-    updateSelection();
-}
-
-function deselectAll() {
-    document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
-    document.getElementById('select-all').checked = false;
-    updateSelection();
-}
-
-function updateSelection() {
-    const checkboxes = document.querySelectorAll('.target-checkbox:checked');
-    selectedTargets = Array.from(checkboxes).map(cb => ({
-        bssid: cb.dataset.bssid,
-        channel: cb.dataset.channel,
-        essid: cb.dataset.essid || 'Unknown'
-    }));
-
-    document.getElementById('selected-count').textContent = selectedTargets.length;
-    document.getElementById('stats-targets').textContent = selectedTargets.length;
-
-    document.querySelectorAll('#network-body tr').forEach(row => {
-        const cb = row.querySelector('.target-checkbox');
-        if (cb && cb.checked) row.classList.add('selected');
-        else row.classList.remove('selected');
-    });
-
-    if (selectedTargets.length > 0) {
-        document.getElementById('deauth-command-text').textContent = `${selectedTargets.length} TARGET(S) READY`;
-    } else {
-        document.getElementById('deauth-command-text').textContent = 'SELECT TARGETS → START';
-    }
-}
-
-// ============================================================
-// DEAUTH
-// ============================================================
-function toggleDeauth() {
-    if (isDeauthRunning) stopDeauth();
-    else startDeauth();
-}
-
-function startDeauth() {
-    if (selectedTargets.length === 0) {
-        addConsoleLine('Select at least 1 target!', 'warn');
-        alert('Select at least 1 target!');
-        return;
-    }
-
-    const btn = document.getElementById('btnStartDeauth');
-    btn.disabled = true;
-    btn.textContent = '...';
-    document.getElementById('deauth-command-text').textContent = 'STARTING...';
-
-    fetch('/start_deauth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targets: selectedTargets.map(t => ({ 
-            bssid: t.bssid, 
-            channel: t.channel,
-            essid: t.essid 
-        }))})
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.status === 'success') {
-            isDeauthRunning = true;
-            deauthStartTime = Date.now();
-            document.getElementById('deauth-status-big').textContent = 'RUNNING';
-            document.getElementById('deauth-status-big').className = 'status-big running';
-            document.getElementById('deauth-command-text').textContent = `ATTACKING ${selectedTargets.length} TARGET(S)`;
-            document.getElementById('btnStartDeauth').textContent = '● RUNNING';
-            document.getElementById('btnStartDeauth').className = 'btn-action danger filled';
-            document.getElementById('btnStopDeauth').disabled = false;
-            document.getElementById('status-text').textContent = 'STATUS: DEAUTH ACTIVE';
-            document.getElementById('stats-status').textContent = 'Attacking';
-            document.getElementById('method-indicator').textContent = data.method || 'MDK4';
-            
-            addConsoleLine(`Deauth started on ${selectedTargets.length} targets with ${data.method}`, 'success');
-            selectedTargets.forEach(t => {
-                addConsoleLine(`→ ${t.bssid} (CH ${t.channel})`, 'info');
-            });
-            
-            startStatsUpdate();
-        } else {
-            addConsoleLine(`Error: ${data.message}`, 'error');
-            resetUI();
-        }
-    })
-    .catch(err => {
-        addConsoleLine(`Failed: ${err}`, 'error');
-        resetUI();
-    })
-    .finally(() => {
-        btn.disabled = false;
-    });
-}
-
-function stopDeauth() {
-    document.getElementById('btnStopDeauth').disabled = true;
-    document.getElementById('deauth-command-text').textContent = 'STOPPING...';
-
-    fetch('/stop_deauth', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-            addConsoleLine('Deauth stopped', 'info');
-            if (data.total_packets) {
-                addConsoleLine(`Total packets sent: ${data.total_packets}`, 'info');
-            }
-            if (data.duration) {
-                addConsoleLine(`Duration: ${data.duration}`, 'info');
-            }
-            resetUI();
+            addConsoleLine(`Deauth failed: ${err}`, 'error');
+            resetDeauthUI();
         })
-        .catch(err => {
-            addConsoleLine(`Stop error: ${err}`, 'error');
-            resetUI();
+        .finally(() => {
+            btn.disabled = false;
         });
-}
-
-function resetUI() {
-    isDeauthRunning = false;
-    deauthStartTime = null;
-    if (statsInterval) {
-        clearInterval(statsInterval);
-        statsInterval = null;
     }
-    document.getElementById('deauth-status-big').textContent = 'IDLE';
-    document.getElementById('deauth-status-big').className = 'status-big idle';
-    document.getElementById('deauth-command-text').textContent = selectedTargets.length > 0 ? 
-        `${selectedTargets.length} TARGET(S) READY` : 'SELECT TARGETS → START';
-    document.getElementById('btnStartDeauth').textContent = '▶ START';
-    document.getElementById('btnStartDeauth').className = 'btn-action filled';
-    document.getElementById('btnStopDeauth').disabled = true;
-    document.getElementById('status-text').textContent = 'STATUS: READY';
-    document.getElementById('stats-status').textContent = 'Idle';
-    document.getElementById('stats-duration').textContent = '0s';
-}
 
-function startStatsUpdate() {
-    if (statsInterval) clearInterval(statsInterval);
-    statsInterval = setInterval(() => {
-        fetch('/deauth_status')
+    function stopDeauth() {
+        document.getElementById('btnStopDeauth').disabled = true;
+        document.getElementById('deauth-command-text').textContent = 'STOPPING...';
+
+        const duration = deauthStartTime ? Math.floor((Date.now() - deauthStartTime) / 1000) : 0;
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        const durationStr = `${minutes}m ${seconds}s`;
+
+        fetch('/stop_deauth', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
-                if (data.running) {
-                    document.getElementById('stats-packets').textContent = data.total_packets || 0;
-                    document.getElementById('stats-duration').textContent = data.duration || '0s';
-                    document.getElementById('stats-targets').textContent = data.total_targets || selectedTargets.length;
-                }
+                isDeauthRunning = false;
+                addConsoleLine('Deauth stopped', 'info');
+                
+                selectedTargets.forEach(t => {
+                    addAttackLog({
+                        bssid: t.bssid,
+                        channel: t.channel,
+                        essid: t.essid || 'Unknown',
+                        status: 'stopped',
+                        duration: durationStr
+                    });
+                });
+                
+                resetDeauthUI();
+                document.getElementById('status-text').textContent = 'STATUS: READY';
             })
-            .catch(() => {});
-    }, 1000);
-}
-
-// ============================================================
-// REBOOT
-// ============================================================
-function rebootSystem() {
-    if (confirm('Reboot system?')) {
-        if (isDeauthRunning) stopDeauth();
-        addConsoleLine('Rebooting...', 'warn');
-        setTimeout(() => location.reload(), 1500);
+            .catch(err => {
+                addConsoleLine(`Stop error: ${err}`, 'error');
+                resetDeauthUI();
+            });
     }
-}
 
-// ============================================================
-// INIT
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    addConsoleLine('NODE_01 DEAUTH CONTROLLER ONLINE', 'success');
-    addConsoleLine('Press SCAN to find networks', 'info');
-    setTimeout(scanNetworks, 1000);
-});
+    function resetDeauthUI() {
+        isDeauthRunning = false;
+        deauthStartTime = null;
+        document.getElementById('deauth-status-big').textContent = 'IDLE';
+        document.getElementById('deauth-status-big').className = 'status-big idle';
+        document.getElementById('deauth-command-text').textContent = 'WAITING FOR COMMAND...';
+        document.getElementById('btnStartDeauth').textContent = '▷ START ATTACK';
+        document.getElementById('btnStartDeauth').className = 'btn-action filled';
+        document.getElementById('btnStopDeauth').disabled = true;
+        document.getElementById('status-text').textContent = 'STATUS: READY';
+        if (selectedTargets.length > 0) {
+            document.getElementById('deauth-command-text').textContent = `${selectedTargets.length} TARGET(S) SELECTED`;
+        }
+    }
 
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); scanNetworks(); }
-    if (e.key === 'd' && e.ctrlKey) { e.preventDefault(); toggleDeauth(); }
-    if (e.key === 'a' && e.ctrlKey) { e.preventDefault(); selectAll(); }
-    if (e.key === 'u' && e.ctrlKey) { e.preventDefault(); deselectAll(); }
-});
+    // ============================================================
+    // REBOOT
+    // ============================================================
+    function rebootSystem() {
+        if (confirm('Reboot system? This will stop all attacks.')) {
+            if (isDeauthRunning) {
+                stopDeauth();
+            }
+            addConsoleLine('System rebooting...', 'warn');
+            document.getElementById('status-text').textContent = 'STATUS: REBOOTING...';
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        }
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLogs();
+        renderLogs();
+        addConsoleLine('SYSTEM INITIALIZED. NODE_01 ONLINE.', 'success');
+        addConsoleLine('SCANNING FREQUENCIES 2.4GHz / 5GHz...', 'info');
+        document.getElementById('status-text').textContent = 'STATUS: READY';
+        setTimeout(scanNetworks, 1500);
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.ctrlKey) {
+            e.preventDefault();
+            scanNetworks();
+        }
+        if (e.key === 'd' && e.ctrlKey) {
+            e.preventDefault();
+            toggleDeauth();
+        }
+        if (e.key === 'a' && e.ctrlKey) {
+            e.preventDefault();
+            selectAll();
+        }
+        if (e.key === 'u' && e.ctrlKey) {
+            e.preventDefault();
+            deselectAll();
+        }
+        if (e.key === 'l' && e.ctrlKey) {
+            e.preventDefault();
+            showPage('logs');
+        }
+        if (e.key === 't' && e.ctrlKey) {
+            e.preventDefault();
+            toggleTheme();
+        }
+    });
+
+    console.log('%c ███╗   ██╗ ██████╗ ██████╗ ███████╗ █████╗  ██████╗ ', 'color:#ff7700;font-size:10px;');
+    console.log('%c ████╗  ██║██╔═══██╗██╔══██╗██╔════╝██╔══██╗██╔═══██╗', 'color:#ff7700;font-size:10px;');
+    console.log('%c ██╔██╗ ██║██║   ██║██║  ██║█████╗  ███████║██║   ██║', 'color:#ff7700;font-size:10px;');
+    console.log('%c ██║╚██╗██║██║   ██║██║  ██║██╔══╝  ██╔══██║██║   ██║', 'color:#ff7700;font-size:10px;');
+    console.log('%c ██║ ╚████║╚██████╔╝██████╔╝███████╗██║  ██║╚██████╔╝', 'color:#ff7700;font-size:10px;');
+    console.log('%c ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝ ', 'color:#ff7700;font-size:10px;');
+    console.log('%c NODE_01 ACTIVE - WIRELESS ATTACK INTERFACE v2.0 ', 'background:#ff7700;color:#1a1a1a;font-weight:bold;font-size:14px;padding:4px 8px;');
 </script>
 
 </body>
