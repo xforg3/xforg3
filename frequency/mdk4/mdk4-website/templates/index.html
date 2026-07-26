@@ -349,6 +349,7 @@
             min-height: 30px;
         }
         
+        /* ===== MONITORING ===== */
         .monitor-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -422,11 +423,13 @@
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
             <h1>⚡ MDK4 WEB ⚡</h1>
             <div class="subtitle">Wireless Attack Interface | <span id="statusText">Idle</span></div>
         </div>
         
+        <!-- Status Bar -->
         <div class="card" style="border-color: #333;">
             <div class="status-bar">
                 <div>
@@ -443,8 +446,11 @@
             </div>
         </div>
         
+        <!-- Grid -->
         <div class="grid">
+            <!-- LEFT COLUMN -->
             <div>
+                <!-- Interface Selection -->
                 <div class="card">
                     <div class="card-title">
                         📡 Interface
@@ -458,6 +464,7 @@
                     </div>
                 </div>
                 
+                <!-- Scan Networks -->
                 <div class="card">
                     <div class="card-title">
                         🔍 Scan Networks
@@ -480,7 +487,9 @@
                 </div>
             </div>
             
+            <!-- RIGHT COLUMN -->
             <div>
+                <!-- Attack Controls -->
                 <div class="card">
                     <div class="card-title">
                         🚀 Attack Controls
@@ -515,6 +524,7 @@
                     </div>
                 </div>
                 
+                <!-- 📊 Live Monitoring -->
                 <div class="card">
                     <div class="card-title">
                         📊 Live Monitoring
@@ -542,6 +552,7 @@
                     <div class="last-update" id="lastUpdate">Last update: -</div>
                 </div>
                 
+                <!-- 📋 Log -->
                 <div class="card">
                     <div class="card-title">
                         📋 Log
@@ -845,7 +856,7 @@
             updateSelectionInfo();
         }
         
-        // ====================== START ATTACK ======================
+        // ====================== START/STOP ATTACK ======================
         async function startAttack() {
             if (state.attackRunning) {
                 addLog('Attack already running!', 'warning');
@@ -932,7 +943,6 @@
             }
         }
         
-        // ====================== STOP ATTACK (FIXED) ======================
         async function stopAttack() {
             if (!state.attackRunning) {
                 addLog('No attack running', 'warning');
@@ -940,19 +950,9 @@
             }
             
             addLog('Stopping attack...', 'info');
-            $('stopBtn').disabled = true;
-            $('stopBtn2').disabled = true;
             
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
-                const res = await fetch('/stop_mdk4', { 
-                    method: 'POST',
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
+                const res = await fetch('/stop_mdk4', { method: 'POST' });
                 const data = await res.json();
                 
                 if (data.status === 'success') {
@@ -964,46 +964,10 @@
                     stopStatusPolling();
                     stopMonitoring();
                     resetMonitorDisplay();
-                    $('stopBtn').disabled = false;
-                    $('stopBtn2').disabled = false;
-                    return;
-                } else {
-                    addLog(`⚠️ Stop failed: ${data.message}`, 'warning');
                 }
             } catch (e) {
-                if (e.name === 'AbortError') {
-                    addLog('⚠️ Stop request timeout!', 'warning');
-                } else {
-                    addLog(`⚠️ Error stopping: ${e.message}`, 'warning');
-                }
+                addLog(`Error stopping: ${e}`, 'error');
             }
-            
-            // 🔥 FORCE STOP - Jika normal stop gagal
-            try {
-                addLog('🔄 Attempting force stop...', 'warning');
-                const res2 = await fetch('/force_stop', { method: 'POST' });
-                const data2 = await res2.json();
-                
-                if (data2.status === 'success') {
-                    state.attackRunning = false;
-                    updateUIState();
-                    addLog('✅ Attack force stopped', 'success');
-                    statusText.textContent = 'Idle';
-                    targetInfo.textContent = 'No target';
-                    stopStatusPolling();
-                    stopMonitoring();
-                    resetMonitorDisplay();
-                } else {
-                    addLog('❌ Force stop failed!', 'error');
-                    addLog('💡 Try: sudo pkill -9 -f mdk4', 'info');
-                }
-            } catch (e2) {
-                addLog(`❌ Force stop error: ${e2.message}`, 'error');
-                addLog('💡 Run in terminal: sudo pkill -9 -f mdk4', 'info');
-            }
-            
-            $('stopBtn').disabled = false;
-            $('stopBtn2').disabled = false;
         }
         
         // ====================== STATUS POLLING ======================
@@ -1079,10 +1043,12 @@
                 if (data.status === 'success') {
                     const monitor = data.data;
                     
+                    // Update AP Status
                     const apStatus = document.getElementById('apStatus');
                     if (monitor.ap_status === '⚠️ AP OFFLINE / FREEZE!') {
                         apStatus.textContent = '🔴 OFFLINE / FREEZE!';
                         apStatus.className = 'value offline';
+                        addLog('🚨 AP OFFLINE / FREEZE!', 'error');
                     } else if (monitor.ap_status === '✅ AP Online') {
                         apStatus.textContent = '🟢 Online';
                         apStatus.className = 'value online';
@@ -1091,11 +1057,13 @@
                         apStatus.className = 'value warning';
                     }
                     
+                    // Update Client Count
                     const clients = monitor.clients || [];
                     const clientCount = document.getElementById('clientCount');
                     clientCount.textContent = clients.length;
                     clientCount.className = clients.length === 0 ? 'value offline' : 'value online';
                     
+                    // Update Client List
                     const clientList = document.getElementById('clientList');
                     if (clients.length === 0) {
                         clientList.innerHTML = '<div style="color:#ff0000; text-align:center; padding:10px 0;">🔥 NO CLIENTS CONNECTED! AP DOWN!</div>';
@@ -1108,6 +1076,7 @@
                         `).join('');
                     }
                     
+                    // Update Last Update
                     if (monitor.last_update) {
                         const date = new Date(monitor.last_update * 1000);
                         document.getElementById('lastUpdate').textContent = `Last update: ${date.toLocaleTimeString()}`;

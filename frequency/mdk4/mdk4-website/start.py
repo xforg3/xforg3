@@ -2,8 +2,7 @@
 """
 start.py - MDK4 Web Version Launcher
 -----------------------------------
-Menjalankan Flask web server untuk MDK4 (tanpa ngrok)
-Akses dari perangkat lain di WiFi yang sama via IP
+Menjalankan Flask web server untuk MDK4 dengan ngrok tunneling
 """
 
 import subprocess
@@ -11,7 +10,7 @@ import time
 import signal
 import sys
 import os
-import socket
+import requests
 
 # Warna
 GREEN = "\033[92m"
@@ -51,27 +50,66 @@ def print_banner():
     clear_screen()
     print(f"{MAGENTA}{BOLD}{BANNER}{RESET}")
     print(f"{GREEN}{'='*60}{RESET}")
-    print(f"{CYAN}  MDK4 Web Interface - Flask (Local Network){RESET}")
+    print(f"{CYAN}  MDK4 Web Interface - Flask + Ngrok{RESET}")
     print(f"{GREEN}{'='*60}{RESET}\n")
 
-def get_local_ip():
-    """Dapatkan IP lokal untuk akses dari perangkat lain"""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except:
+def get_ngrok_url():
+    """Ambil URL ngrok dari API"""
+    for i in range(10):
         try:
-            return socket.gethostbyname(socket.gethostname())
+            response = requests.get('http://localhost:4040/api/tunnels', timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                for tunnel in data['tunnels']:
+                    if tunnel['proto'] == 'https':
+                        return tunnel['public_url']
         except:
-            return "127.0.0.1"
+            pass
+        time.sleep(1)
+    return None
+
+def check_ngrok():
+    """Cek apakah ngrok terinstall"""
+    ngrok_paths = ['/usr/local/bin/ngrok', '/usr/bin/ngrok', 'ngrok']
+    for path in ngrok_paths:
+        try:
+            result = subprocess.run([path, '--version'], capture_output=True, text=True, timeout=1)
+            if result.returncode == 0:
+                return path
+        except:
+            continue
+    return None
+
+def setup_ngrok_root():
+    """Setup ngrok authtoken untuk root"""
+    token = "3GUfJCOMHBz1k0DzX7AoLRvn2NI_66DEZjqS3wLUrcZUzjwaZ"
+    ngrok_path = check_ngrok()
+    if not ngrok_path:
+        return False
+    
+    try:
+        result = subprocess.run(['sudo', ngrok_path, 'config', 'check'], 
+                              capture_output=True, text=True)
+        if "Valid configuration" in result.stdout:
+            print_status("Ngrok root already configured", "success")
+            return True
+    except:
+        pass
+    
+    print_status("Setting up ngrok for root...", "info")
+    try:
+        subprocess.run(['sudo', ngrok_path, 'config', 'add-authtoken', token], check=True)
+        print_status("Ngrok root setup complete", "success")
+        return True
+    except Exception as e:
+        print_status(f"Failed to setup ngrok: {e}", "error")
+        return False
 
 def run_flask_as_sudo():
     """Jalankan Flask dengan sudo (karena butuh akses root)"""
     print_status("Starting Flask (app.py) with sudo...", "info")
     
+    # Cek apakah app.py ada
     script_dir = os.path.dirname(os.path.abspath(__file__))
     app_path = os.path.join(script_dir, "app.py")
     
@@ -88,10 +126,11 @@ def run_flask_as_sudo():
             bufsize=1
         )
         
+        # Tunggu Flask siap
         time.sleep(3)
         
+        # Cek apakah Flask berjalan
         try:
-            import requests
             response = requests.get('http://localhost:5000', timeout=2)
             if response.status_code == 200:
                 print_status("Flask running at http://localhost:5000", "success")
@@ -110,45 +149,95 @@ def run_flask_as_sudo():
 def main():
     print_banner()
     print_status("Starting MDK4 Web Interface...", "info")
-    print()
     
-    local_ip = get_local_ip()
+    # Setup ngrok untuk root
+    setup_ngrok_root()
     
+    # Jalankan Flask
     flask_process = run_flask_as_sudo()
     if not flask_process:
         print_status("Failed to start Flask!", "error")
         sys.exit(1)
     
-    print()
-    print(f"{GREEN}{'='*70}{RESET}")
-    print(f"{MAGENTA}{BOLD}🌐 MDK4 WEB INTERFACE READY{RESET}")
-    print(f"{GREEN}{BOLD}   Local URL   :{RESET} http://localhost:5000")
-    print(f"{GREEN}{BOLD}   Network URL :{RESET} http://{local_ip}:5000")
-    print()
-    print(f"{YELLOW}📱 Buka di HP atau perangkat lain dalam WiFi yang sama:{RESET}")
-    print(f"{CYAN}   http://{local_ip}:5000{RESET}")
-    print()
-    print(f"{YELLOW}💡 Tips:{RESET}")
-    print(f"   - Pastikan perangkat terhubung ke WiFi yang sama")
-    print(f"   - Matikan firewall jika perlu: sudo ufw disable")
-    print(f"   - CTRL+Click URL di atas untuk buka di browser")
-    print(f"{GREEN}{'='*70}{RESET}")
-    print(f"{YELLOW}Press Ctrl+C to stop server{RESET}\n")
+    # Jalankan ngrok
+    ngrok_path = check_ngrok()
+    if not ngrok_path:
+        print_status("Ngrok not found!", "error")
+        print_status("Flask still running at http://localhost:5000", "warning")
+        print_status("Press Ctrl+C to stop.", "info")
+        
+        try:
+            while True:
+                time.sleep(1)
+                if flask_process.poll() is not None:
+                    print_status("Flask stopped!", "error")
+                    break
+        except KeyboardInterrupt:
+            pass
+        finally:
+            flask_process.terminate()
+            sys.exit(0)
     
+    print_status(f"Running ngrok from: {ngrok_path}", "info")
+    
+    try:
+        ngrok_process = subprocess.Popen(
+            [ngrok_path, 'http', '5000'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        print_status("Ngrok running in background", "success")
+    except Exception as e:
+        print_status(f"Failed to run ngrok: {e}", "error")
+        flask_process.terminate()
+        sys.exit(1)
+    
+    # Tunggu ngrok siap
+    print_status("Waiting for ngrok to be ready...", "info")
+    time.sleep(5)
+    
+    # Ambil URL
+    url = get_ngrok_url()
+    
+    print()
+    print(f"{GREEN}{'='*70}{RESET}")
+    if url:
+        print(f"{MAGENTA}{BOLD}🌐 MDK4 WEB INTERFACE READY{RESET}")
+        print(f"{GREEN}{BOLD}   Local URL :{RESET} http://localhost:5000")
+        print(f"{GREEN}{BOLD}   Public URL:{RESET} {url}")
+        print()
+        print(f"{YELLOW}📱 Buka URL di HP atau dari mana saja!{RESET}")
+    else:
+        print(f"{RED}{BOLD}⚠️ Failed to get ngrok URL{RESET}")
+        print(f"{YELLOW}📡 Flask running at: http://localhost:5000{RESET}")
+        print(f"{YELLOW}💡 Try running manually:{RESET}")
+        print(f"   Terminal 1: sudo python3 app.py")
+        print(f"   Terminal 2: ngrok http 5000")
+    
+    print(f"{GREEN}{'='*70}{RESET}")
+    print(f"{YELLOW}Press Ctrl+C to stop everything{RESET}\n")
+    
+    # Cleanup
     def cleanup(sig, frame):
-        print("\n[*] Stopping Flask...")
+        print("\n[*] Stopping all processes...")
+        try:
+            ngrok_process.terminate()
+            ngrok_process.wait(timeout=2)
+        except:
+            pass
         try:
             flask_process.terminate()
             flask_process.wait(timeout=2)
         except:
             pass
-        subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
+        subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
         print("[+] Cleanup complete.")
         sys.exit(0)
     
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
     
+    # Loop
     try:
         while True:
             if flask_process.poll() is not None:
