@@ -418,6 +418,63 @@
             margin-top: 8px;
             text-align: right;
         }
+        
+        .client-info {
+            margin-top: 15px;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+        
+        .client-info .header {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none;
+            padding: 0;
+        }
+        
+        .client-info .badge-client {
+            background: #ff8800;
+            color: #000;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.7em;
+        }
+        
+        .client-list-detail {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #1a1a1a;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 0.75em;
+        }
+        
+        .client-list-detail .grid-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+        
+        .client-list-detail .grid-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 4px 0;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 0.8em;
+        }
+        
+        .client-list-detail .grid-row .mac { color: #ff8800; }
+        .client-list-detail .grid-row .power { color: #666; }
+        .client-list-detail .grid-row .packets { color: #00ccff; }
     </style>
 </head>
 <body>
@@ -478,6 +535,18 @@
                     <div id="networkList" style="max-height:300px; overflow-y:auto;">
                         <div style="color:#666;">Click "Scan" to find networks</div>
                     </div>
+                    
+                    <!-- Client Info - Muncul saat target dipilih -->
+                    <div id="clientInfo" class="client-info" style="display:none;">
+                        <div class="header">
+                            <span>👥 Connected Clients to <span id="clientBSSID" style="color:#ff8800;"></span></span>
+                            <span class="badge-client" id="clientCountBadge">0</span>
+                        </div>
+                        <div class="client-list-detail" id="clientListDetail">
+                            <div style="color:#666; text-align:center; padding:10px 0;">Click a network to scan connected clients</div>
+                        </div>
+                    </div>
+                    
                     <div class="selection-info" id="selectionInfo">0 targets selected</div>
                     <div class="btn-group">
                         <button class="btn btn-warning" id="selectAllBtn">Select All</button>
@@ -675,6 +744,7 @@
             }
         }
         
+        // ====================== RENDER NETWORKS ======================
         function renderNetworks() {
             if (state.networks.length === 0) {
                 networkList.innerHTML = '<div style="color:#666;">No networks found</div>';
@@ -720,11 +790,25 @@
                 networkList.appendChild(hint);
             }
             
+            // Auto scan clients if exactly 1 target selected
+            if (state.selectedTargets.length === 1) {
+                const idx = state.selectedTargets[0];
+                const target = state.networks[idx];
+                if (target && target.bssid) {
+                    scanClients(target.bssid);
+                }
+            } else if (state.selectedTargets.length === 0) {
+                document.getElementById('clientInfo').style.display = 'none';
+            }
+            
             updateSelectionInfo();
         }
         
-        function toggleTarget(idx) {
+        // ====================== TOGGLE TARGET + SCAN CLIENTS ======================
+        async function toggleTarget(idx) {
             if (state.attackType === 'beacon') return;
+            
+            const net = state.networks[idx];
             
             if (state.attackType === 'authdos') {
                 if (state.selectedTargets.length === 1 && !state.selectedTargets.includes(idx)) {
@@ -746,8 +830,70 @@
             
             renderNetworks();
             updateAttackInfo();
+            
+            // Scan clients otomatis kalau 1 target dipilih
+            if (state.selectedTargets.length === 1) {
+                const targetIdx = state.selectedTargets[0];
+                const target = state.networks[targetIdx];
+                if (target && target.bssid) {
+                    await scanClients(target.bssid);
+                }
+            } else if (state.selectedTargets.length === 0) {
+                document.getElementById('clientInfo').style.display = 'none';
+            }
         }
         
+        // ====================== SCAN CLIENTS ======================
+        async function scanClients(bssid) {
+            const clientInfo = document.getElementById('clientInfo');
+            const clientList = document.getElementById('clientListDetail');
+            const clientBSSID = document.getElementById('clientBSSID');
+            const clientCountBadge = document.getElementById('clientCountBadge');
+            
+            clientInfo.style.display = 'block';
+            clientBSSID.textContent = bssid;
+            clientList.innerHTML = '<div style="color:#ff8800; text-align:center; padding:10px 0;">🔄 Scanning clients...</div>';
+            clientCountBadge.textContent = '...';
+            
+            try {
+                const res = await fetch(`/api/clients?bssid=${bssid}`);
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    const clients = data.clients || [];
+                    clientCountBadge.textContent = clients.length;
+                    
+                    if (clients.length === 0) {
+                        clientList.innerHTML = '<div style="color:#666; text-align:center; padding:10px 0;">No clients connected</div>';
+                    } else {
+                        clientList.innerHTML = `
+                            <div class="grid-header">
+                                <span>STATION</span>
+                                <span>POWER</span>
+                                <span>PACKETS</span>
+                            </div>
+                            ${clients.map(c => `
+                                <div class="grid-row">
+                                    <span class="mac">${c.station || 'Unknown'}</span>
+                                    <span class="power">${c.power || '?'} dBm</span>
+                                    <span class="packets">${c.packets || '0'}</span>
+                                </div>
+                            `).join('')}
+                        `;
+                    }
+                    addLog(`📡 Found ${clients.length} client(s) connected to ${bssid}`, 'info');
+                } else {
+                    clientList.innerHTML = `<div style="color:#ff0000; text-align:center; padding:10px 0;">Error: ${data.message}</div>`;
+                    clientCountBadge.textContent = '0';
+                }
+            } catch (e) {
+                clientList.innerHTML = `<div style="color:#ff0000; text-align:center; padding:10px 0;">Error: ${e}</div>`;
+                clientCountBadge.textContent = '0';
+                addLog(`Error scanning clients: ${e}`, 'error');
+            }
+        }
+        
+        // ====================== SELECT / DESELECT ======================
         function selectAll() {
             if (state.attackType === 'authdos') {
                 if (state.networks.length > 0) {
@@ -768,6 +914,7 @@
             state.selectedTargets = [];
             renderNetworks();
             updateAttackInfo();
+            document.getElementById('clientInfo').style.display = 'none';
         }
         
         function updateSelectionInfo() {
@@ -800,6 +947,7 @@
             
             if (type === 'beacon') {
                 state.selectedTargets = [];
+                document.getElementById('clientInfo').style.display = 'none';
                 addLog('Beacon mode: No targets needed - auto deselected', 'info');
             } else if (type === 'authdos') {
                 if (state.selectedTargets.length > 1) {
@@ -935,7 +1083,7 @@
             }
         }
         
-        // ====================== STOP ATTACK (FIXED WITH FORCE STOP) ======================
+        // ====================== STOP ATTACK ======================
         async function stopAttack() {
             if (!state.attackRunning) {
                 addLog('No attack running', 'warning');
@@ -981,7 +1129,7 @@
                 }
             }
             
-            // 🔥 FORCE STOP - Jika normal stop gagal
+            // FORCE STOP
             try {
                 addLog('🔄 Attempting force stop...', 'warning');
                 const res2 = await fetch('/api/attack/force_stop', { method: 'POST' });
@@ -1082,7 +1230,6 @@
                 if (data.status === 'success') {
                     const monitor = data.data;
                     
-                    // Update AP Status
                     const apStatus = document.getElementById('apStatus');
                     if (monitor.ap_status === '⚠️ AP OFFLINE / FREEZE!') {
                         apStatus.textContent = '🔴 OFFLINE / FREEZE!';
@@ -1096,13 +1243,11 @@
                         apStatus.className = 'value warning';
                     }
                     
-                    // Update Client Count
                     const clients = monitor.clients || [];
                     const clientCount = document.getElementById('clientCount');
                     clientCount.textContent = clients.length;
                     clientCount.className = clients.length === 0 ? 'value offline' : 'value online';
                     
-                    // Update Client List
                     const clientList = document.getElementById('clientList');
                     if (clients.length === 0) {
                         clientList.innerHTML = '<div style="color:#ff0000; text-align:center; padding:10px 0;">🔥 NO CLIENTS CONNECTED! AP DOWN!</div>';
@@ -1115,7 +1260,6 @@
                         `).join('');
                     }
                     
-                    // Update Last Update
                     if (monitor.last_update) {
                         const date = new Date(monitor.last_update * 1000);
                         document.getElementById('lastUpdate').textContent = `Last update: ${date.toLocaleTimeString()}`;

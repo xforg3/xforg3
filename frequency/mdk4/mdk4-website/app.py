@@ -175,15 +175,17 @@ def parse_csv(filename):
             
         if parsing_clients:
             parts = line.split(',')
-            if len(parts) >= 6:
+            if len(parts) >= 7:
                 bssid = parts[0].strip()
                 station = parts[1].strip() if len(parts) > 1 else ""
                 power = parts[2].strip() if len(parts) > 2 else ""
+                packets = parts[4].strip() if len(parts) > 4 else ""
                 if bssid and len(bssid) == 17 and ":" in bssid:
                     clients.append({
                         "bssid": bssid,
                         "station": station,
-                        "power": power
+                        "power": power,
+                        "packets": packets
                     })
     
     return networks, clients
@@ -394,6 +396,53 @@ async def scan_networks(duration: int = 10):
             content={"status": "error", "message": str(e)}
         )
 
+# ====================== CLIENT SCAN ======================
+@app.get("/api/clients")
+async def get_clients(bssid: str, interface: Optional[str] = None):
+    """
+    Scan clients yang terhubung ke AP tertentu
+    """
+    try:
+        if not bssid:
+            raise HTTPException(status_code=400, detail="BSSID required")
+        
+        # Dapatkan interface
+        iface = interface or get_monitor_interface()
+        if not iface:
+            raise HTTPException(status_code=400, detail="No interface available")
+        
+        logger.info(f"Scanning clients for {bssid} on {iface}")
+        
+        temp_file = "/tmp/client_scan"
+        cmd = f"sudo timeout 5 airodump-ng {iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
+        subprocess.run(cmd, shell=True, capture_output=True, timeout=8)
+        
+        csv_file = f"{temp_file}-01.csv"
+        clients = []
+        
+        if os.path.exists(csv_file):
+            _, clients = parse_csv(csv_file)
+            try:
+                os.remove(csv_file)
+            except:
+                pass
+        
+        return {
+            "status": "success",
+            "bssid": bssid,
+            "clients": clients,
+            "count": len(clients)
+        }
+        
+    except Exception as e:
+        logger.error(f"Client scan error: {e}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+# ====================== ATTACK ROUTES ======================
 @app.post("/api/attack/start")
 async def start_attack(req: AttackRequest):
     try:
