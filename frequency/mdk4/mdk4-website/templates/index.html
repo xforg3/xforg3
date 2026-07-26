@@ -607,7 +607,7 @@
         // ====================== INTERFACES ======================
         async function loadInterfaces() {
             try {
-                const res = await fetch('/interfaces');
+                const res = await fetch('/api/interfaces');
                 const data = await res.json();
                 if (data.status === 'success') {
                     state.interfaces = data.interfaces;
@@ -656,7 +656,7 @@
             networkList.innerHTML = '<div class="loading">Scanning... please wait</div>';
             
             try {
-                const res = await fetch(`/scan?duration=${duration}`);
+                const res = await fetch(`/api/scan?duration=${duration}`);
                 const data = await res.json();
                 
                 if (data.status === 'success') {
@@ -904,7 +904,7 @@
             addLog(`Starting ${state.attackType} attack...`, 'info');
             
             try {
-                const res = await fetch('/start_mdk4', {
+                const res = await fetch('/api/attack/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -952,7 +952,7 @@
             addLog('Stopping attack...', 'info');
             
             try {
-                const res = await fetch('/stop_mdk4', { method: 'POST' });
+                const res = await fetch('/api/attack/stop', { method: 'POST' });
                 const data = await res.json();
                 
                 if (data.status === 'success') {
@@ -987,7 +987,7 @@
         
         async function checkStatus() {
             try {
-                const res = await fetch('/attack_status');
+                const res = await fetch('/api/attack/status');
                 const data = await res.json();
                 
                 if (!data.running && state.attackRunning) {
@@ -1037,7 +1037,7 @@
         
         async function fetchMonitorData() {
             try {
-                const res = await fetch('/monitor_data');
+                const res = await fetch('/api/monitor');
                 const data = await res.json();
                 
                 if (data.status === 'success') {

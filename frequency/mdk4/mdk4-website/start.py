@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
-"""
-start.py - MDK4 Web Version Launcher
------------------------------------
-Menjalankan Flask web server untuk MDK4 dengan ngrok tunneling
-"""
-
 import subprocess
 import time
+import threading
 import signal
 import sys
-import os
 import requests
-import threading
+import os
 
-# Warna
 GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
@@ -22,7 +15,6 @@ MAGENTA = "\033[95m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
-# ASCII Banner
 BANNER = r"""
 ██████╗ ██╗  ██╗██╗  ██╗    ██╗    ██╗███████╗██████╗ 
 ██╔══██╗██║  ██║╚██╗██╔╝    ██║    ██║██╔════╝██╔══██╗
@@ -41,8 +33,6 @@ def print_status(msg, status="info"):
         print(f"{RED}[-]{RESET} {msg}")
     elif status == "warning":
         print(f"{YELLOW}[!]{RESET} {msg}")
-    elif status == "web":
-        print(f"{MAGENTA}[🌐]{RESET} {msg}")
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -51,11 +41,10 @@ def print_banner():
     clear_screen()
     print(f"{MAGENTA}{BOLD}{BANNER}{RESET}")
     print(f"{GREEN}{'='*60}{RESET}")
-    print(f"{CYAN}  MDK4 Web Interface - Flask + Ngrok{RESET}")
+    print(f"{CYAN}  MDK4 Web Interface - FastAPI + Ngrok{RESET}")
     print(f"{GREEN}{'='*60}{RESET}\n")
 
 def get_ngrok_url():
-    """Ambil URL ngrok dari API"""
     for i in range(10):
         try:
             response = requests.get('http://localhost:4040/api/tunnels', timeout=3)
@@ -70,7 +59,6 @@ def get_ngrok_url():
     return None
 
 def check_ngrok():
-    """Cek apakah ngrok terinstall"""
     ngrok_paths = ['/usr/local/bin/ngrok', '/usr/bin/ngrok', 'ngrok']
     for path in ngrok_paths:
         try:
@@ -82,7 +70,6 @@ def check_ngrok():
     return None
 
 def setup_ngrok_root():
-    """Setup ngrok authtoken untuk root"""
     token = "3GUfJCOMHBz1k0DzX7AoLRvn2NI_66DEZjqS3wLUrcZUzjwaZ"
     ngrok_path = check_ngrok()
     if not ngrok_path:
@@ -106,20 +93,17 @@ def setup_ngrok_root():
         print_status(f"Failed to setup ngrok: {e}", "error")
         return False
 
-def print_flask_output(process):
-    """Print output dari Flask untuk debugging"""
+def print_app_output(process):
     try:
         for line in iter(process.stdout.readline, ''):
             if line:
-                print(f"{CYAN}[Flask]{RESET} {line.strip()}")
+                print(f"{CYAN}[FastAPI]{RESET} {line.strip()}")
     except Exception as e:
-        print(f"[-] Error reading Flask output: {e}")
+        print(f"[-] Error reading output: {e}")
 
-def run_flask_as_sudo():
-    """Jalankan Flask dengan sudo (karena butuh akses root)"""
-    print_status("Starting Flask (app.py) with sudo...", "info")
+def run_app_as_sudo():
+    print_status("Starting FastAPI (app.py) with sudo...", "info")
     
-    # Cek apakah app.py ada
     script_dir = os.path.dirname(os.path.abspath(__file__))
     app_path = os.path.join(script_dir, "app.py")
     
@@ -128,7 +112,7 @@ def run_flask_as_sudo():
         return None
     
     try:
-        flask_process = subprocess.Popen(
+        app_process = subprocess.Popen(
             ['sudo', 'python3', app_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -136,63 +120,57 @@ def run_flask_as_sudo():
             bufsize=1
         )
         
-        # Start thread untuk print output Flask
-        thread = threading.Thread(target=print_flask_output, args=(flask_process,))
+        thread = threading.Thread(target=print_app_output, args=(app_process,))
         thread.daemon = True
         thread.start()
         
-        # Tunggu Flask siap
-        print_status("Waiting for Flask to be ready...", "info")
+        print_status("Waiting for FastAPI to be ready...", "info")
         time.sleep(5)
         
-        # Cek apakah Flask berjalan
         for i in range(5):
             try:
-                response = requests.get('http://localhost:5000', timeout=2)
+                response = requests.get('http://localhost:5000/api/interfaces', timeout=2)
                 if response.status_code == 200:
-                    print_status("Flask running at http://localhost:5000", "success")
-                    return flask_process
+                    print_status("FastAPI running at http://localhost:5000", "success")
+                    return app_process
             except:
                 pass
             time.sleep(1)
             
-        print_status("Flask might be starting, continuing...", "warning")
-        return flask_process
+        print_status("FastAPI might be starting, continuing...", "warning")
+        return app_process
         
     except Exception as e:
-        print_status(f"Failed to start Flask: {e}", "error")
+        print_status(f"Failed to start FastAPI: {e}", "error")
         return None
 
 def main():
     print_banner()
-    print_status("Starting MDK4 Web Interface...", "info")
+    print_status("Starting MDK4 Web Interface (FastAPI)...", "info")
     
-    # Setup ngrok untuk root
     setup_ngrok_root()
     
-    # Jalankan Flask
-    flask_process = run_flask_as_sudo()
-    if not flask_process:
-        print_status("Failed to start Flask!", "error")
+    app_process = run_app_as_sudo()
+    if not app_process:
+        print_status("Failed to start FastAPI!", "error")
         sys.exit(1)
     
-    # Jalankan ngrok
     ngrok_path = check_ngrok()
     if not ngrok_path:
         print_status("Ngrok not found!", "error")
-        print_status("Flask still running at http://localhost:5000", "warning")
+        print_status("FastAPI still running at http://localhost:5000", "warning")
         print_status("Press Ctrl+C to stop.", "info")
         
         try:
             while True:
                 time.sleep(1)
-                if flask_process.poll() is not None:
-                    print_status("Flask stopped!", "error")
+                if app_process.poll() is not None:
+                    print_status("FastAPI stopped!", "error")
                     break
         except KeyboardInterrupt:
             pass
         finally:
-            flask_process.terminate()
+            app_process.terminate()
             sys.exit(0)
     
     print_status(f"Running ngrok from: {ngrok_path}", "info")
@@ -206,14 +184,12 @@ def main():
         print_status("Ngrok running in background", "success")
     except Exception as e:
         print_status(f"Failed to run ngrok: {e}", "error")
-        flask_process.terminate()
+        app_process.terminate()
         sys.exit(1)
     
-    # Tunggu ngrok siap
     print_status("Waiting for ngrok to be ready...", "info")
     time.sleep(5)
     
-    # Ambil URL
     url = get_ngrok_url()
     
     print()
@@ -226,15 +202,11 @@ def main():
         print(f"{YELLOW}📱 Buka URL di HP atau dari mana saja!{RESET}")
     else:
         print(f"{RED}{BOLD}⚠️ Failed to get ngrok URL{RESET}")
-        print(f"{YELLOW}📡 Flask running at: http://localhost:5000{RESET}")
-        print(f"{YELLOW}💡 Try running manually:{RESET}")
-        print(f"   Terminal 1: sudo python3 app.py")
-        print(f"   Terminal 2: ngrok http 5000")
+        print(f"{YELLOW}📡 FastAPI running at: http://localhost:5000{RESET}")
     
     print(f"{GREEN}{'='*70}{RESET}")
     print(f"{YELLOW}Press Ctrl+C to stop everything{RESET}\n")
     
-    # Cleanup
     def cleanup(sig, frame):
         print("\n[*] Stopping all processes...")
         try:
@@ -243,8 +215,8 @@ def main():
         except:
             pass
         try:
-            flask_process.terminate()
-            flask_process.wait(timeout=2)
+            app_process.terminate()
+            app_process.wait(timeout=2)
         except:
             pass
         subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
@@ -254,16 +226,15 @@ def main():
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
     
-    # Loop
     try:
         while True:
-            if flask_process.poll() is not None:
-                print_status(f"Flask stopped! Exit code: {flask_process.returncode}", "error")
+            if app_process.poll() is not None:
+                print_status(f"FastAPI stopped! Exit code: {app_process.returncode}", "error")
                 print_status("Auto-restarting in 3 seconds...", "warning")
                 time.sleep(3)
-                flask_process = run_flask_as_sudo()
-                if not flask_process:
-                    print_status("Failed to restart Flask!", "error")
+                app_process = run_app_as_sudo()
+                if not app_process:
+                    print_status("Failed to restart FastAPI!", "error")
                     break
             time.sleep(2)
     except KeyboardInterrupt:
