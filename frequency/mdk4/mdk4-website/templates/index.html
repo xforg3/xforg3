@@ -270,10 +270,10 @@
             background: #0a0a0a;
             border: 1px solid #333;
             border-radius: 4px;
-            height: 150px;
+            height: 120px;
             overflow-y: auto;
             padding: 10px;
-            font-size: 0.8em;
+            font-size: 0.75em;
             font-family: 'Courier New', monospace;
             color: #00ff88;
         }
@@ -347,6 +347,77 @@
             font-size: 0.8em;
             color: #666;
             min-height: 30px;
+        }
+        
+        /* ===== MONITORING ===== */
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .monitor-box {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #1a1a1a;
+        }
+        
+        .monitor-box .label {
+            color: #666;
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .monitor-box .value {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        
+        .monitor-box .value.online { color: #00ff00; }
+        .monitor-box .value.offline { color: #ff0000; }
+        .monitor-box .value.warning { color: #ff8800; }
+        .monitor-box .value.idle { color: #666; }
+        
+        .client-list {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #1a1a1a;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 0.75em;
+        }
+        
+        .client-item {
+            padding: 3px 0;
+            border-bottom: 1px solid #1a1a1a;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .client-item .mac { color: #ff8800; }
+        .client-item .power { color: #666; }
+        
+        .monitor-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .monitor-status.active { background: #00ff00; animation: pulse 0.5s infinite; }
+        .monitor-status.idle { background: #666; }
+        
+        .last-update {
+            color: #666;
+            font-size: 0.65em;
+            margin-top: 8px;
+            text-align: right;
         }
     </style>
 </head>
@@ -453,7 +524,35 @@
                     </div>
                 </div>
                 
-                <!-- Log -->
+                <!-- 📊 Live Monitoring -->
+                <div class="card">
+                    <div class="card-title">
+                        📊 Live Monitoring
+                        <span style="display:flex; align-items:center; gap:8px;">
+                            <span class="monitor-status idle" id="monitorStatusDot"></span>
+                            <span class="badge" id="monitorStatusText" style="background:#666; color:#fff;">Idle</span>
+                        </span>
+                    </div>
+                    
+                    <div class="monitor-grid">
+                        <div class="monitor-box">
+                            <div class="label">📡 AP Status</div>
+                            <div class="value idle" id="apStatus">Unknown</div>
+                        </div>
+                        <div class="monitor-box">
+                            <div class="label">👥 Clients</div>
+                            <div class="value idle" id="clientCount">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="client-list" id="clientList">
+                        <div style="color:#666; text-align:center; padding:10px 0;">No clients connected</div>
+                    </div>
+                    
+                    <div class="last-update" id="lastUpdate">Last update: -</div>
+                </div>
+                
+                <!-- 📋 Log -->
                 <div class="card">
                     <div class="card-title">
                         📋 Log
@@ -562,7 +661,6 @@
                 
                 if (data.status === 'success') {
                     state.networks = data.networks || [];
-                    // Reset selected targets
                     state.selectedTargets = [];
                     renderNetworks();
                     networkCount.textContent = state.networks.length;
@@ -584,7 +682,6 @@
                 return;
             }
             
-            // Cek apakah target selection disabled (beacon mode)
             const isDisabled = state.attackType === 'beacon';
             
             const html = `
@@ -617,7 +714,6 @@
             `;
             networkList.innerHTML = html;
             
-            // Tampilkan hint kalau beacon mode
             if (isDisabled) {
                 const hint = document.createElement('div');
                 hint.style.cssText = 'color:#ff8800; font-size:0.8em; padding:5px 0;';
@@ -629,27 +725,18 @@
         }
         
         function toggleTarget(idx) {
-            // Cegah seleksi kalau beacon mode
-            if (state.attackType === 'beacon') {
-                return;
-            }
+            if (state.attackType === 'beacon') return;
             
-            // 🔥 FIX: Auth DOS hanya boleh 1 target
             if (state.attackType === 'authdos') {
-                // Kalau udah ada target yang dipilih, dan user klik target lain
                 if (state.selectedTargets.length === 1 && !state.selectedTargets.includes(idx)) {
-                    // Replace dengan target baru
                     state.selectedTargets = [idx];
                     addLog(`Auth DOS: Switched to target ${idx+1}`, 'warning');
                 } else if (state.selectedTargets.includes(idx)) {
-                    // Deselect
                     state.selectedTargets = [];
                 } else {
-                    // Select first target
                     state.selectedTargets = [idx];
                 }
             } else {
-                // Deauth: toggle normal
                 const index = state.selectedTargets.indexOf(idx);
                 if (index > -1) {
                     state.selectedTargets.splice(index, 1);
@@ -663,18 +750,15 @@
         }
         
         function selectAll() {
-            // 🔥 FIX: Auth DOS hanya boleh 1 target
             if (state.attackType === 'authdos') {
                 if (state.networks.length > 0) {
                     state.selectedTargets = [0];
                     addLog('Auth DOS: Only 1 target allowed', 'warning');
                 }
             } else if (state.attackType === 'beacon') {
-                // Beacon: no targets
                 state.selectedTargets = [];
                 addLog('Beacon mode: No targets needed', 'info');
             } else {
-                // Deauth: select all
                 state.selectedTargets = state.networks.map((_, i) => i);
             }
             renderNetworks();
@@ -709,32 +793,25 @@
             
             state.attackType = type;
             
-            // Update UI
             document.querySelectorAll('.attack-option').forEach(el => {
                 el.classList.toggle('active', el.dataset.type === type);
             });
             
             attackTypeDisplay.textContent = type ? type.toUpperCase() : 'None';
             
-            // 🔥 FIX: Handle target selection based on attack type
             if (type === 'beacon') {
-                // Beacon: clear all targets
                 state.selectedTargets = [];
                 addLog('Beacon mode: No targets needed - auto deselected', 'info');
             } else if (type === 'authdos') {
-                // Auth DOS: hanya boleh 1 target
                 if (state.selectedTargets.length > 1) {
-                    // Keep only first target
                     const firstTarget = state.selectedTargets[0];
                     state.selectedTargets = [firstTarget];
                     addLog('Auth DOS: Only 1 target allowed - auto reduced to 1', 'warning');
                 } else if (state.selectedTargets.length === 0 && state.networks.length > 0) {
-                    // Auto select first target
                     state.selectedTargets = [0];
                     addLog('Auth DOS: Auto-selected first target', 'info');
                 }
             }
-            // Deauth: keep targets as is
             
             renderNetworks();
             updateAttackInfo();
@@ -744,7 +821,6 @@
         function updateAttackInfo() {
             const targetCount = state.selectedTargets.length;
             const type = state.attackType || 'none';
-            const totalNetworks = state.networks.length;
             
             let info = '';
             let displayInfo = '';
@@ -780,6 +856,7 @@
             updateSelectionInfo();
         }
         
+        // ====================== START/STOP ATTACK ======================
         async function startAttack() {
             if (state.attackRunning) {
                 addLog('Attack already running!', 'warning');
@@ -796,18 +873,14 @@
                 return;
             }
             
-            // 🔥 FIX: Validasi target berdasarkan tipe
             if (state.attackType === 'beacon') {
-                // Beacon: no targets needed - clear any selected
                 state.selectedTargets = [];
                 renderNetworks();
-                // Continue
             } else if (state.attackType === 'authdos') {
                 if (state.selectedTargets.length === 0) {
                     addLog('Auth DOS needs 1 target!', 'error');
                     return;
                 }
-                // Auto fix: if more than 1, use only first
                 if (state.selectedTargets.length > 1) {
                     const first = state.selectedTargets[0];
                     state.selectedTargets = [first];
@@ -860,8 +933,8 @@
                     const targetNames = targets.map(t => t.essid).join(', ');
                     targetInfo.textContent = targets.length > 0 ? targetNames : 'All networks (beacon)';
                     
-                    // Start status polling
                     startStatusPolling();
+                    startMonitoring();
                 } else {
                     addLog(`Failed: ${data.message}`, 'error');
                 }
@@ -889,6 +962,8 @@
                     statusText.textContent = 'Idle';
                     targetInfo.textContent = 'No target';
                     stopStatusPolling();
+                    stopMonitoring();
+                    resetMonitorDisplay();
                 }
             } catch (e) {
                 addLog(`Error stopping: ${e}`, 'error');
@@ -922,27 +997,106 @@
                     statusText.textContent = 'Idle';
                     targetInfo.textContent = 'No target';
                     stopStatusPolling();
+                    stopMonitoring();
+                    resetMonitorDisplay();
                 }
-            } catch (e) {
-                // silent
+            } catch (e) {}
+        }
+        
+        // ====================== MONITORING ======================
+        let monitorInterval = null;
+        
+        function startMonitoring() {
+            if (monitorInterval) clearInterval(monitorInterval);
+            monitorInterval = setInterval(fetchMonitorData, 3000);
+            $('monitorStatusDot').className = 'monitor-status active';
+            $('monitorStatusText').textContent = 'Active';
+            $('monitorStatusText').style.background = '#00ff00';
+            $('monitorStatusText').style.color = '#000';
+        }
+        
+        function stopMonitoring() {
+            if (monitorInterval) {
+                clearInterval(monitorInterval);
+                monitorInterval = null;
             }
+            $('monitorStatusDot').className = 'monitor-status idle';
+            $('monitorStatusText').textContent = 'Idle';
+            $('monitorStatusText').style.background = '#666';
+            $('monitorStatusText').style.color = '#fff';
+        }
+        
+        function resetMonitorDisplay() {
+            document.getElementById('apStatus').textContent = 'Idle';
+            document.getElementById('apStatus').className = 'value idle';
+            document.getElementById('clientCount').textContent = '0';
+            document.getElementById('clientCount').className = 'value idle';
+            document.getElementById('clientList').innerHTML = '<div style="color:#666; text-align:center; padding:10px 0;">No clients connected</div>';
+            document.getElementById('lastUpdate').textContent = 'Last update: -';
+        }
+        
+        async function fetchMonitorData() {
+            try {
+                const res = await fetch('/monitor_data');
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    const monitor = data.data;
+                    
+                    // Update AP Status
+                    const apStatus = document.getElementById('apStatus');
+                    if (monitor.ap_status === '⚠️ AP OFFLINE / FREEZE!') {
+                        apStatus.textContent = '🔴 OFFLINE / FREEZE!';
+                        apStatus.className = 'value offline';
+                        addLog('🚨 AP OFFLINE / FREEZE!', 'error');
+                    } else if (monitor.ap_status === '✅ AP Online') {
+                        apStatus.textContent = '🟢 Online';
+                        apStatus.className = 'value online';
+                    } else {
+                        apStatus.textContent = '🟡 ' + monitor.ap_status;
+                        apStatus.className = 'value warning';
+                    }
+                    
+                    // Update Client Count
+                    const clients = monitor.clients || [];
+                    const clientCount = document.getElementById('clientCount');
+                    clientCount.textContent = clients.length;
+                    clientCount.className = clients.length === 0 ? 'value offline' : 'value online';
+                    
+                    // Update Client List
+                    const clientList = document.getElementById('clientList');
+                    if (clients.length === 0) {
+                        clientList.innerHTML = '<div style="color:#ff0000; text-align:center; padding:10px 0;">🔥 NO CLIENTS CONNECTED! AP DOWN!</div>';
+                    } else {
+                        clientList.innerHTML = clients.map(c => `
+                            <div class="client-item">
+                                <span class="mac">${c.station || 'Unknown'}</span>
+                                <span class="power">${c.power || '?'} dBm</span>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    // Update Last Update
+                    if (monitor.last_update) {
+                        const date = new Date(monitor.last_update * 1000);
+                        document.getElementById('lastUpdate').textContent = `Last update: ${date.toLocaleTimeString()}`;
+                    }
+                }
+            } catch (e) {}
         }
         
         // ====================== UI STATE ======================
         function updateUIState() {
             const running = state.attackRunning;
             
-            // Update status indicator
             const indicator = attackStatus.querySelector('.status-indicator');
             indicator.className = `status-indicator ${running ? 'status-running' : 'status-idle'}`;
             attackStatus.querySelector('span:last-child').textContent = running ? 'Running' : 'Idle';
             
-            // Buttons
             $('startBtn').disabled = running;
             $('stopBtn').disabled = !running;
             $('stopBtn2').disabled = !running;
             
-            // Attack options
             document.querySelectorAll('.attack-option').forEach(el => {
                 el.style.cursor = running ? 'not-allowed' : 'pointer';
                 if (running && el.dataset.type !== state.attackType) {
@@ -957,31 +1111,25 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadInterfaces();
             
-            // Scan
             $('scanBtn').addEventListener('click', scanNetworks);
             $('scanDuration').addEventListener('change', (e) => {
                 state.scanDuration = parseInt(e.target.value) || 10;
             });
             
-            // Interface refresh
             $('refreshInterfacesBtn').addEventListener('click', loadInterfaces);
             
-            // Start/Stop
             $('startBtn').addEventListener('click', startAttack);
             $('stopBtn').addEventListener('click', stopAttack);
             $('stopBtn2').addEventListener('click', stopAttack);
             
-            // Select all / Deselect all
             $('selectAllBtn').addEventListener('click', selectAll);
             $('deselectAllBtn').addEventListener('click', deselectAll);
             
-            // Clear log
             $('clearLogBtn').addEventListener('click', () => {
                 logBox.innerHTML = '';
                 addLog('Log cleared', 'info');
             });
             
-            // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && e.ctrlKey) {
                     e.preventDefault();
@@ -993,19 +1141,19 @@
                 }
             });
             
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && document.activeElement === $('scanDuration')) {
+                    scanNetworks();
+                }
+            });
+            
             updateUIState();
             updateAttackInfo();
+            resetMonitorDisplay();
             
             addLog('🎯 MDK4 Web Interface ready', 'success');
             addLog('📡 Select interface, scan networks, choose attack type', 'info');
             addLog('💡 Ctrl+Enter = Start | Ctrl+S = Stop', 'info');
-        });
-        
-        // Enter key on scan duration
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && document.activeElement === $('scanDuration')) {
-                scanNetworks();
-            }
         });
     </script>
 </body>
