@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDK4 Web Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #00ff00;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            color: #ff0000;
+            text-shadow: 0 0 20px rgba(255,0,0,0.5);
+            letter-spacing: 4px;
+        }
+        
+        .header .subtitle {
+            color: #00ff88;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Cards */
+        .card {
+            background: #111;
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-title .badge {
+            font-size: 0.7em;
+            background: #00ff00;
+            color: #000;
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+        
+        /* Status */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-idle { background: #666; }
+        .status-running { background: #00ff00; animation: pulse 0.5s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Interface List */
+        .iface-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .iface-item {
+            background: #1a1a1a;
+            padding: 8px 15px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .iface-item:hover {
+            border-color: #00ff00;
+        }
+        
+        .iface-item.selected {
+            border-color: #00ff00;
+            background: #1a3a1a;
+        }
+        
+        .iface-item .monitor-badge {
+            color: #ff8800;
+            font-size: 0.7em;
+        }
+        
+        /* Network Table */
+        .network-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+        
+        .network-table th {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #333;
+            color: #00ff88;
+        }
+        
+        .network-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #1a1a1a;
+            cursor: pointer;
+        }
+        
+        .network-table tr:hover td {
+            background: #1a1a1a;
+        }
+        
+        .network-table tr.selected td {
+            background: #1a3a1a;
+        }
+        
+        .network-table .bssid {
+            color: #ff8800;
+            font-size: 0.8em;
+        }
+        
+        .network-table .channel {
+            color: #00ccff;
+        }
+        
+        .network-table .essid {
+            color: #ffffff;
+        }
+        
+        /* Buttons */
+        .btn {
+            background: transparent;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .btn-danger {
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+        
+        .btn-danger:hover {
+            background: #ff0000;
+            color: #000;
+        }
+        
+        .btn-warning {
+            border-color: #ff8800;
+            color: #ff8800;
+        }
+        
+        .btn-warning:hover {
+            background: #ff8800;
+            color: #000;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        /* Attack Controls */
+        .attack-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .attack-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .attack-option {
+            padding: 8px 15px;
+            border: 1px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #111;
+            color: #666;
+        }
+        
+        .attack-option:hover {
+            border-color: #00ff00;
+        }
+        
+        .attack-option.active {
+            border-color: #00ff00;
+            color: #00ff00;
+            background: #1a3a1a;
+        }
+        
+        /* Log */
+        .log-box {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 0.8em;
+            font-family: 'Courier New', monospace;
+            color: #00ff88;
+        }
+        
+        .log-box .log-error { color: #ff0000; }
+        .log-box .log-success { color: #00ff00; }
+        .log-box .log-warning { color: #ff8800; }
+        .log-box .log-info { color: #00ccff; }
+        
+        /* Scan Duration */
+        .scan-duration {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .scan-duration input {
+            background: #111;
+            border: 1px solid #333;
+            color: #00ff00;
+            padding: 5px 10px;
+            border-radius: 4px;
+            width: 60px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Selection info */
+        .selection-info {
+            color: #ff8800;
+            font-size: 0.8em;
+            margin: 5px 0;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 4px;
+        }
+        
+        /* Loading */
+        .loading {
+            color: #ff8800;
+            animation: blink 0.5s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ MDK4 WEB ⚡</h1>
+            <div class="subtitle">Wireless Attack Interface | <span id="statusText">Idle</span></div>
+        </div>
+        
+        <!-- Status Bar -->
+        <div class="card" style="border-color: #333;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <span id="attackStatus">
+                        <span class="status-indicator status-idle"></span>
+                        <span>Idle</span>
+                    </span>
+                    <span style="margin-left:20px; color:#666;" id="targetInfo">No target</span>
+                </div>
+                <div>
+                    <button class="btn btn-danger" id="stopBtn" disabled>⏹ STOP</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grid -->
+        <div class="grid">
+            <!-- LEFT COLUMN -->
+            <div>
+                <!-- Interface Selection -->
+                <div class="card">
+                    <div class="card-title">
+                        📡 Interface
+                        <span class="badge" id="interfaceCount">0</span>
+                    </div>
+                    <div class="iface-list" id="interfaceList">
+                        <div style="color:#666;">Loading interfaces...</div>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <button class="btn" id="refreshInterfacesBtn">⟳ Refresh</button>
+                    </div>
+                </div>
+                
+                <!-- Scan Networks -->
+                <div class="card">
+                    <div class="card-title">
+                        🔍 Scan Networks
+                        <span class="badge" id="networkCount">0</span>
+                    </div>
+                    <div class="scan-duration">
+                        <label>Duration:</label>
+                        <input type="number" id="scanDuration" value="10" min="5" max="30">
+                        <label>seconds</label>
+                        <button class="btn" id="scanBtn">▶ Scan</button>
+                    </div>
+                    <div id="networkList" style="max-height:300px; overflow-y:auto;">
+                        <div style="color:#666;">Click "Scan" to find networks</div>
+                    </div>
+                    <div class="selection-info" id="selectionInfo">0 targets selected</div>
+                    <div class="btn-group">
+                        <button class="btn btn-warning" id="selectAllBtn">Select All</button>
+                        <button class="btn" id="deselectAllBtn">Deselect All</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- RIGHT COLUMN -->
+            <div>
+                <!-- Attack Controls -->
+                <div class="card">
+                    <div class="card-title">
+                        🚀 Attack Controls
+                        <span class="badge" id="attackTypeDisplay">None</span>
+                    </div>
+                    
+                    <div class="attack-controls">
+                        <label style="color:#666; font-size:0.8em;">Select Attack Type:</label>
+                        <div class="attack-options">
+                            <div class="attack-option" data-type="deauth">Deauth</div>
+                            <div class="attack-option" data-type="beacon">Beacon</div>
+                            <div class="attack-option" data-type="authdos">Auth DOS</div>
+                        </div>
+                        
+                        <div class="btn-group">
+                            <button class="btn" id="startBtn">▶ START</button>
+                            <button class="btn btn-danger" id="stopBtn2">⏹ STOP</button>
+                        </div>
+                        
+                        <div style="color:#666; font-size:0.75em; border-top:1px solid #1a1a1a; padding-top:10px; margin-top:5px;">
+                            <span id="attackInfo">Select targets and attack type</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Log -->
+                <div class="card">
+                    <div class="card-title">
+                        📋 Log
+                        <button class="btn" id="clearLogBtn" style="padding:2px 10px; font-size:0.7em;">Clear</button>
+                    </div>
+                    <div class="log-box" id="logBox">
+                        <div class="log-info">[System] MDK4 Web Interface ready</div>
+                        <div class="log-info">[System] Select interface and scan for networks</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ====================== STATE ======================
+        let state = {
+            interfaces: [],
+            selectedInterface: null,
+            networks: [],
+            selectedTargets: [],
+            attackType: null,
+            attackRunning: false,
+            scanDuration: 10
+        };
+        
+        // ====================== DOM REFS ======================
+        const $ = (id) => document.getElementById(id);
+        const logBox = $('logBox');
+        const interfaceList = $('interfaceList');
+        const networkList = $('networkList');
+        const networkCount = $('networkCount');
+        const selectionInfo = $('selectionInfo');
+        const interfaceCount = $('interfaceCount');
+        const attackStatus = $('attackStatus');
+        const attackTypeDisplay = $('attackTypeDisplay');
+        const attackInfo = $('attackInfo');
+        const statusText = $('statusText');
+        const targetInfo = $('targetInfo');
+        
+        // ====================== LOG ======================
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            div.textContent = `[${time}] ${message}`;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+        
+        // ====================== INTERFACES ======================
+        async function loadInterfaces() {
+            try {
+                const res = await fetch('/interfaces');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    state.interfaces = data.interfaces;
+                    state.selectedInterface = data.monitor || (data.interfaces.length > 0 ? data.interfaces[0] : null);
+                    renderInterfaces();
+                    interfaceCount.textContent = data.interfaces.length;
+                    addLog(`Loaded ${data.interfaces.length} interfaces, monitor: ${data.monitor || 'none'}`, 'success');
+                }
+            } catch (e) {
+                addLog(`Error loading interfaces: ${e}`, 'error');
+            }
+        }
+        
+        function renderInterfaces() {
+            if (state.interfaces.length === 0) {
+                interfaceList.innerHTML = '<div style="color:#666;">No wireless interfaces found</div>';
+                return;
+            }
+            
+            interfaceList.innerHTML = state.interfaces.map(iface => `
+                <div class="iface-item ${state.selectedInterface === iface ? 'selected' : ''}"
+                     onclick="selectInterface('${iface}')">
+                    ${iface}
+                    ${iface.includes('mon') ? '<span class="monitor-badge"> [mon]</span>' : ''}
+                </div>
+            `).join('');
+        }
+        
+        function selectInterface(iface) {
+            state.selectedInterface = iface;
+            renderInterfaces();
+            addLog(`Selected interface: ${iface}`, 'info');
+        }
+        
+        // ====================== SCAN ======================
+        async function scanNetworks() {
+            const duration = parseInt($('scanDuration').value) || 10;
+            state.scanDuration = duration;
+            
+            if (!state.selectedInterface) {
+                addLog('No interface selected!', 'error');
+                return;
+            }
+            
+            addLog(`Scanning networks on ${state.selectedInterface} for ${duration}s...`, 'info');
+            networkList.innerHTML = '<div class="loading">Scanning... please wait</div>';
+            
+            try {
+                const res = await fetch(`/scan?duration=${duration}`);
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    state.networks = data.networks || [];
+                    renderNetworks();
+                    networkCount.textContent = state.networks.length;
+                    addLog(`Found ${state.networks.length} networks`, 'success');
+                } else {
+                    addLog(`Scan failed: ${data.message}`, 'error');
+                    networkList.innerHTML = `<div style="color:#ff0000;">Error: ${data.message}</div>`;
+                }
+            } catch (e) {
+                addLog(`Scan error: ${e}`, 'error');
+                networkList.innerHTML = `<div style="color:#ff0000;">Error: ${e}</div>`;
+            }
+        }
+        
+        function renderNetworks() {
+            if (state.networks.length === 0) {
+                networkList.innerHTML = '<div style="color:#666;">No networks found</div>';
+                return;
+            }
+            
+            const html = `
+                <table class="network-table">
+                    <thead>
+                        <tr>
+                            <th style="width:30px;">#</th>
+                            <th>ESSID</th>
+                            <th style="width:40px;">CH</th>
+                            <th>BSSID</th>
+                            <th style="width:30px;">PWR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${state.networks.map((net, idx) => `
+                            <tr class="${state.selectedTargets.includes(idx) ? 'selected' : ''}"
+                                onclick="toggleTarget(${idx})">
+                                <td>${idx + 1}</td>
+                                <td class="essid">${net.essid || '[Hidden]'}</td>
+                                <td class="channel">${net.channel || '?'}</td>
+                                <td class="bssid">${net.bssid}</td>
+                                <td>${net.power !== null ? net.power : '?'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            networkList.innerHTML = html;
+            updateSelectionInfo();
+        }
+        
+        function toggleTarget(idx) {
+            const index = state.selectedTargets.indexOf(idx);
+            if (index > -1) {
+                state.selectedTargets.splice(index, 1);
+            } else {
+                state.selectedTargets.push(idx);
+            }
+            renderNetworks();
+            updateAttackInfo();
+        }
+        
+        function selectAll() {
+            state.selectedTargets = state.networks.map((_, i) => i);
+            renderNetworks();
+            updateAttackInfo();
+        }
+        
+        function deselectAll() {
+            state.selectedTargets = [];
+            renderNetworks();
+            updateAttackInfo();
+        }
+        
+        function updateSelectionInfo() {
+            selectionInfo.textContent = `${state.selectedTargets.length} targets selected`;
+        }
+        
+        // ====================== ATTACK ======================
+        function selectAttackType(type) {
+            state.attackType = type;
+            document.querySelectorAll('.attack-option').forEach(el => {
+                el.classList.toggle('active', el.dataset.type === type);
+            });
+            attackTypeDisplay.textContent = type ? type.toUpperCase() : 'None';
+            updateAttackInfo();
+            addLog(`Attack type set to: ${type}`, 'info');
+        }
+        
+        function updateAttackInfo() {
+            const targetCount = state.selectedTargets.length;
+            const type = state.attackType || 'none';
+            let info = `Type: ${type.toUpperCase()} | Targets: ${targetCount}`;
+            if (type === 'beacon') {
+                info = 'Beacon flood (no targets needed)';
+            } else if (type === 'authdos' && targetCount === 0) {
+                info = '⚠️ Auth DOS needs 1 target';
+            } else if ((type === 'deauth' || type === 'authdos') && targetCount === 0) {
+                info = '⚠️ Select at least 1 target';
+            } else {
+                info = `Ready: ${type.toUpperCase()} | ${targetCount} target(s)`;
+            }
+            attackInfo.textContent = info;
+        }
+        
+        async function startAttack() {
+            if (state.attackRunning) {
+                addLog('Attack already running!', 'warning');
+                return;
+            }
+            
+            if (!state.selectedInterface) {
+                addLog('No interface selected!', 'error');
+                return;
+            }
+            
+            if (!state.attackType) {
+                addLog('No attack type selected!', 'error');
+                return;
+            }
+            
+            if (state.attackType === 'beacon') {
+                // Beacon doesn't need targets
+            } else if (state.selectedTargets.length === 0) {
+                addLog(`${state.attackType.toUpperCase()} needs at least 1 target!`, 'error');
+                return;
+            }
+            
+            const targets = state.selectedTargets.map(idx => state.networks[idx]);
+            const payload = {
+                type: state.attackType,
+                targets: targets,
+                interface: state.selectedInterface
+            };
+            
+            addLog(`Starting ${state.attackType} attack...`, 'info');
+            
+            try {
+                const res = await fetch('/start_mdk4', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    state.attackRunning = true;
+                    updateUIState();
+                    addLog(`✅ ${state.attackType} attack started successfully`, 'success');
+                    statusText.textContent = `Running: ${state.attackType}`;
+                    targetInfo.textContent = targets.length > 0 ? `${targets.length} targets` : 'All networks';
+                    
+                    // Start status polling
+                    startStatusPolling();
+                } else {
+                    addLog(`Failed: ${data.message}`, 'error');
+                }
+            } catch (e) {
+                addLog(`Error: ${e}`, 'error');
+            }
+        }
+        
+        async function stopAttack() {
+            if (!state.attackRunning) {
+                addLog('No attack running', 'warning');
+                return;
+            }
+            
+            addLog('Stopping attack...', 'info');
+            
+            try {
+                const res = await fetch('/stop_mdk4', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    state.attackRunning = false;
+                    updateUIState();
+                    addLog('✅ Attack stopped', 'success');
+                    statusText.textContent = 'Idle';
+                    targetInfo.textContent = 'No target';
+                    stopStatusPolling();
+                }
+            } catch (e) {
+                addLog(`Error stopping: ${e}`, 'error');
+            }
+        }
+        
+        // ====================== STATUS POLLING ======================
+        let statusInterval = null;
+        
+        function startStatusPolling() {
+            if (statusInterval) clearInterval(statusInterval);
+            statusInterval = setInterval(checkStatus, 2000);
+        }
+        
+        function stopStatusPolling() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+        }
+        
+        async function checkStatus() {
+            try {
+                const res = await fetch('/attack_status');
+                const data = await res.json();
+                
+                if (!data.running && state.attackRunning) {
+                    state.attackRunning = false;
+                    updateUIState();
+                    addLog('Attack ended (process stopped)', 'warning');
+                    statusText.textContent = 'Idle';
+                    targetInfo.textContent = 'No target';
+                    stopStatusPolling();
+                }
+            } catch (e) {
+                // silent
+            }
+        }
+        
+        // ====================== UI STATE ======================
+        function updateUIState() {
+            const running = state.attackRunning;
+            
+            // Update status indicator
+            const indicator = attackStatus.querySelector('.status-indicator');
+            indicator.className = `status-indicator ${running ? 'status-running' : 'status-idle'}`;
+            attackStatus.querySelector('span:last-child').textContent = running ? 'Running' : 'Idle';
+            
+            // Buttons
+            $('startBtn').disabled = running;
+            $('stopBtn').disabled = !running;
+            $('stopBtn2').disabled = !running;
+            
+            // Attack options
+            document.querySelectorAll('.attack-option').forEach(el => {
+                el.style.cursor = running ? 'not-allowed' : 'pointer';
+                if (running && el.dataset.type !== state.attackType) {
+                    el.style.opacity = '0.3';
+                } else {
+                    el.style.opacity = '1';
+                }
+            });
+        }
+        
+        // ====================== EVENT BINDINGS ======================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInterfaces();
+            
+            // Scan
+            $('scanBtn').addEventListener('click', scanNetworks);
+            $('scanDuration').addEventListener('change', (e) => {
+                state.scanDuration = parseInt(e.target.value) || 10;
+            });
+            
+            // Interface refresh
+            $('refreshInterfacesBtn').addEventListener('click', loadInterfaces);
+            
+            // Attack type
+            document.querySelectorAll('.attack-option').forEach(el => {
+                el.addEventListener('click', () => {
+                    if (!state.attackRunning) {
+                        selectAttackType(el.dataset.type);
+                    }
+                });
+            });
+            
+            // Start/Stop
+            $('startBtn').addEventListener('click', startAttack);
+            $('stopBtn').addEventListener('click', stopAttack);
+            $('stopBtn2').addEventListener('click', stopAttack);
+            
+            // Select all / Deselect all
+            $('selectAllBtn').addEventListener('click', selectAll);
+            $('deselectAllBtn').addEventListener('click', deselectAll);
+            
+            // Clear log
+            $('clearLogBtn').addEventListener('click', () => {
+                logBox.innerHTML = '';
+                addLog('Log cleared', 'info');
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    startAttack();
+                }
+                if (e.key === 's' && e.ctrlKey) {
+                    e.preventDefault();
+                    stopAttack();
+                }
+            });
+            
+            updateUIState();
+            updateAttackInfo();
+            
+            addLog('🎯 MDK4 Web Interface ready', 'success');
+            addLog('📡 Select interface, scan networks, choose attack type', 'info');
+            addLog('💡 Ctrl+Enter = Start | Ctrl+S = Stop', 'info');
+        });
+        
+        // ====================== KEYBOARD ======================
+        // Enter key on scan duration
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement === $('scanDuration')) {
+                scanNetworks();
+            }
+        });
+    </script>
+</body>
+</html>
