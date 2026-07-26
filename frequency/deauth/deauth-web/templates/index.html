@@ -12,28 +12,50 @@
         }
 
         :root {
+            /* DARK MODE (default) */
             --bg-dark: #0a0a0a;
             --bg-panel: #0d0d0d;
+            --bg-input: #1a1a1a;
             --accent-orange: #ff7700;
             --accent-orange-dim: rgba(255, 119, 0, 0.15);
             --text-main: #ff7700;
             --text-bright: #ffffff;
             --text-dim: #888888;
+            --text-body: #e0e0e0;
             --green: #2ecc71;
             --red: #e74c3c;
             --border-orange: #ff7700;
+            --console-bg: #000000;
             --font-mono: 'Courier New', Consolas, Monaco, monospace;
+        }
+
+        /* LIGHT MODE */
+        [data-theme="light"] {
+            --bg-dark: #f0f0f0;
+            --bg-panel: #ffffff;
+            --bg-input: #e8e8e8;
+            --accent-orange: #ff7700;
+            --accent-orange-dim: rgba(255, 119, 0, 0.12);
+            --text-main: #cc6600;
+            --text-bright: #1a1a1a;
+            --text-dim: #777777;
+            --text-body: #222222;
+            --green: #27ae60;
+            --red: #c0392b;
+            --border-orange: #cc6600;
+            --console-bg: #f8f8f8;
         }
 
         body {
             background-color: var(--bg-dark);
-            color: var(--text-main);
+            color: var(--text-body);
             font-family: var(--font-mono);
             font-size: 13px;
             height: 100vh;
             display: flex;
             overflow: hidden;
             padding: 12px;
+            transition: background 0.3s, color 0.3s;
         }
 
         .dashboard-container {
@@ -53,12 +75,14 @@
             justify-content: space-between;
             padding: 16px 0 0 0;
             flex-shrink: 0;
+            transition: background 0.3s, border 0.3s;
         }
 
         .brand-header {
             padding: 0 16px 16px 16px;
             border-bottom: 2px solid var(--border-orange);
             margin-bottom: 12px;
+            transition: border 0.3s;
         }
 
         .brand-header .title {
@@ -66,12 +90,14 @@
             font-weight: bold;
             color: var(--text-bright);
             letter-spacing: 2px;
+            transition: color 0.3s;
         }
 
         .brand-header .status {
             font-size: 0.7rem;
             color: var(--text-dim);
             margin-top: 4px;
+            transition: color 0.3s;
         }
 
         .nav-menu {
@@ -96,6 +122,7 @@
             width: 100%;
             text-align: left;
             font-family: var(--font-mono);
+            transition: color 0.3s, background 0.3s;
         }
 
         .nav-item.active {
@@ -113,6 +140,9 @@
 
         .sidebar-footer {
             padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .btn-reboot {
@@ -126,9 +156,27 @@
             font-size: 0.8rem;
             cursor: pointer;
             letter-spacing: 1px;
+            transition: opacity 0.2s;
         }
         .btn-reboot:hover {
             opacity: 0.8;
+        }
+
+        .btn-theme-toggle {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border-orange);
+            color: var(--text-main);
+            padding: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: background 0.3s, color 0.3s, border 0.3s;
+        }
+        .btn-theme-toggle:hover {
+            background: var(--accent-orange);
+            color: #000;
         }
 
         /* ================= KONTEN UTAMA ================= */
@@ -148,12 +196,15 @@
             justify-content: space-between;
             align-items: center;
             background: var(--bg-dark);
+            transition: background 0.3s, border 0.3s;
         }
 
         .top-bar-title {
             font-size: 1rem;
             font-weight: bold;
             letter-spacing: 2px;
+            color: var(--text-main);
+            transition: color 0.3s;
         }
 
         .top-bar-icons {
@@ -185,12 +236,13 @@
         }
 
         .panel {
-            background: var(--bg-dark);
+            background: var(--bg-panel);
             border: 2px solid var(--border-orange);
             padding: 12px;
             display: flex;
             flex-direction: column;
             position: relative;
+            transition: background 0.3s, border 0.3s;
         }
 
         .panel-badge {
@@ -224,6 +276,7 @@
             font-weight: bold;
             color: var(--text-bright);
             letter-spacing: 2px;
+            transition: color 0.3s;
         }
         .status-big.idle {
             color: var(--text-dim);
@@ -242,6 +295,7 @@
             color: var(--text-dim);
             letter-spacing: 1px;
             margin-top: 2px;
+            transition: color 0.3s;
         }
 
         .deauth-actions {
@@ -306,7 +360,7 @@
         .bar {
             background: var(--accent-orange);
             width: 100%;
-            transition: height 0.3s;
+            transition: height 0.3s, background 0.3s;
         }
 
         /* Panel Available Networks */
@@ -346,6 +400,7 @@
             padding: 8px;
             border-bottom: 1px solid rgba(255, 119, 0, 0.3);
             letter-spacing: 1px;
+            transition: color 0.3s, border 0.3s;
         }
 
         td {
@@ -353,6 +408,7 @@
             font-size: 0.8rem;
             color: var(--text-bright);
             border-bottom: 1px solid rgba(255, 119, 0, 0.1);
+            transition: color 0.3s, border 0.3s;
         }
 
         tr.selected td {
@@ -378,6 +434,7 @@
             border-radius: 2px;
             color: var(--text-main);
             white-space: nowrap;
+            transition: border 0.3s, color 0.3s;
         }
 
         .sig-green { color: var(--green); }
@@ -392,6 +449,7 @@
             border-top: 1px solid rgba(255, 119, 0, 0.3);
             padding-top: 8px;
             margin-top: 8px;
+            transition: color 0.3s, border 0.3s;
         }
 
         .checkbox-col {
@@ -414,23 +472,25 @@
             display: flex;
             gap: 12px;
             height: 120px;
-            background: var(--bg-dark);
+            background: var(--bg-panel);
+            transition: background 0.3s, border 0.3s;
         }
 
         .console-box {
             flex-grow: 1;
-            background: #000000;
+            background: var(--console-bg);
             border: 1px solid rgba(255, 119, 0, 0.3);
             padding: 8px;
             font-size: 0.75rem;
             overflow-y: auto;
             color: var(--text-bright);
+            transition: background 0.3s, color 0.3s, border 0.3s;
         }
         .console-box::-webkit-scrollbar {
             width: 4px;
         }
         .console-box::-webkit-scrollbar-track {
-            background: #000;
+            background: var(--bg-dark);
         }
         .console-box::-webkit-scrollbar-thumb {
             background: var(--accent-orange);
@@ -475,7 +535,8 @@
             flex-grow: 1;
             overflow-y: auto;
             border: 2px solid var(--border-orange);
-            background: var(--bg-dark);
+            background: var(--bg-panel);
+            transition: background 0.3s, border 0.3s;
         }
         .logs-table-wrap::-webkit-scrollbar {
             width: 4px;
@@ -494,15 +555,19 @@
         .logs-table-wrap th {
             position: sticky;
             top: 0;
-            background: var(--bg-dark);
+            background: var(--bg-panel);
             padding: 10px 12px;
             border-bottom: 2px solid var(--border-orange);
             z-index: 2;
+            color: var(--text-main);
+            transition: background 0.3s, color 0.3s, border 0.3s;
         }
         .logs-table-wrap td {
             padding: 8px 12px;
             border-bottom: 1px solid rgba(255, 119, 0, 0.1);
             font-size: 0.75rem;
+            color: var(--text-bright);
+            transition: color 0.3s, border 0.3s;
         }
         .logs-table-wrap .log-status-success { color: var(--green); }
         .logs-table-wrap .log-status-stopped { color: var(--accent-orange); }
@@ -512,6 +577,7 @@
             display: flex;
             gap: 10px;
             padding: 8px 0;
+            flex-wrap: wrap;
         }
         .logs-actions .btn-action {
             padding: 6px 16px;
@@ -521,6 +587,7 @@
         .log-count {
             color: var(--text-dim);
             font-size: 0.7rem;
+            transition: color 0.3s;
         }
 
         /* ================= RESPONSIVE ================= */
@@ -530,24 +597,218 @@
                 grid-template-rows: auto auto 1fr;
             }
             .panel-deauth { grid-column: 1; grid-row: 1; }
-            .panel-signal { grid-column: 1; grid-row: 2; height: 120px; }
+            .panel-signal { grid-column: 1; grid-row: 2; height: 100px; min-height: 80px; }
             .panel-networks { grid-column: 1; grid-row: 3; }
-            .panel-console { flex-wrap: wrap; height: auto; }
+            .panel-console { flex-wrap: wrap; height: auto; min-height: 100px; }
             .console-actions { width: 100%; }
         }
 
+        @media (max-width: 992px) {
+            .sidebar-left {
+                width: 180px;
+            }
+            .brand-header .title {
+                font-size: 1.1rem;
+            }
+            .grid-content {
+                grid-template-columns: 1fr;
+            }
+            .panel-deauth { grid-column: 1; grid-row: 1; }
+            .panel-signal { grid-column: 1; grid-row: 2; height: 80px; }
+            .panel-networks { grid-column: 1; grid-row: 3; }
+        }
+
         @media (max-width: 768px) {
-            body { padding: 6px; }
-            .dashboard-container { flex-direction: column; }
-            .sidebar-left { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 8px; }
-            .sidebar-left .brand-header { border-bottom: none; margin-bottom: 0; padding: 0; }
-            .sidebar-left .nav-menu { flex-direction: row; flex-wrap: wrap; }
-            .sidebar-left .sidebar-footer { display: none; }
-            .top-bar { flex-wrap: wrap; gap: 8px; }
-            .deauth-actions { grid-template-columns: 1fr; }
-            .panel-console { flex-direction: column; height: auto; }
-            .console-actions { width: 100%; flex-wrap: wrap; }
-            .console-actions .btn-action { flex: 1; min-width: 100px; }
+            body { 
+                padding: 6px; 
+                height: auto;
+                overflow-y: auto;
+            }
+            .dashboard-container { 
+                flex-direction: column; 
+                height: auto;
+                gap: 8px;
+            }
+            .sidebar-left { 
+                width: 100%; 
+                flex-direction: row; 
+                flex-wrap: wrap; 
+                padding: 10px;
+                align-items: center;
+            }
+            .sidebar-left .brand-header { 
+                border-bottom: none; 
+                margin-bottom: 0; 
+                padding: 0;
+                flex: 1;
+                min-width: 120px;
+            }
+            .sidebar-left .brand-header .title {
+                font-size: 1rem;
+            }
+            .sidebar-left .nav-menu { 
+                flex-direction: row; 
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .sidebar-left .nav-item {
+                padding: 6px 12px;
+                font-size: 0.7rem;
+                width: auto;
+            }
+            .sidebar-left .sidebar-footer {
+                display: flex;
+                flex-direction: row;
+                padding: 4px 0;
+                width: 100%;
+                gap: 6px;
+            }
+            .sidebar-left .sidebar-footer .btn-reboot {
+                padding: 6px 12px;
+                font-size: 0.65rem;
+                flex: 1;
+            }
+            .sidebar-left .sidebar-footer .btn-theme-toggle {
+                padding: 6px 12px;
+                font-size: 0.65rem;
+                flex: 1;
+            }
+            .top-bar { 
+                flex-wrap: wrap; 
+                gap: 6px;
+                padding: 8px 12px;
+            }
+            .top-bar-title {
+                font-size: 0.85rem;
+            }
+            .deauth-actions { 
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+            .deauth-actions .btn-action {
+                padding: 8px;
+                font-size: 0.65rem;
+            }
+            .panel-console { 
+                flex-direction: column; 
+                height: auto;
+                min-height: 80px;
+                padding: 8px;
+                padding-top: 20px;
+            }
+            .console-actions { 
+                width: 100%; 
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            .console-actions .btn-action { 
+                flex: 1; 
+                min-width: 80px;
+                padding: 6px;
+                font-size: 0.6rem;
+            }
+            .panel {
+                padding: 8px;
+            }
+            .panel-badge {
+                font-size: 0.55rem;
+                padding: 1px 6px;
+            }
+            .status-big {
+                font-size: 1.3rem;
+            }
+            table {
+                font-size: 0.65rem;
+            }
+            th, td {
+                padding: 4px 6px;
+                font-size: 0.6rem;
+            }
+            .sec-badge {
+                font-size: 0.5rem;
+                padding: 1px 4px;
+            }
+            .networks-footer {
+                font-size: 0.55rem;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .checkbox-col {
+                width: 24px;
+            }
+            input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+            }
+            .panel-signal {
+                height: 60px;
+                min-height: 50px;
+                padding-top: 18px;
+            }
+            .panel-signal .panel-badge {
+                font-size: 0.5rem;
+            }
+            .chart-container {
+                padding-top: 4px;
+                gap: 4px;
+            }
+            .logs-table-wrap td {
+                font-size: 0.6rem;
+                padding: 4px 6px;
+            }
+            .logs-table-wrap th {
+                font-size: 0.6rem;
+                padding: 4px 6px;
+            }
+            .log-count {
+                font-size: 0.6rem;
+            }
+            .logs-actions .btn-action {
+                padding: 4px 10px;
+                font-size: 0.55rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 4px; }
+            .sidebar-left .nav-item {
+                font-size: 0.6rem;
+                padding: 4px 8px;
+                gap: 4px;
+            }
+            .sidebar-left .brand-header .title {
+                font-size: 0.85rem;
+            }
+            .sidebar-left .brand-header .status {
+                font-size: 0.55rem;
+            }
+            .top-bar-title {
+                font-size: 0.7rem;
+            }
+            .status-big {
+                font-size: 1rem;
+            }
+            .deauth-actions {
+                grid-template-columns: 1fr;
+            }
+            .panel-console .console-box {
+                font-size: 0.6rem;
+                padding: 4px 6px;
+                max-height: 60px;
+            }
+            .panel-deauth {
+                padding-top: 18px;
+            }
+            .panel-networks {
+                padding-top: 18px;
+            }
+            .panel-signal {
+                height: 50px;
+                min-height: 40px;
+            }
+            .chart-container {
+                gap: 3px;
+            }
         }
     </style>
 </head>
@@ -575,6 +836,7 @@
 
         <div class="sidebar-footer">
             <button class="btn-reboot" onclick="rebootSystem()">SYSTEM REBOOT</button>
+            <button class="btn-theme-toggle" onclick="toggleTheme()">☀ / 🌙 THEME</button>
         </div>
     </aside>
 
@@ -607,7 +869,7 @@
                         <button class="btn-action filled" id="btnStartDeauth" onclick="toggleDeauth()">▷ START ATTACK</button>
                         <button class="btn-action" id="btnStopDeauth" onclick="stopDeauth()" disabled>⏹ STOP</button>
                     </div>
-                    <div style="margin-top:10px;font-size:0.65rem;color:var(--text-dim);">
+                    <div style="margin-top:10px;font-size:0.65rem;color:var(--text-dim);transition:color 0.3s;">
                         TARGETS: <span id="deauth-target-count">0</span> selected
                     </div>
                 </div>
@@ -633,7 +895,7 @@
                 <div class="panel panel-networks">
                     <div class="panel-badge">📡 AVAILABLE NETWORKS</div>
                     <div style="display:flex;gap:10px;margin-top:24px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
-                        <span style="font-size:0.65rem;color:var(--text-dim);">
+                        <span style="font-size:0.65rem;color:var(--text-dim);transition:color 0.3s;">
                             SELECTED: <span id="selected-count">0</span>
                         </span>
                         <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="selectAll()">ALL</button>
@@ -653,7 +915,7 @@
                                 </tr>
                             </thead>
                             <tbody id="network-body">
-                                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;">PRESS SCAN TO DISCOVER NETWORKS</td></tr>
+                                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;transition:color 0.3s;">PRESS SCAN TO DISCOVER NETWORKS</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -685,7 +947,7 @@
         <div class="page" id="page-logs">
             <div class="logs-container">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <span style="font-weight:bold;letter-spacing:2px;">ATTACK HISTORY</span>
+                    <span style="font-weight:bold;letter-spacing:2px;color:var(--text-main);transition:color 0.3s;">ATTACK HISTORY</span>
                     <span class="log-count">Total: <span id="log-total-count">0</span> entries</span>
                 </div>
                 <div class="logs-actions">
@@ -705,7 +967,7 @@
                             </tr>
                         </thead>
                         <tbody id="logs-body">
-                            <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;">NO ATTACK HISTORY</td></tr>
+                            <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;transition:color 0.3s;">NO ATTACK HISTORY</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -717,6 +979,29 @@
 </div>
 
 <script>
+    // ============================================================
+    // THEME TOGGLE
+    // ============================================================
+    function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        if (currentTheme === 'light') {
+            html.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            html.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    // Load saved theme
+    (function loadTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    })();
+
     // ============================================================
     // STATE
     // ============================================================
@@ -1154,6 +1439,10 @@
         if (e.key === 'l' && e.ctrlKey) {
             e.preventDefault();
             showPage('logs');
+        }
+        if (e.key === 't' && e.ctrlKey) {
+            e.preventDefault();
+            toggleTheme();
         }
     });
 
