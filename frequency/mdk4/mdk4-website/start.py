@@ -11,6 +11,7 @@ import signal
 import sys
 import os
 import requests
+import threading
 
 # Warna
 GREEN = "\033[92m"
@@ -105,6 +106,15 @@ def setup_ngrok_root():
         print_status(f"Failed to setup ngrok: {e}", "error")
         return False
 
+def print_flask_output(process):
+    """Print output dari Flask untuk debugging"""
+    try:
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                print(f"{CYAN}[Flask]{RESET} {line.strip()}")
+    except Exception as e:
+        print(f"[-] Error reading Flask output: {e}")
+
 def run_flask_as_sudo():
     """Jalankan Flask dengan sudo (karena butuh akses root)"""
     print_status("Starting Flask (app.py) with sudo...", "info")
@@ -126,20 +136,27 @@ def run_flask_as_sudo():
             bufsize=1
         )
         
+        # Start thread untuk print output Flask
+        thread = threading.Thread(target=print_flask_output, args=(flask_process,))
+        thread.daemon = True
+        thread.start()
+        
         # Tunggu Flask siap
-        time.sleep(3)
+        print_status("Waiting for Flask to be ready...", "info")
+        time.sleep(5)
         
         # Cek apakah Flask berjalan
-        try:
-            response = requests.get('http://localhost:5000', timeout=2)
-            if response.status_code == 200:
-                print_status("Flask running at http://localhost:5000", "success")
-                return flask_process
-        except:
-            pass
+        for i in range(5):
+            try:
+                response = requests.get('http://localhost:5000', timeout=2)
+                if response.status_code == 200:
+                    print_status("Flask running at http://localhost:5000", "success")
+                    return flask_process
+            except:
+                pass
+            time.sleep(1)
             
-        print_status("Flask starting (wait a few more seconds)...", "warning")
-        time.sleep(3)
+        print_status("Flask might be starting, continuing...", "warning")
         return flask_process
         
     except Exception as e:

