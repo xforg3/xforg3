@@ -590,6 +590,25 @@
             transition: color 0.3s;
         }
 
+        /* Target Info */
+        .target-info {
+            margin-top: 10px;
+            padding: 8px;
+            background: var(--accent-orange-dim);
+            border: 1px solid var(--border-orange);
+            font-size: 0.7rem;
+            color: var(--text-bright);
+            transition: background 0.3s, border 0.3s, color 0.3s;
+            word-break: break-all;
+        }
+        .target-info .label {
+            color: var(--text-dim);
+        }
+        .target-info .value {
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
         /* ================= RESPONSIVE ================= */
         @media (max-width: 1200px) {
             .grid-content {
@@ -767,6 +786,10 @@
                 padding: 4px 10px;
                 font-size: 0.55rem;
             }
+            .target-info {
+                font-size: 0.6rem;
+                padding: 6px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -870,7 +893,14 @@
                         <button class="btn-action" id="btnStopDeauth" onclick="stopDeauth()" disabled>⏹ STOP</button>
                     </div>
                     <div style="margin-top:10px;font-size:0.65rem;color:var(--text-dim);transition:color 0.3s;">
-                        TARGETS: <span id="deauth-target-count">0</span> selected
+                        TARGET: <span id="deauth-target-count">0</span> selected
+                    </div>
+                    <!-- Target Info -->
+                    <div class="target-info" id="target-info" style="display:none;">
+                        <div><span class="label">BSSID:</span> <span class="value" id="target-bssid">-</span></div>
+                        <div><span class="label">CH:</span> <span class="value" id="target-channel">-</span></div>
+                        <div><span class="label">ESSID:</span> <span class="value" id="target-essid">-</span></div>
+                        <div><span class="label">Status:</span> <span class="value" id="target-status">-</span></div>
                     </div>
                 </div>
 
@@ -900,6 +930,7 @@
                         </span>
                         <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="selectAll()">ALL</button>
                         <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="deselectAll()">NONE</button>
+                        <span style="font-size:0.6rem;color:var(--text-dim);margin-left:4px;">(SINGLE TARGET MODE)</span>
                     </div>
 
                     <div class="networks-table-container" id="table-container">
@@ -1011,6 +1042,7 @@
     let consoleLines = [];
     let attackLogs = [];
     let deauthStartTime = null;
+    let deauthTarget = null;
 
     // ============================================================
     // PAGE NAVIGATION
@@ -1234,16 +1266,23 @@
     }
 
     // ============================================================
-    // SELECTION
+    // SELECTION (Single Target Mode)
     // ============================================================
     function toggleAllCheckboxes() {
         const checked = document.getElementById('select-all').checked;
-        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = checked);
+        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
+        // Only select first one if checked
+        if (checked) {
+            const first = document.querySelector('.target-checkbox');
+            if (first) first.checked = true;
+        }
         updateSelection();
     }
 
     function selectAll() {
-        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = true);
+        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
+        const first = document.querySelector('.target-checkbox');
+        if (first) first.checked = true;
         document.getElementById('select-all').checked = true;
         updateSelection();
     }
@@ -1257,15 +1296,33 @@
     function updateSelection() {
         const checkboxes = document.querySelectorAll('.target-checkbox:checked');
         const count = checkboxes.length;
-        selectedTargets = Array.from(checkboxes).map(cb => ({
-            bssid: cb.dataset.bssid,
-            channel: cb.dataset.channel,
-            essid: cb.dataset.essid || 'Unknown'
-        }));
+        
+        // Single target mode: only keep the first selected
+        if (count > 1) {
+            // Uncheck all except the first
+            const first = checkboxes[0];
+            document.querySelectorAll('.target-checkbox').forEach(cb => {
+                if (cb !== first) cb.checked = false;
+            });
+            // Re-get checkboxes
+            const newCheckboxes = document.querySelectorAll('.target-checkbox:checked');
+            selectedTargets = Array.from(newCheckboxes).map(cb => ({
+                bssid: cb.dataset.bssid,
+                channel: cb.dataset.channel,
+                essid: cb.dataset.essid || 'Unknown'
+            }));
+        } else {
+            selectedTargets = Array.from(checkboxes).map(cb => ({
+                bssid: cb.dataset.bssid,
+                channel: cb.dataset.channel,
+                essid: cb.dataset.essid || 'Unknown'
+            }));
+        }
 
-        document.getElementById('selected-count').textContent = count;
-        document.getElementById('deauth-target-count').textContent = count;
+        document.getElementById('selected-count').textContent = selectedTargets.length;
+        document.getElementById('deauth-target-count').textContent = selectedTargets.length;
 
+        // Update row highlighting
         document.querySelectorAll('#network-body tr').forEach(row => {
             const cb = row.querySelector('.target-checkbox');
             if (cb && cb.checked) {
@@ -1275,15 +1332,25 @@
             }
         });
 
-        if (count > 0) {
-            document.getElementById('deauth-command-text').textContent = `${count} TARGET(S) SELECTED`;
+        // Update target info
+        if (selectedTargets.length === 1) {
+            const t = selectedTargets[0];
+            document.getElementById('target-info').style.display = 'block';
+            document.getElementById('target-bssid').textContent = t.bssid;
+            document.getElementById('target-channel').textContent = t.channel;
+            document.getElementById('target-essid').textContent = t.essid;
+            document.getElementById('target-status').textContent = isDeauthRunning ? 'ATTACKING' : 'READY';
+            document.getElementById('target-status').style.color = isDeauthRunning ? 'var(--green)' : 'var(--text-main)';
+            document.getElementById('deauth-command-text').textContent = `TARGET: ${t.essid} (${t.bssid})`;
         } else {
-            document.getElementById('deauth-command-text').textContent = 'WAITING FOR COMMAND...';
+            document.getElementById('target-info').style.display = 'none';
+            document.getElementById('deauth-command-text').textContent = selectedTargets.length > 0 ? 
+                `${selectedTargets.length} TARGET(S) SELECTED` : 'WAITING FOR COMMAND...';
         }
     }
 
     // ============================================================
-    // DEAUTH
+    // DEAUTH (Single Target)
     // ============================================================
     function toggleDeauth() {
         if (isDeauthRunning) {
@@ -1296,10 +1363,17 @@
     function startDeauth() {
         const targets = selectedTargets;
         if (targets.length === 0) {
-            addConsoleLine('No targets selected for deauth!', 'warn');
-            alert('Select at least 1 target from the table!');
+            addConsoleLine('No target selected for deauth!', 'warn');
+            alert('Select 1 target from the table!');
             return;
         }
+
+        if (targets.length > 1) {
+            addConsoleLine('Multiple targets selected! Only first target will be used.', 'warn');
+        }
+
+        const target = targets[0];
+        deauthTarget = target;
 
         const btn = document.getElementById('btnStartDeauth');
         btn.disabled = true;
@@ -1310,7 +1384,7 @@
         fetch('/start_deauth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ targets: targets.map(t => ({ bssid: t.bssid, channel: t.channel })) })
+            body: JSON.stringify({ targets: [target] })
         })
         .then(res => res.json())
         .then(data => {
@@ -1318,15 +1392,15 @@
                 isDeauthRunning = true;
                 document.getElementById('deauth-status-big').textContent = 'RUNNING';
                 document.getElementById('deauth-status-big').className = 'status-big running';
-                document.getElementById('deauth-command-text').textContent = `ATTACKING ${targets.length} TARGET(S)...`;
+                document.getElementById('deauth-command-text').textContent = `ATTACKING ${target.essid}...`;
                 document.getElementById('btnStartDeauth').textContent = '● ATTACKING';
                 document.getElementById('btnStartDeauth').className = 'btn-action danger filled';
                 document.getElementById('btnStopDeauth').disabled = false;
                 document.getElementById('status-text').textContent = 'STATUS: DEAUTH ACTIVE';
-                addConsoleLine(`Deauth started on ${targets.length} target(s)`, 'success');
-                targets.forEach(t => {
-                    addConsoleLine(`→ ${t.bssid} (CH ${t.channel}) - ${t.essid}`, 'info');
-                });
+                document.getElementById('target-status').textContent = 'ATTACKING';
+                document.getElementById('target-status').style.color = 'var(--green)';
+                addConsoleLine(`Deauth started on ${target.bssid} (CH ${target.channel}) - ${target.essid}`, 'success');
+                addConsoleLine('⚡ OPTIMIZED SINGLE TARGET MODE ACTIVE', 'info');
             } else {
                 addConsoleLine(`Deauth error: ${data.message}`, 'error');
                 resetDeauthUI();
@@ -1356,15 +1430,15 @@
                 isDeauthRunning = false;
                 addConsoleLine('Deauth stopped', 'info');
                 
-                selectedTargets.forEach(t => {
+                if (deauthTarget) {
                     addAttackLog({
-                        bssid: t.bssid,
-                        channel: t.channel,
-                        essid: t.essid || 'Unknown',
+                        bssid: deauthTarget.bssid,
+                        channel: deauthTarget.channel,
+                        essid: deauthTarget.essid || 'Unknown',
                         status: 'stopped',
                         duration: durationStr
                     });
-                });
+                }
                 
                 resetDeauthUI();
                 document.getElementById('status-text').textContent = 'STATUS: READY';
@@ -1378,6 +1452,7 @@
     function resetDeauthUI() {
         isDeauthRunning = false;
         deauthStartTime = null;
+        deauthTarget = null;
         document.getElementById('deauth-status-big').textContent = 'IDLE';
         document.getElementById('deauth-status-big').className = 'status-big idle';
         document.getElementById('deauth-command-text').textContent = 'WAITING FOR COMMAND...';
@@ -1385,7 +1460,12 @@
         document.getElementById('btnStartDeauth').className = 'btn-action filled';
         document.getElementById('btnStopDeauth').disabled = true;
         document.getElementById('status-text').textContent = 'STATUS: READY';
-        if (selectedTargets.length > 0) {
+        document.getElementById('target-status').textContent = 'READY';
+        document.getElementById('target-status').style.color = 'var(--text-main)';
+        if (selectedTargets.length === 1) {
+            const t = selectedTargets[0];
+            document.getElementById('deauth-command-text').textContent = `TARGET: ${t.essid} (${t.bssid})`;
+        } else if (selectedTargets.length > 0) {
             document.getElementById('deauth-command-text').textContent = `${selectedTargets.length} TARGET(S) SELECTED`;
         }
     }
@@ -1414,6 +1494,7 @@
         renderLogs();
         addConsoleLine('SYSTEM INITIALIZED. NODE_01 ONLINE.', 'success');
         addConsoleLine('SCANNING FREQUENCIES 2.4GHz / 5GHz...', 'info');
+        addConsoleLine('⚡ SINGLE TARGET MODE ACTIVE', 'info');
         document.getElementById('status-text').textContent = 'STATUS: READY';
         setTimeout(scanNetworks, 1500);
     });
@@ -1452,7 +1533,7 @@
     console.log('%c ██║╚██╗██║██║   ██║██║  ██║██╔══╝  ██╔══██║██║   ██║', 'color:#ff7700;font-size:10px;');
     console.log('%c ██║ ╚████║╚██████╔╝██████╔╝███████╗██║  ██║╚██████╔╝', 'color:#ff7700;font-size:10px;');
     console.log('%c ╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝ ', 'color:#ff7700;font-size:10px;');
-    console.log('%c NODE_01 ACTIVE - WIRELESS ATTACK INTERFACE v2.0 ', 'background:#ff7700;color:#1a1a1a;font-weight:bold;font-size:14px;padding:4px 8px;');
+    console.log('%c NODE_01 ACTIVE - SINGLE TARGET DEAUTH v3.0 ', 'background:#ff7700;color:#1a1a1a;font-weight:bold;font-size:14px;padding:4px 8px;');
 </script>
 
 </body>
