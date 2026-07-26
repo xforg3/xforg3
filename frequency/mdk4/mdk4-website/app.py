@@ -1,8 +1,6 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.templating import Jinja2Templates
-from fastapi.requests import Request
 from pydantic import BaseModel
 from typing import List, Optional
 import subprocess
@@ -28,9 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Templates
-templates = Jinja2Templates(directory="templates")
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -323,9 +318,29 @@ def stop_attack_async():
 
 # ====================== API ROUTES ======================
 
-@app.get("/")
-async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Root - load index.html langsung"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        index_path = os.path.join(script_dir, "templates", "index.html")
+        
+        if os.path.exists(index_path):
+            with open(index_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+            return HTMLResponse(content=html_content, status_code=200)
+        else:
+            return HTMLResponse(
+                content=f"<h1>Error: index.html not found at {index_path}</h1>", 
+                status_code=404
+            )
+    except Exception as e:
+        logger.error(f"Root error: {e}")
+        traceback.print_exc()
+        return HTMLResponse(
+            content=f"<h1>Error: {e}</h1>", 
+            status_code=500
+        )
 
 @app.get("/api/interfaces")
 async def get_interfaces():
@@ -453,7 +468,6 @@ async def start_attack(req: AttackRequest):
 @app.post("/api/attack/stop")
 async def stop_attack():
     try:
-        # 🔥 FIX: Stop di background, langsung balas response
         if state.running:
             stop_attack_async()
             return {"status": "success", "message": "Attack stopping..."}
@@ -473,7 +487,6 @@ async def force_stop():
     try:
         logger.info("Force stopping all processes...")
         
-        # Kill semua MDK4
         subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
         subprocess.run("sudo pkill -9 -f aireplay-ng", shell=True, check=False)
         subprocess.run("sudo pkill -9 -f airodump-ng", shell=True, check=False)
