@@ -143,6 +143,7 @@ def parse_csv(filename):
                 channel = parts[3].strip()
                 essid = parts[13].strip()
                 power_str = parts[8].strip() if len(parts) > 8 else ''
+                # Konversi power ke int
                 try:
                     power = int(power_str)
                 except:
@@ -157,7 +158,7 @@ def parse_csv(filename):
                     })
     return networks
 
-# ====================== ROUTE SCAN - SUPER CEPAT ======================
+# ====================== ROUTE SCAN ======================
 
 @app.route('/scan', methods=['GET'])
 def scan_wifi():
@@ -165,79 +166,60 @@ def scan_wifi():
         interface = get_monitor_interface()
         print(f"[*] Scanning with {interface}...")
         
-        # Bersihkan file lama
         for f in glob.glob("/tmp/scan_output*.csv"):
             try:
                 os.remove(f)
             except:
                 pass
         
-        # =========== INI YANG DIUBAH ===========
-        # Scan CEPAT: timeout 4 detik, channel 1,6,11, 2.4GHz only
-        cmd = f"timeout 4 sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv -c 1,6,11 --band bg"
-        # ======================================
-        
-        print(f"[*] Running: timeout 4 airodump-ng {interface} -c 1,6,11 --band bg")
+        cmd = f"timeout 12 sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv"
         subprocess.run(cmd, shell=True, capture_output=True, text=True)
         
-        # Coba baca hasil
-        networks = []
         possible_files = [
             "/tmp/scan_output-01.csv",
+            "/tmp/scan_output-02.csv",
+            "/tmp/scan_output-03.csv",
             "/tmp/scan_output.csv"
         ]
         
+        networks = []
         for f in possible_files:
             if os.path.exists(f):
-                print(f"[*] Parsing: {f}")
+                print(f"[*] Parsing file: {f}")
                 networks = parse_csv(f)
                 if networks:
                     break
         
         if networks:
+            # Urutkan berdasarkan power (terbesar = terkuat), yang None ditaruh di bawah
             networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
-            print(f"[+] Found {len(networks)} networks in {time.time() - start_time:.1f}s")
+            print(f"[+] Found {len(networks)} networks")
             return jsonify({"status": "success", "networks": networks})
         else:
-            print("[*] No networks found")
-            return jsonify({"status": "success", "networks": []})
-            
-    except Exception as e:
-        print(f"[-] Error: {e}")
-        return jsonify({"status": "error", "message": str(e)})
-
-# ====================== ROUTE SCAN - FULL (kalo mau scan semua) ======================
-
-@app.route('/scan_full', methods=['GET'])
-def scan_wifi_full():
-    try:
-        interface = get_monitor_interface()
-        print(f"[*] Full scanning with {interface}...")
-        
-        for f in glob.glob("/tmp/scan_output*.csv"):
-            try:
-                os.remove(f)
-            except:
-                pass
-        
-        # Full scan - lebih lama tapi lebih lengkap
-        cmd = f"timeout 8 sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv --band abg"
-        subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        
-        networks = []
-        for f in ["/tmp/scan_output-01.csv", "/tmp/scan_output.csv"]:
-            if os.path.exists(f):
-                networks = parse_csv(f)
-                if networks:
-                    break
-        
-        if networks:
+            print("[*] No networks found in CSV, using fallback method...")
+            cmd2 = f"timeout 8 sudo airodump-ng {interface} 2>/dev/null | grep -E '^[0-9A-F]' | head -20"
+            result2 = subprocess.run(cmd2, shell=True, capture_output=True, text=True)
+            lines = result2.stdout.split('\n')
+            for line in lines:
+                parts = line.split()
+                if len(parts) >= 7:
+                    bssid = parts[0]
+                    channel = parts[2] if len(parts) > 2 else "?"
+                    essid = " ".join(parts[6:]) if len(parts) > 6 else "[Hidden]"
+                    if bssid and len(bssid) == 17 and ":" in bssid:
+                        networks.append({
+                            "bssid": bssid,
+                            "channel": channel,
+                            "essid": essid,
+                            "power": None,
+                            "signal_level": "Almost Hilang"
+                        })
+            # Urutkan (fallback tidak punya power, tetap beri urutan)
             networks.sort(key=lambda x: x['power'] if x['power'] is not None else -1000, reverse=True)
             return jsonify({"status": "success", "networks": networks})
-        else:
-            return jsonify({"status": "success", "networks": []})
             
     except Exception as e:
+        print(f"[-] Error during scan: {e}")
         return jsonify({"status": "error", "message": str(e)})
 
 # ====================== ROUTES SERANGAN ======================
@@ -346,10 +328,8 @@ atexit.register(cleanup)
 
 if __name__ == '__main__':
     try:
-        start_time = time.time()
         ensure_monitor_mode()
         print(f"[*] Monitor interface ready: {monitor_iface}")
-        print(f"[*] Setup completed in {time.time() - start_time:.1f}s")
         print("[*] Starting Flask server on 0.0.0.0:5000 ...")
         app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
