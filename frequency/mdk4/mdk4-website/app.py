@@ -30,7 +30,7 @@ app.add_middleware(
 )
 
 # Templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="templates", autoescape=False)
 
 # Logging
 logging.basicConfig(level=logging.INFO)
