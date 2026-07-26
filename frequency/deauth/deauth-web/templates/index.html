@@ -411,16 +411,24 @@
             transition: color 0.3s, border 0.3s;
         }
 
-        tr.selected td {
+        /* Row clickable */
+        .clickable-row {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .clickable-row:hover {
+            background: var(--accent-orange-dim);
+        }
+        .clickable-row.selected {
             background: var(--accent-orange);
             color: #000;
             font-weight: bold;
         }
-        tr.selected td .sec-badge {
+        .clickable-row.selected td .sec-badge {
             border-color: #000;
             color: #000;
         }
-        tr td:first-child {
+        .clickable-row td:first-child {
             max-width: 120px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -450,17 +458,6 @@
             padding-top: 8px;
             margin-top: 8px;
             transition: color 0.3s, border 0.3s;
-        }
-
-        .checkbox-col {
-            width: 30px;
-            text-align: center;
-        }
-        input[type="checkbox"] {
-            accent-color: var(--accent-orange);
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
         }
 
         /* Panel Live Console */
@@ -752,13 +749,6 @@
                 flex-wrap: wrap;
                 gap: 4px;
             }
-            .checkbox-col {
-                width: 24px;
-            }
-            input[type="checkbox"] {
-                width: 14px;
-                height: 14px;
-            }
             .panel-signal {
                 height: 60px;
                 min-height: 50px;
@@ -928,16 +918,14 @@
                         <span style="font-size:0.65rem;color:var(--text-dim);transition:color 0.3s;">
                             SELECTED: <span id="selected-count">0</span>
                         </span>
-                        <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="selectAll()">ALL</button>
-                        <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="deselectAll()">NONE</button>
-                        <span style="font-size:0.6rem;color:var(--text-dim);margin-left:4px;">(SINGLE TARGET MODE)</span>
+                        <button class="btn-action" style="padding:2px 8px;font-size:0.55rem;" onclick="clearSelection()">CLEAR</button>
+                        <span style="font-size:0.6rem;color:var(--text-dim);margin-left:4px;">(KLIK ROW UNTUK PILIH TARGET)</span>
                     </div>
 
                     <div class="networks-table-container" id="table-container">
                         <table>
                             <thead>
                                 <tr>
-                                    <th class="checkbox-col"><input type="checkbox" id="select-all" onchange="toggleAllCheckboxes()"></th>
                                     <th>ESSID</th>
                                     <th>BSSID</th>
                                     <th>CH</th>
@@ -946,7 +934,7 @@
                                 </tr>
                             </thead>
                             <tbody id="network-body">
-                                <tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;transition:color 0.3s;">PRESS SCAN TO DISCOVER NETWORKS</td></tr>
+                                <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:20px 0;transition:color 0.3s;">PRESS SCAN TO DISCOVER NETWORKS</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1038,7 +1026,7 @@
     // ============================================================
     let networks = [];
     let isDeauthRunning = false;
-    let selectedTargets = [];
+    let selectedTarget = null;  // Single target mode
     let consoleLines = [];
     let attackLogs = [];
     let deauthStartTime = null;
@@ -1217,7 +1205,7 @@
     function renderTable(networks) {
         const tbody = document.getElementById('network-body');
         if (!networks || networks.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px 0;">NO NETWORKS FOUND</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:20px 0;">NO NETWORKS FOUND</td></tr>';
             return;
         }
 
@@ -1230,10 +1218,12 @@
                 else if (net.power < -80) sigClass = 'sig-red';
             }
             const security = net.security || 'WPA2/PSK';
-            const checked = selectedTargets.some(t => t.bssid === net.bssid) ? 'checked' : '';
-            const selectedClass = checked ? 'selected' : '';
-            html += `<tr class="${selectedClass}">
-                <td class="checkbox-col"><input type="checkbox" class="target-checkbox" data-bssid="${net.bssid}" data-channel="${net.channel}" data-essid="${net.essid}" ${checked} onchange="updateSelection()"></td>
+            const isSelected = selectedTarget && selectedTarget.bssid === net.bssid;
+            const selectedClass = isSelected ? 'selected' : '';
+            
+            // Data attributes untuk target
+            const dataAttrs = `data-bssid="${net.bssid}" data-channel="${net.channel}" data-essid="${net.essid}"`;
+            html += `<tr class="clickable-row ${selectedClass}" ${dataAttrs} onclick="selectTarget(this)">
                 <td title="${net.essid}">${net.essid}</td>
                 <td>${net.bssid}</td>
                 <td>${net.channel}</td>
@@ -1242,7 +1232,7 @@
             </tr>`;
         });
         tbody.innerHTML = html;
-        updateSelection();
+        updateSelectionUI();
     }
 
     function updateSignalChart() {
@@ -1266,75 +1256,60 @@
     }
 
     // ============================================================
-    // SELECTION (Single Target Mode)
+    // SELECTION (Single Target - Click Row)
     // ============================================================
-    function toggleAllCheckboxes() {
-        const checked = document.getElementById('select-all').checked;
-        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
-        // Only select first one if checked
-        if (checked) {
-            const first = document.querySelector('.target-checkbox');
-            if (first) first.checked = true;
-        }
-        updateSelection();
-    }
-
-    function selectAll() {
-        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
-        const first = document.querySelector('.target-checkbox');
-        if (first) first.checked = true;
-        document.getElementById('select-all').checked = true;
-        updateSelection();
-    }
-
-    function deselectAll() {
-        document.querySelectorAll('.target-checkbox').forEach(cb => cb.checked = false);
-        document.getElementById('select-all').checked = false;
-        updateSelection();
-    }
-
-    function updateSelection() {
-        const checkboxes = document.querySelectorAll('.target-checkbox:checked');
-        const count = checkboxes.length;
-        
-        // Single target mode: only keep the first selected
-        if (count > 1) {
-            // Uncheck all except the first
-            const first = checkboxes[0];
-            document.querySelectorAll('.target-checkbox').forEach(cb => {
-                if (cb !== first) cb.checked = false;
-            });
-            // Re-get checkboxes
-            const newCheckboxes = document.querySelectorAll('.target-checkbox:checked');
-            selectedTargets = Array.from(newCheckboxes).map(cb => ({
-                bssid: cb.dataset.bssid,
-                channel: cb.dataset.channel,
-                essid: cb.dataset.essid || 'Unknown'
-            }));
-        } else {
-            selectedTargets = Array.from(checkboxes).map(cb => ({
-                bssid: cb.dataset.bssid,
-                channel: cb.dataset.channel,
-                essid: cb.dataset.essid || 'Unknown'
-            }));
+    function selectTarget(row) {
+        // Jangan pilih target jika sedang attack berjalan
+        if (isDeauthRunning) {
+            addConsoleLine('Cannot change target while attack is running!', 'warn');
+            return;
         }
 
-        document.getElementById('selected-count').textContent = selectedTargets.length;
-        document.getElementById('deauth-target-count').textContent = selectedTargets.length;
+        const bssid = row.dataset.bssid;
+        const channel = row.dataset.channel;
+        const essid = row.dataset.essid || 'Unknown';
 
-        // Update row highlighting
-        document.querySelectorAll('#network-body tr').forEach(row => {
-            const cb = row.querySelector('.target-checkbox');
-            if (cb && cb.checked) {
-                row.classList.add('selected');
-            } else {
-                row.classList.remove('selected');
+        // Jika klik row yang sama, deselect
+        if (selectedTarget && selectedTarget.bssid === bssid) {
+            clearSelection();
+            return;
+        }
+
+        // Pilih target baru
+        selectedTarget = {
+            bssid: bssid,
+            channel: channel,
+            essid: essid
+        };
+
+        // Update UI
+        document.querySelectorAll('.clickable-row').forEach(r => {
+            r.classList.remove('selected');
+            if (r.dataset.bssid === bssid) {
+                r.classList.add('selected');
             }
         });
 
-        // Update target info
-        if (selectedTargets.length === 1) {
-            const t = selectedTargets[0];
+        updateSelectionUI();
+        addConsoleLine(`Target selected: ${essid} (${bssid})`, 'success');
+    }
+
+    function clearSelection() {
+        selectedTarget = null;
+        document.querySelectorAll('.clickable-row').forEach(r => {
+            r.classList.remove('selected');
+        });
+        updateSelectionUI();
+        addConsoleLine('Target cleared', 'info');
+    }
+
+    function updateSelectionUI() {
+        const count = selectedTarget ? 1 : 0;
+        document.getElementById('selected-count').textContent = count;
+        document.getElementById('deauth-target-count').textContent = count;
+
+        if (selectedTarget) {
+            const t = selectedTarget;
             document.getElementById('target-info').style.display = 'block';
             document.getElementById('target-bssid').textContent = t.bssid;
             document.getElementById('target-channel').textContent = t.channel;
@@ -1344,8 +1319,7 @@
             document.getElementById('deauth-command-text').textContent = `TARGET: ${t.essid} (${t.bssid})`;
         } else {
             document.getElementById('target-info').style.display = 'none';
-            document.getElementById('deauth-command-text').textContent = selectedTargets.length > 0 ? 
-                `${selectedTargets.length} TARGET(S) SELECTED` : 'WAITING FOR COMMAND...';
+            document.getElementById('deauth-command-text').textContent = 'WAITING FOR COMMAND...';
         }
     }
 
@@ -1361,18 +1335,13 @@
     }
 
     function startDeauth() {
-        const targets = selectedTargets;
-        if (targets.length === 0) {
-            addConsoleLine('No target selected for deauth!', 'warn');
-            alert('Select 1 target from the table!');
+        if (!selectedTarget) {
+            addConsoleLine('No target selected! Click a row to select target.', 'warn');
+            alert('Click a network row to select target first!');
             return;
         }
 
-        if (targets.length > 1) {
-            addConsoleLine('Multiple targets selected! Only first target will be used.', 'warn');
-        }
-
-        const target = targets[0];
+        const target = selectedTarget;
         deauthTarget = target;
 
         const btn = document.getElementById('btnStartDeauth');
@@ -1462,11 +1431,9 @@
         document.getElementById('status-text').textContent = 'STATUS: READY';
         document.getElementById('target-status').textContent = 'READY';
         document.getElementById('target-status').style.color = 'var(--text-main)';
-        if (selectedTargets.length === 1) {
-            const t = selectedTargets[0];
+        if (selectedTarget) {
+            const t = selectedTarget;
             document.getElementById('deauth-command-text').textContent = `TARGET: ${t.essid} (${t.bssid})`;
-        } else if (selectedTargets.length > 0) {
-            document.getElementById('deauth-command-text').textContent = `${selectedTargets.length} TARGET(S) SELECTED`;
         }
     }
 
@@ -1494,7 +1461,7 @@
         renderLogs();
         addConsoleLine('SYSTEM INITIALIZED. NODE_01 ONLINE.', 'success');
         addConsoleLine('SCANNING FREQUENCIES 2.4GHz / 5GHz...', 'info');
-        addConsoleLine('⚡ SINGLE TARGET MODE ACTIVE', 'info');
+        addConsoleLine('⚡ SINGLE TARGET MODE - CLICK ROW TO SELECT TARGET', 'info');
         document.getElementById('status-text').textContent = 'STATUS: READY';
         setTimeout(scanNetworks, 1500);
     });
@@ -1509,13 +1476,9 @@
             e.preventDefault();
             toggleDeauth();
         }
-        if (e.key === 'a' && e.ctrlKey) {
+        if (e.key === 'c' && e.ctrlKey) {
             e.preventDefault();
-            selectAll();
-        }
-        if (e.key === 'u' && e.ctrlKey) {
-            e.preventDefault();
-            deselectAll();
+            clearSelection();
         }
         if (e.key === 'l' && e.ctrlKey) {
             e.preventDefault();
