@@ -44,10 +44,10 @@ def print_menu():
     cols, rows = get_size()
 
     options = [
-        "1. MDK4 DEAUTH (MULTI TARGET)",
+        "1. MDK4 DEAUTH",
         "2. MDK4 BEACON FLOOD",
         "3. MDK4 AUTH DOS",
-        "4. MDK4 (TERMINAL MENU) 🖥️",
+        "4. MALAS, GAK GUNA INI",
         "5. MDK4 (WEB VERSION) 🚀",
         "",
         "0. EXIT"
