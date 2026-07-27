@@ -26,74 +26,9 @@ def print_status(msg, status="info"):
     elif status == "warning":
         print(f"{YELLOW}[!]{RESET} {msg}")
 
-def get_wireless_interfaces():
-    """Dapatkan daftar interface wireless yang tersedia"""
-    interfaces = []
-    try:
-        result = subprocess.run(['iwconfig'], capture_output=True, text=True, timeout=5)
-        lines = result.stdout.split('\n')
-        
-        for line in lines:
-            if "no wireless extensions" in line or not line.strip():
-                continue
-            if not line.startswith(" "):
-                iface = line.split()[0]
-                if iface not in ["lo", "eth0", "eth1"]:
-                    # Cek apakah benar-benar wireless
-                    iface_check = subprocess.run(['iwconfig', iface], capture_output=True, text=True)
-                    if 'no wireless extensions' not in iface_check.stdout:
-                        interfaces.append(iface)
-    except Exception as e:
-        print_status(f"Gagal mendapatkan interface: {e}", "error")
-    
-    return interfaces
-
-def select_interface():
-    """Tampilkan daftar interface dan minta user memilih"""
-    print("\n" + "="*60)
-    print(f"{BOLD}{CYAN}INTERFACE SELECTION{RESET}")
-    print("="*60)
-    
-    interfaces = get_wireless_interfaces()
-    
-    if not interfaces:
-        print_status("Tidak ada interface wireless ditemukan!", "error")
-        print_status("Pastikan adapter WiFi terhubung", "warning")
-        return None
-    
-    print(f"\n{GREEN}Interface yang tersedia:{RESET}")
-    for i, iface in enumerate(interfaces, 1):
-        # Cek status monitor
-        try:
-            iw_result = subprocess.run(['iwconfig', iface], capture_output=True, text=True)
-            mode = "Monitor" if "Mode:Monitor" in iw_result.stdout else "Managed"
-            status = f"{GREEN}✓{RESET}" if mode == "Monitor" else f"{YELLOW}○{RESET}"
-            print(f"  {i}. {iface} [{mode}] {status}")
-        except:
-            print(f"  {i}. {iface}")
-    
-    print("\n" + "-"*60)
-    
-    while True:
-        try:
-            choice = input(f"{CYAN}➜ Pilih interface (1-{len(interfaces)}): {RESET}").strip()
-            idx = int(choice) - 1
-            if 0 <= idx < len(interfaces):
-                selected = interfaces[idx]
-                print_status(f"Interface terpilih: {selected}", "success")
-                return selected
-            else:
-                print_status(f"Pilihan tidak valid. Masukkan 1-{len(interfaces)}", "error")
-        except ValueError:
-            print_status("Masukkan angka yang valid!", "error")
-        except KeyboardInterrupt:
-            print("\n")
-            print_status("Dibatalkan oleh user", "warning")
-            sys.exit(0)
-
 def get_ngrok_url():
     """Ambil URL ngrok dari API"""
-    for i in range(10):
+    for i in range(10):  # Coba 10 kali
         try:
             response = requests.get('http://localhost:4040/api/tunnels', timeout=3)
             if response.status_code == 200:
@@ -125,6 +60,7 @@ def setup_ngrok_root():
     if not ngrok_path:
         return False
     
+    # Cek apakah sudah ada token untuk root
     try:
         result = subprocess.run(['sudo', ngrok_path, 'config', 'check'], 
                               capture_output=True, text=True)
@@ -134,6 +70,7 @@ def setup_ngrok_root():
     except:
         pass
     
+    # Setup token untuk root
     print_status("Setup ngrok untuk root...", "info")
     try:
         subprocess.run(['sudo', ngrok_path, 'config', 'add-authtoken', token], check=True)
@@ -143,14 +80,14 @@ def setup_ngrok_root():
         print_status(f"Gagal setup ngrok root: {e}", "error")
         return False
 
-def run_flask_as_sudo(interface):
-    """Jalankan Flask dengan sudo dan pass interface sebagai argumen"""
-    print_status(f"Menjalankan Flask (app.py) dengan interface {interface}...", "info")
+def run_flask_as_sudo():
+    """Jalankan Flask dengan sudo (karena butuh akses root)"""
+    print_status("Menjalankan Flask (app.py) dengan sudo...", "info")
     
     try:
-        # Jalankan Flask dengan sudo dan pass interface sebagai argumen
+        # Jalankan Flask dengan sudo
         flask_process = subprocess.Popen(
-            ['sudo', 'python3', 'app.py', '--interface', interface],
+            ['sudo', 'python3', 'app.py'],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -158,7 +95,7 @@ def run_flask_as_sudo(interface):
         )
         
         # Tunggu sebentar
-        time.sleep(5)
+        time.sleep(3)
         
         # Cek apakah Flask berjalan
         try:
@@ -180,17 +117,11 @@ def run_flask_as_sudo(interface):
 def main():
     print_status("Starting Deauth Web Interface...", "info")
     
-    # PILIH INTERFACE DULU
-    selected_interface = select_interface()
-    if not selected_interface:
-        print_status("Tidak ada interface dipilih. Keluar.", "error")
-        sys.exit(1)
-    
     # Setup ngrok untuk root
     setup_ngrok_root()
     
-    # Jalankan Flask dengan interface yang dipilih
-    flask_process = run_flask_as_sudo(selected_interface)
+    # Jalankan Flask
+    flask_process = run_flask_as_sudo()
     if not flask_process:
         print_status("Gagal menjalankan Flask!", "error")
         sys.exit(1)
@@ -217,6 +148,7 @@ def main():
     print_status(f"Menjalankan ngrok dari: {ngrok_path}", "info")
     
     try:
+        # Jalankan ngrok (tanpa sudo karena config sudah di-setup)
         ngrok_process = subprocess.Popen(
             [ngrok_path, 'http', '5000'],
             stdout=subprocess.DEVNULL,
@@ -261,6 +193,7 @@ def main():
             flask_process.wait(timeout=2)
         except:
             pass
+        # Matikan juga sisa proses
         subprocess.run("sudo pkill -f 'aireplay-ng'", shell=True, check=False)
         subprocess.run("sudo pkill -f 'airodump-ng'", shell=True, check=False)
         print("[+] Selesai.")
@@ -269,13 +202,15 @@ def main():
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
     
+    # Loop sampai user Ctrl+C
     try:
         while True:
+            # Cek apakah flask masih jalan
             if flask_process.poll() is not None:
                 print_status(f"Flask mati! Exit code: {flask_process.returncode}", "error")
                 print_status("Restart otomatis dalam 3 detik...", "warning")
                 time.sleep(3)
-                flask_process = run_flask_as_sudo(selected_interface)
+                flask_process = run_flask_as_sudo()
                 if not flask_process:
                     print_status("Gagal restart Flask!", "error")
                     break

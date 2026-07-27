@@ -1,406 +1,85 @@
 <!DOCTYPE html>
-<html lang="id">
+<html class="dark" lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MDK4 Web Interface</title>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>MDK4 WEB | SINGLE PANE</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries">
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 14px;
         }
-        
-        body {
-            font-family: 'Courier New', monospace;
-            background: #0a0a0a;
-            color: #00ff00;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #00ff00;
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            font-size: 2.5em;
-            color: #ff0000;
-            text-shadow: 0 0 20px rgba(255,0,0,0.5);
-            letter-spacing: 4px;
-        }
-        
-        .header .subtitle {
-            color: #00ff88;
-            font-size: 0.9em;
-            margin-top: 10px;
-        }
-        
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        @media (max-width: 900px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .card {
-            background: #111;
-            border: 1px solid #00ff00;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .card-title {
-            color: #00ff88;
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .card-title .badge {
-            font-size: 0.7em;
-            background: #00ff00;
-            color: #000;
-            padding: 2px 10px;
-            border-radius: 10px;
-        }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-        
-        .status-idle { background: #666; }
-        .status-running { background: #00ff00; animation: pulse 0.5s infinite; }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        .iface-list {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .iface-item {
-            background: #1a1a1a;
-            padding: 8px 15px;
-            border-radius: 4px;
-            border: 1px solid #333;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .iface-item:hover {
-            border-color: #00ff00;
-        }
-        
-        .iface-item.selected {
-            border-color: #00ff00;
-            background: #1a3a1a;
-        }
-        
-        .iface-item .monitor-badge {
-            color: #ff8800;
-            font-size: 0.7em;
-        }
-        
-        .network-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85em;
-        }
-        
-        .network-table th {
-            text-align: left;
-            padding: 8px;
-            border-bottom: 1px solid #333;
-            color: #00ff88;
-        }
-        
-        .network-table td {
-            padding: 6px 8px;
-            border-bottom: 1px solid #1a1a1a;
-            cursor: pointer;
-        }
-        
-        .network-table tr:hover td {
-            background: #1a1a1a;
-        }
-        
-        .network-table tr.selected td {
-            background: #1a3a1a;
-        }
-        
-        .network-table tr.disabled td {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        
-        .network-table .bssid {
-            color: #ff8800;
-            font-size: 0.8em;
-        }
-        
-        .network-table .channel {
-            color: #00ccff;
-        }
-        
-        .network-table .essid {
-            color: #ffffff;
-        }
-        
-        .btn {
-            background: transparent;
-            border: 1px solid #00ff00;
-            color: #00ff00;
-            padding: 8px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            transition: all 0.3s;
-        }
-        
-        .btn:hover:not(:disabled) {
-            background: #00ff00;
-            color: #000;
-        }
-        
-        .btn-danger {
-            border-color: #ff0000;
-            color: #ff0000;
-        }
-        
-        .btn-danger:hover:not(:disabled) {
-            background: #ff0000;
-            color: #000;
-        }
-        
-        .btn-warning {
-            border-color: #ff8800;
-            color: #ff8800;
-        }
-        
-        .btn-warning:hover:not(:disabled) {
-            background: #ff8800;
-            color: #000;
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-        
-        .attack-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .attack-options {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .attack-option {
-            padding: 8px 15px;
-            border: 1px solid #333;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #111;
-            color: #666;
-        }
-        
-        .attack-option:hover:not(.disabled) {
-            border-color: #00ff00;
-        }
-        
-        .attack-option.active {
-            border-color: #00ff00;
-            color: #00ff00;
-            background: #1a3a1a;
-        }
-        
-        .attack-option.disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        
-        .attack-option .hint {
-            font-size: 0.6em;
-            color: #ff8800;
-            display: block;
-        }
-        
-        .log-box {
-            background: #0a0a0a;
-            border: 1px solid #333;
-            border-radius: 4px;
-            height: 120px;
-            overflow-y: auto;
-            padding: 10px;
-            font-size: 0.75em;
-            font-family: 'Courier New', monospace;
-            color: #00ff88;
-        }
-        
-        .log-box .log-error { color: #ff0000; }
-        .log-box .log-success { color: #00ff00; }
-        .log-box .log-warning { color: #ff8800; }
-        .log-box .log-info { color: #00ccff; }
-        
-        .scan-duration {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin: 10px 0;
-        }
-        
-        .scan-duration input {
-            background: #111;
-            border: 1px solid #333;
-            color: #00ff00;
-            padding: 5px 10px;
-            border-radius: 4px;
-            width: 60px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .selection-info {
-            color: #ff8800;
-            font-size: 0.8em;
-            margin: 5px 0;
-        }
-        
-        .selection-info .warning {
-            color: #ff0000;
-        }
-        
+
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 4px;
         }
         ::-webkit-scrollbar-track {
-            background: #0a0a0a;
+            background: #1b110a;
         }
         ::-webkit-scrollbar-thumb {
+            background: #ff8c00;
+        }
+
+        .crt-overlay {
+            pointer-events: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.05) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            opacity: 0.2;
+        }
+
+        .pixel-border {
+            border: 1px solid #ff8c00;
+        }
+
+        .glow-text {
+            text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #1b110a;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #ff8c00;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-indicator.idle {
+            background: #666;
+        }
+        .status-indicator.running {
             background: #00ff00;
-            border-radius: 4px;
+            animation: pulse 0.5s infinite;
         }
-        
-        .loading {
-            color: #ff8800;
-            animation: blink 0.5s infinite;
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
         }
-        
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .attack-info-box {
-            background: #0a0a0a;
-            border: 1px solid #1a1a1a;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            color: #666;
-            min-height: 30px;
-        }
-        
-        .monitor-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .monitor-box {
-            background: #0a0a0a;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #1a1a1a;
-        }
-        
-        .monitor-box .label {
-            color: #666;
-            font-size: 0.7em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .monitor-box .value {
-            font-size: 1.1em;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-        
-        .monitor-box .value.online { color: #00ff00; }
-        .monitor-box .value.offline { color: #ff0000; }
-        .monitor-box .value.warning { color: #ff8800; }
-        .monitor-box .value.idle { color: #666; }
-        
-        .client-list {
-            background: #0a0a0a;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #1a1a1a;
-            max-height: 120px;
-            overflow-y: auto;
-            font-size: 0.75em;
-        }
-        
-        .client-item {
-            padding: 3px 0;
-            border-bottom: 1px solid #1a1a1a;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .client-item .mac { color: #ff8800; }
-        .client-item .power { color: #666; }
-        
+
         .monitor-status {
             display: inline-block;
             width: 8px;
@@ -408,234 +87,283 @@
             border-radius: 50%;
             margin-right: 6px;
         }
-        
-        .monitor-status.active { background: #00ff00; animation: pulse 0.5s infinite; }
-        .monitor-status.idle { background: #666; }
-        
-        .last-update {
-            color: #666;
-            font-size: 0.65em;
-            margin-top: 8px;
-            text-align: right;
+        .monitor-status.active {
+            background: #00ff00;
+            animation: pulse 0.5s infinite;
         }
-        
-        .client-info {
-            margin-top: 15px;
-            border-top: 1px solid #333;
-            padding-top: 15px;
+        .monitor-status.idle {
+            background: #666;
         }
-        
-        .client-info .header {
-            color: #00ff88;
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: none;
-            padding: 0;
+
+        .attack-option.active {
+            border-color: #ff8c00 !important;
+            background: rgba(255, 140, 0, 0.1) !important;
         }
-        
-        .client-info .badge-client {
-            background: #ff8800;
-            color: #000;
-            padding: 2px 10px;
-            border-radius: 10px;
-            font-size: 0.7em;
+
+        .attack-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed !important;
         }
-        
-        .client-list-detail {
-            background: #0a0a0a;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #1a1a1a;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 0.75em;
+
+        .network-table tr {
+            cursor: pointer;
+            transition: background 0.2s;
         }
-        
-        .client-list-detail .grid-header {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            padding: 5px 0;
-            border-bottom: 1px solid #333;
-            color: #00ff88;
-            font-weight: bold;
-            font-size: 0.8em;
+        .network-table tr:hover td {
+            background: rgba(255, 140, 0, 0.05);
         }
-        
-        .client-list-detail .grid-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            padding: 4px 0;
-            border-bottom: 1px solid #1a1a1a;
-            font-size: 0.8em;
+        .network-table tr.selected td {
+            background: rgba(255, 140, 0, 0.15);
         }
-        
-        .client-list-detail .grid-row .mac { color: #ff8800; }
-        .client-list-detail .grid-row .power { color: #666; }
-        .client-list-detail .grid-row .packets { color: #00ccff; }
+        .network-table tr.disabled td {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
     </style>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#ff8c00",
+                        "on-primary": "#1b110a",
+                        "background": "#1b110a",
+                        "surface": "#1b110a",
+                        "on-surface": "#f3dfd1",
+                        "surface-variant": "#241912",
+                        "outline": "#ff8c00",
+                        "error": "#ff4d4d"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "margin": "20px",
+                        "container-padding": "16px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["\"Press Start 2P\""],
+                        "body-md": ["\"Press Start 2P\""],
+                        "display": ["\"Press Start 2P\""]
+                    },
+                    "fontSize": {
+                        "display": ["18px", { "lineHeight": "28px" }],
+                        "headline-md": ["10px", { "lineHeight": "16px" }],
+                        "body-md": ["7px", { "lineHeight": "12px" }],
+                        "body-lg": ["8px", { "lineHeight": "14px" }]
+                    }
+                },
+            },
+        }
+    </script>
 </head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>⚡ MDK4 WEB ⚡</h1>
-            <div class="subtitle">Wireless Attack Interface | <span id="statusText">Idle</span></div>
+<body class="bg-background text-on-surface font-body-md min-h-screen selection:bg-primary selection:text-on-primary">
+    <div class="crt-overlay"></div>
+
+    <!-- Top Bar -->
+    <header class="flex justify-between items-center px-gutter h-14 border-b border-primary bg-background/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="flex items-center gap-4">
+            <span class="text-primary glow-text">⚡</span>
+            <h1 class="text-display text-primary tracking-tighter">MDK4 WEB</h1>
+            <span class="text-primary glow-text">⚡</span>
         </div>
-        
-        <!-- Status Bar -->
-        <div class="card" style="border-color: #333;">
-            <div class="status-bar">
-                <div>
-                    <span id="attackStatus">
-                        <span class="status-indicator status-idle"></span>
-                        <span>Idle</span>
-                    </span>
-                    <span style="margin-left:20px; color:#666;" id="targetInfo">No target</span>
-                    <span style="margin-left:20px; color:#666;" id="attackInfoDisplay">-</span>
-                </div>
-                <div>
-                    <button class="btn btn-danger" id="stopBtn" disabled>⏹ STOP</button>
-                </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse"></span>
+                <span class="text-[6px] text-primary/60" id="statusText">Idle</span>
+            </div>
+            <div class="h-4 w-[1px] bg-primary/20"></div>
+            <span class="text-[6px] text-on-surface/40" id="targetInfo">No target</span>
+        </div>
+    </header>
+
+    <main class="p-gutter max-w-[1600px] mx-auto space-y-gutter">
+        <!-- Status Summary Bar -->
+        <div class="pixel-border bg-surface-variant/30 p-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <span class="status-indicator idle" id="statusIndicator"></span>
+                <span class="text-primary text-body-lg" id="attackStatusLabel">STATUS: IDLE</span>
+                <span class="text-on-surface/40">|</span>
+                <span class="text-on-surface/60" id="statusTargetInfo">NO TARGET SELECTED</span>
+            </div>
+            <div>
+                <button class="border border-error/30 text-error/30 px-4 py-1 text-body-md hover:border-error hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed" id="stopBtn" disabled>
+                    ⏹ STOP
+                </button>
             </div>
         </div>
-        
-        <!-- Grid -->
-        <div class="grid">
-            <!-- LEFT COLUMN -->
-            <div>
-                <!-- Interface Selection -->
-                <div class="card">
-                    <div class="card-title">
-                        📡 Interface
-                        <span class="badge" id="interfaceCount">0</span>
-                    </div>
-                    <div class="iface-list" id="interfaceList">
-                        <div style="color:#666;">Loading interfaces...</div>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <button class="btn" id="refreshInterfacesBtn">⟳ Refresh</button>
-                    </div>
-                </div>
-                
-                <!-- Scan Networks -->
-                <div class="card">
-                    <div class="card-title">
-                        🔍 Scan Networks
-                        <span class="badge" id="networkCount">0</span>
-                    </div>
-                    <div class="scan-duration">
-                        <label>Duration:</label>
-                        <input type="number" id="scanDuration" value="10" min="5" max="30">
-                        <label>seconds</label>
-                        <button class="btn" id="scanBtn">▶ Scan</button>
-                    </div>
-                    <div id="networkList" style="max-height:300px; overflow-y:auto;">
-                        <div style="color:#666;">Click "Scan" to find networks</div>
-                    </div>
-                    
-                    <!-- Client Info - Muncul saat target dipilih -->
-                    <div id="clientInfo" class="client-info" style="display:none;">
-                        <div class="header">
-                            <span>👥 Connected Clients to <span id="clientBSSID" style="color:#ff8800;"></span></span>
-                            <span class="badge-client" id="clientCountBadge">0</span>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+            <!-- Left Column: Setup -->
+            <div class="lg:col-span-4 space-y-gutter">
+                <!-- Interface Panel -->
+                <section class="pixel-border bg-surface p-container-padding">
+                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">router</span>
+                            <h3 class="text-headline-md text-primary">INTERFACE</h3>
                         </div>
-                        <div class="client-list-detail" id="clientListDetail">
-                            <div style="color:#666; text-align:center; padding:10px 0;">Click a network to scan connected clients</div>
+                        <span class="px-2 py-0.5 bg-primary/10 text-primary text-[6px] border border-primary/20" id="interfaceCount">0</span>
+                    </div>
+                    <div class="space-y-4">
+                        <div id="interfaceList" class="space-y-2">
+                            <div class="text-[6px] text-on-surface/40">Loading interfaces...</div>
+                        </div>
+                        <button class="w-full border border-primary/40 p-2 text-primary/60 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 text-body-md" id="refreshInterfacesBtn">
+                            <span class="material-symbols-outlined !text-[10px]">refresh</span>
+                            REFRESH INTERFACES
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Scan Panel -->
+                <section class="pixel-border bg-surface p-container-padding">
+                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">search</span>
+                            <h3 class="text-headline-md text-primary">SCAN NETWORKS</h3>
+                        </div>
+                        <span class="px-2 py-0.5 bg-primary/10 text-primary text-[6px] border border-primary/20" id="networkCount">0</span>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="flex items-center gap-4">
+                            <span class="text-on-surface/60 text-body-md">DURATION:</span>
+                            <input class="w-16 bg-surface-variant/50 border border-primary/30 text-primary text-center p-1 focus:outline-none focus:border-primary text-body-md" type="number" id="scanDuration" value="10">
+                            <span class="text-on-surface/40 text-body-md">SEC</span>
+                            <button class="flex-1 bg-primary text-on-primary p-2 text-body-md hover:brightness-110 flex items-center justify-center gap-2" id="scanBtn">
+                                <span class="material-symbols-outlined !text-[12px]">play_arrow</span>
+                                SCAN
+                            </button>
+                        </div>
+
+                        <!-- Network List -->
+                        <div id="networkList" class="max-h-60 overflow-y-auto custom-scroll border border-primary/10 p-2">
+                            <div class="text-[6px] text-on-surface/40">Click "Scan" to find networks</div>
+                        </div>
+
+                        <div class="text-[6px] text-on-surface/40 uppercase leading-relaxed" id="selectionInfo">
+                            0 targets selected
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button class="border border-primary/40 p-2 text-primary/60 hover:text-primary text-[6px] transition-all" id="selectAllBtn">SELECT ALL</button>
+                            <button class="border border-primary/40 p-2 text-primary/60 hover:text-primary text-[6px] transition-all" id="deselectAllBtn">DESELECT ALL</button>
+                        </div>
+
+                        <!-- Client Info -->
+                        <div id="clientInfo" style="display:none;">
+                            <div class="border-t border-primary/20 pt-4 mt-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-[6px] text-primary">👥 CLIENTS: <span id="clientBSSID" class="text-primary/60">-</span></span>
+                                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-[6px] border border-primary/20" id="clientCountBadge">0</span>
+                                </div>
+                                <div id="clientListDetail" class="border border-primary/10 p-2 max-h-32 overflow-y-auto custom-scroll">
+                                    <div class="text-[6px] text-on-surface/40 text-center py-2">Click a network to scan connected clients</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="selection-info" id="selectionInfo">0 targets selected</div>
-                    <div class="btn-group">
-                        <button class="btn btn-warning" id="selectAllBtn">Select All</button>
-                        <button class="btn" id="deselectAllBtn">Deselect All</button>
-                    </div>
-                </div>
+                </section>
             </div>
-            
-            <!-- RIGHT COLUMN -->
-            <div>
+
+            <!-- Right Column: Action & Monitoring -->
+            <div class="lg:col-span-8 space-y-gutter">
                 <!-- Attack Controls -->
-                <div class="card">
-                    <div class="card-title">
-                        🚀 Attack Controls
-                        <span class="badge" id="attackTypeDisplay">None</span>
+                <section class="pixel-border bg-surface p-container-padding">
+                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">rocket_launch</span>
+                            <h3 class="text-headline-md text-primary">ATTACK CONTROLS</h3>
+                        </div>
+                        <span class="px-2 py-0.5 border border-primary/20 text-primary/40 text-[6px]" id="attackTypeDisplay">NONE SELECTED</span>
                     </div>
-                    
-                    <div class="attack-controls">
-                        <label style="color:#666; font-size:0.8em;">Select Attack Type:</label>
-                        <div class="attack-options">
-                            <div class="attack-option" data-type="deauth" onclick="selectAttackType('deauth')">
-                                Deauth
-                                <span class="hint">multiple targets</span>
-                            </div>
-                            <div class="attack-option" data-type="beacon" onclick="selectAttackType('beacon')">
-                                Beacon
-                                <span class="hint">no target needed</span>
-                            </div>
-                            <div class="attack-option" data-type="authdos" onclick="selectAttackType('authdos')">
-                                Auth DOS
-                                <span class="hint">1 target only</span>
-                            </div>
-                        </div>
-                        
-                        <div class="btn-group">
-                            <button class="btn" id="startBtn">▶ START</button>
-                            <button class="btn btn-danger" id="stopBtn2">⏹ STOP</button>
-                        </div>
-                        
-                        <div class="attack-info-box" id="attackInfo">
-                            Select targets and attack type
+                    <div class="mb-6">
+                        <span class="text-[6px] text-on-surface/40 mb-3 block">SELECT ATTACK TYPE:</span>
+                        <div class="grid grid-cols-3 gap-4" id="attackOptions">
+                            <button class="attack-option border border-primary/20 bg-surface-variant/20 p-4 text-center group hover:border-primary transition-all" data-type="deauth">
+                                <div class="text-on-surface/60 group-hover:text-primary mb-1 text-body-md">DEAUTH</div>
+                                <div class="text-[5px] text-primary/40 group-hover:text-primary/60">MULTIPLE TARGETS</div>
+                            </button>
+                            <button class="attack-option border border-primary/20 bg-surface-variant/20 p-4 text-center group hover:border-primary transition-all" data-type="beacon">
+                                <div class="text-on-surface/60 group-hover:text-primary mb-1 text-body-md">BEACON</div>
+                                <div class="text-[5px] text-primary/40 group-hover:text-primary/60">NO TARGET NEEDED</div>
+                            </button>
+                            <button class="attack-option border border-primary/20 bg-surface-variant/20 p-4 text-center group hover:border-primary transition-all" data-type="authdos">
+                                <div class="text-on-surface/60 group-hover:text-primary mb-1 text-body-md">AUTH DOS</div>
+                                <div class="text-[5px] text-primary/40 group-hover:text-primary/60">1 TARGET ONLY</div>
+                            </button>
                         </div>
                     </div>
-                </div>
-                
-                <!-- 📊 Live Monitoring -->
-                <div class="card">
-                    <div class="card-title">
-                        📊 Live Monitoring
-                        <span style="display:flex; align-items:center; gap:8px;">
+                    <div class="flex gap-4 p-4 bg-surface-variant/10 border border-primary/10">
+                        <button class="flex-1 bg-primary text-on-primary py-3 flex items-center justify-center gap-3 text-body-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed" id="startBtn">
+                            <span class="material-symbols-outlined !text-[14px]">play_arrow</span>
+                            START ATTACK
+                        </button>
+                        <button class="px-8 border border-error/30 text-error/30 py-3 flex items-center justify-center gap-3 text-body-md hover:border-error hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed" id="stopBtn2" disabled>
+                            <span class="material-symbols-outlined !text-[14px]">stop</span>
+                            STOP
+                        </button>
+                    </div>
+                    <div class="mt-4 p-3 border border-primary/10 bg-surface-variant/10">
+                        <span class="text-[6px] text-on-surface/40" id="attackInfo">Select targets and attack type</span>
+                    </div>
+                </section>
+
+                <!-- Live Monitoring -->
+                <section class="pixel-border bg-surface p-container-padding">
+                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">bar_chart</span>
+                            <h3 class="text-headline-md text-primary">LIVE MONITORING</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
                             <span class="monitor-status idle" id="monitorStatusDot"></span>
-                            <span class="badge" id="monitorStatusText" style="background:#666; color:#fff;">Idle</span>
-                        </span>
-                    </div>
-                    
-                    <div class="monitor-grid">
-                        <div class="monitor-box">
-                            <div class="label">📡 AP Status</div>
-                            <div class="value idle" id="apStatus">Unknown</div>
-                        </div>
-                        <div class="monitor-box">
-                            <div class="label">👥 Clients</div>
-                            <div class="value idle" id="clientCount">0</div>
+                            <span class="text-[6px] text-on-surface/40" id="monitorStatusText">IDLE</span>
                         </div>
                     </div>
-                    
-                    <div class="client-list" id="clientList">
-                        <div style="color:#666; text-align:center; padding:10px 0;">No clients connected</div>
+                    <div class="grid grid-cols-2 gap-gutter mb-6">
+                        <div class="bg-surface-variant/30 border border-primary/10 p-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="material-symbols-outlined text-primary/40 !text-[10px]">sensors</span>
+                                <span class="text-[6px] text-on-surface/40 uppercase">AP Status</span>
+                            </div>
+                            <div class="text-primary text-body-lg" id="apStatus">IDLE</div>
+                        </div>
+                        <div class="bg-surface-variant/30 border border-primary/10 p-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="material-symbols-outlined text-primary/40 !text-[10px]">group</span>
+                                <span class="text-[6px] text-on-surface/40 uppercase">Clients</span>
+                            </div>
+                            <div class="text-primary text-body-lg" id="clientCount">0</div>
+                        </div>
                     </div>
-                    
-                    <div class="last-update" id="lastUpdate">Last update: -</div>
-                </div>
-                
-                <!-- 📋 Log -->
-                <div class="card">
-                    <div class="card-title">
-                        📋 Log
-                        <button class="btn" id="clearLogBtn" style="padding:2px 10px; font-size:0.7em;">Clear</button>
+                    <div class="h-16 border border-primary/10 flex items-center justify-center text-[6px] text-on-surface/30 italic uppercase overflow-y-auto custom-scroll" id="clientList">
+                        No active clients connected
                     </div>
-                    <div class="log-box" id="logBox">
-                        <div class="log-info">[System] MDK4 Web Interface ready</div>
-                        <div class="log-info">[System] Select interface and scan for networks</div>
-                    </div>
-                </div>
+                    <div class="text-right text-[5px] text-on-surface/30 mt-2" id="lastUpdate">Last update: -</div>
+                </section>
             </div>
         </div>
-    </div>
-    
+
+        <!-- System Log - Full Width Bottom -->
+        <section class="pixel-border bg-surface p-container-padding">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">terminal</span>
+                    <h3 class="text-headline-md text-primary uppercase">System Log</h3>
+                </div>
+                <button class="text-primary/40 hover:text-primary text-[6px] transition-colors border border-primary/20 px-3 py-1" id="clearLogBtn">CLEAR LOG</button>
+            </div>
+            <div class="h-40 overflow-y-auto bg-black/40 border border-primary/20 p-4 font-mono leading-relaxed custom-scroll" id="logBox">
+                <div class="text-primary/60 text-body-md mb-1">[System] MDK4 Web Interface ready</div>
+                <div class="text-primary/60 text-body-md mb-1">[System] Select interface and scan for networks</div>
+            </div>
+        </section>
+    </main>
+
     <script>
+        // ====================== LOGIC SAMA PERSIS KAYAK INDEX.HTML LAMA ======================
+
         // ====================== STATE ======================
         let state = {
             interfaces: [],
@@ -646,7 +374,7 @@
             attackRunning: false,
             scanDuration: 10
         };
-        
+
         // ====================== DOM REFS ======================
         const $ = (id) => document.getElementById(id);
         const logBox = $('logBox');
@@ -655,23 +383,30 @@
         const networkCount = $('networkCount');
         const selectionInfo = $('selectionInfo');
         const interfaceCount = $('interfaceCount');
-        const attackStatus = $('attackStatus');
         const attackTypeDisplay = $('attackTypeDisplay');
         const attackInfo = $('attackInfo');
         const statusText = $('statusText');
         const targetInfo = $('targetInfo');
-        const attackInfoDisplay = $('attackInfoDisplay');
-        
+        const statusIndicator = $('statusIndicator');
+        const attackStatusLabel = $('attackStatusLabel');
+        const statusTargetInfo = $('statusTargetInfo');
+
         // ====================== LOG ======================
         function addLog(message, type = 'info') {
             const div = document.createElement('div');
-            div.className = `log-${type}`;
             const time = new Date().toLocaleTimeString();
-            div.textContent = `[${time}] ${message}`;
+            const colors = {
+                error: 'text-red-400',
+                success: 'text-green-400',
+                warning: 'text-yellow-400',
+                info: 'text-primary/80'
+            };
+            div.className = `${colors[type] || colors.info} text-body-md mb-1`;
+            div.innerHTML = `<span class="opacity-40 text-[6px]">[${time}]</span> ${message}`;
             logBox.appendChild(div);
             logBox.scrollTop = logBox.scrollHeight;
         }
-        
+
         // ====================== INTERFACES ======================
         async function loadInterfaces() {
             try {
@@ -688,45 +423,44 @@
                 addLog(`Error loading interfaces: ${e}`, 'error');
             }
         }
-        
+
         function renderInterfaces() {
             if (state.interfaces.length === 0) {
-                interfaceList.innerHTML = '<div style="color:#666;">No wireless interfaces found</div>';
+                interfaceList.innerHTML = '<div class="text-[6px] text-on-surface/40">No wireless interfaces found</div>';
                 return;
             }
-            
             interfaceList.innerHTML = state.interfaces.map(iface => `
-                <div class="iface-item ${state.selectedInterface === iface ? 'selected' : ''}"
-                     onclick="selectInterface('${iface}')">
-                    ${iface}
-                    ${iface.includes('mon') ? '<span class="monitor-badge"> [mon]</span>' : ''}
-                </div>
-            `).join('');
+                    <div class="border border-primary/20 bg-primary/5 p-3 flex items-center justify-between cursor-pointer hover:border-primary transition-all ${state.selectedInterface === iface ? 'border-primary' : ''}"
+                         onclick="selectInterface('${iface}')">
+                        <span class="text-primary text-body-lg">${iface} ${iface.includes('mon') ? '<span class="opacity-40 text-[6px]">[mon]</span>' : ''}</span>
+                        <span class="material-symbols-outlined text-primary ${state.selectedInterface === iface ? '' : 'opacity-30'}">${state.selectedInterface === iface ? 'check_circle' : 'radio_button_unchecked'}</span>
+                    </div>
+                `).join('');
         }
-        
+
         function selectInterface(iface) {
             state.selectedInterface = iface;
             renderInterfaces();
             addLog(`Selected interface: ${iface}`, 'info');
         }
-        
+
         // ====================== SCAN ======================
         async function scanNetworks() {
             const duration = parseInt($('scanDuration').value) || 10;
             state.scanDuration = duration;
-            
+
             if (!state.selectedInterface) {
                 addLog('No interface selected!', 'error');
                 return;
             }
-            
+
             addLog(`Scanning networks on ${state.selectedInterface} for ${duration}s...`, 'info');
-            networkList.innerHTML = '<div class="loading">Scanning... please wait</div>';
-            
+            networkList.innerHTML = '<div class="text-[6px] text-primary/60 animate-pulse">Scanning... please wait</div>';
+
             try {
                 const res = await fetch(`/api/scan?duration=${duration}`);
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     state.networks = data.networks || [];
                     state.selectedTargets = [];
@@ -736,61 +470,60 @@
                     updateAttackInfo();
                 } else {
                     addLog(`Scan failed: ${data.message}`, 'error');
-                    networkList.innerHTML = `<div style="color:#ff0000;">Error: ${data.message}</div>`;
+                    networkList.innerHTML = `<div class="text-[6px] text-red-400">Error: ${data.message}</div>`;
                 }
             } catch (e) {
                 addLog(`Scan error: ${e}`, 'error');
-                networkList.innerHTML = `<div style="color:#ff0000;">Error: ${e}</div>`;
+                networkList.innerHTML = `<div class="text-[6px] text-red-400">Error: ${e}</div>`;
             }
         }
-        
+
         // ====================== RENDER NETWORKS ======================
         function renderNetworks() {
             if (state.networks.length === 0) {
-                networkList.innerHTML = '<div style="color:#666;">No networks found</div>';
+                networkList.innerHTML = '<div class="text-[6px] text-on-surface/40">No networks found</div>';
                 return;
             }
-            
+
             const isDisabled = state.attackType === 'beacon';
-            
-            const html = `
-                <table class="network-table">
-                    <thead>
-                        <tr>
-                            <th style="width:30px;">#</th>
-                            <th>ESSID</th>
-                            <th style="width:40px;">CH</th>
-                            <th>BSSID</th>
-                            <th style="width:30px;">PWR</th>
+
+            let html = `
+                    <table class="network-table w-full text-[6px]">
+                        <thead>
+                            <tr class="border-b border-primary/20">
+                                <th class="text-left text-primary/40 py-1 px-1">#</th>
+                                <th class="text-left text-primary/40 py-1 px-1">ESSID</th>
+                                <th class="text-left text-primary/40 py-1 px-1">CH</th>
+                                <th class="text-left text-primary/40 py-1 px-1">BSSID</th>
+                                <th class="text-left text-primary/40 py-1 px-1">PWR</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+            state.networks.forEach((net, idx) => {
+                const isSelected = state.selectedTargets.includes(idx);
+                html += `
+                        <tr class="${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" onclick="${isDisabled ? '' : `toggleTarget(${idx})`}">
+                            <td class="py-1 px-1 text-on-surface/40">${idx + 1}</td>
+                            <td class="py-1 px-1 text-on-surface">${net.essid || '[Hidden]'}</td>
+                            <td class="py-1 px-1 text-primary/60">${net.channel || '?'}</td>
+                            <td class="py-1 px-1 text-primary/60">${net.bssid}</td>
+                            <td class="py-1 px-1 text-on-surface/40">${net.power !== null ? net.power : '?'}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${state.networks.map((net, idx) => {
-                            const isSelected = state.selectedTargets.includes(idx);
-                            return `
-                                <tr class="${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}"
-                                    onclick="${isDisabled ? '' : `toggleTarget(${idx})`}">
-                                    <td>${idx + 1}</td>
-                                    <td class="essid">${net.essid || '[Hidden]'}</td>
-                                    <td class="channel">${net.channel || '?'}</td>
-                                    <td class="bssid">${net.bssid}</td>
-                                    <td>${net.power !== null ? net.power : '?'}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
-            `;
+                    `;
+            });
+
+            html += `</tbody></table>`;
             networkList.innerHTML = html;
-            
+
             if (isDisabled) {
                 const hint = document.createElement('div');
-                hint.style.cssText = 'color:#ff8800; font-size:0.8em; padding:5px 0;';
+                hint.className = 'text-[6px] text-primary/60 mt-2';
                 hint.textContent = 'ℹ️ Beacon mode: No targets needed';
                 networkList.appendChild(hint);
             }
-            
-            // Auto scan clients if exactly 1 target selected
+
             if (state.selectedTargets.length === 1) {
                 const idx = state.selectedTargets[0];
                 const target = state.networks[idx];
@@ -800,16 +533,16 @@
             } else if (state.selectedTargets.length === 0) {
                 document.getElementById('clientInfo').style.display = 'none';
             }
-            
+
             updateSelectionInfo();
         }
-        
-        // ====================== TOGGLE TARGET + SCAN CLIENTS ======================
+
+        // ====================== TOGGLE TARGET ======================
         async function toggleTarget(idx) {
             if (state.attackType === 'beacon') return;
-            
+
             const net = state.networks[idx];
-            
+
             if (state.attackType === 'authdos') {
                 if (state.selectedTargets.length === 1 && !state.selectedTargets.includes(idx)) {
                     state.selectedTargets = [idx];
@@ -827,16 +560,14 @@
                     state.selectedTargets.push(idx);
                 }
             }
-            
+
             renderNetworks();
             updateAttackInfo();
-            
-            // 🔥 Scan clients otomatis kalau 1 target dipilih
+
             if (state.selectedTargets.length === 1) {
                 const targetIdx = state.selectedTargets[0];
                 const target = state.networks[targetIdx];
                 if (target && target.bssid) {
-                    // 🔥 Delay 500ms biar gak spam
                     await new Promise(resolve => setTimeout(resolve, 500));
                     await scanClients(target.bssid);
                 }
@@ -844,20 +575,19 @@
                 document.getElementById('clientInfo').style.display = 'none';
             }
         }
-        
+
         // ====================== SCAN CLIENTS ======================
         async function scanClients(bssid) {
             const clientInfo = document.getElementById('clientInfo');
             const clientList = document.getElementById('clientListDetail');
             const clientBSSID = document.getElementById('clientBSSID');
             const clientCountBadge = document.getElementById('clientCountBadge');
-            
+
             clientInfo.style.display = 'block';
             clientBSSID.textContent = bssid;
-            clientList.innerHTML = '<div style="color:#ff8800; text-align:center; padding:10px 0;">🔄 Scanning clients...</div>';
+            clientList.innerHTML = '<div class="text-[6px] text-primary/60 text-center py-2 animate-pulse">Scanning clients...</div>';
             clientCountBadge.textContent = '...';
-            
-            // 🔥 Cari channel dari network yang dipilih
+
             let channel = '';
             for (let i = 0; i < state.networks.length; i++) {
                 if (state.networks[i].bssid === bssid) {
@@ -865,46 +595,49 @@
                     break;
                 }
             }
-            
+
             try {
                 const url = `/api/clients?bssid=${bssid}${channel ? `&channel=${channel}` : ''}`;
                 const res = await fetch(url);
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     const clients = data.clients || [];
                     clientCountBadge.textContent = clients.length;
-                    
+
                     if (clients.length === 0) {
-                        clientList.innerHTML = '<div style="color:#666; text-align:center; padding:10px 0;">No clients connected</div>';
+                        clientList.innerHTML = '<div class="text-[6px] text-on-surface/40 text-center py-2">No clients connected</div>';
                     } else {
-                        clientList.innerHTML = `
-                            <div class="grid-header">
-                                <span>STATION</span>
-                                <span>POWER</span>
-                                <span>PACKETS</span>
-                            </div>
-                            ${clients.map(c => `
-                                <div class="grid-row">
-                                    <span class="mac">${c.station || 'Unknown'}</span>
-                                    <span class="power">${c.power || '?'} dBm</span>
-                                    <span class="packets">${c.packets || '0'}</span>
+                        let html = `
+                                <div class="grid grid-cols-3 gap-2 text-[5px] text-primary/40 border-b border-primary/10 pb-1 mb-1">
+                                    <span>STATION</span>
+                                    <span>POWER</span>
+                                    <span>PACKETS</span>
                                 </div>
-                            `).join('')}
-                        `;
+                            `;
+                        clients.forEach(c => {
+                            html += `
+                                    <div class="grid grid-cols-3 gap-2 text-[5px] py-1 border-b border-primary/5">
+                                        <span class="text-primary/60">${c.station || 'Unknown'}</span>
+                                        <span class="text-on-surface/40">${c.power || '?'} dBm</span>
+                                        <span class="text-primary/40">${c.packets || '0'}</span>
+                                    </div>
+                                `;
+                        });
+                        clientList.innerHTML = html;
                     }
                     addLog(`📡 Found ${clients.length} client(s) connected to ${bssid}`, 'info');
                 } else {
-                    clientList.innerHTML = `<div style="color:#ff0000; text-align:center; padding:10px 0;">Error: ${data.message}</div>`;
+                    clientList.innerHTML = `<div class="text-[6px] text-red-400 text-center py-2">Error: ${data.message}</div>`;
                     clientCountBadge.textContent = '0';
                 }
             } catch (e) {
-                clientList.innerHTML = `<div style="color:#ff0000; text-align:center; padding:10px 0;">Error: ${e}</div>`;
+                clientList.innerHTML = `<div class="text-[6px] text-red-400 text-center py-2">Error: ${e}</div>`;
                 clientCountBadge.textContent = '0';
                 addLog(`Error scanning clients: ${e}`, 'error');
             }
         }
-        
+
         // ====================== SELECT / DESELECT ======================
         function selectAll() {
             if (state.attackType === 'authdos') {
@@ -921,42 +654,43 @@
             renderNetworks();
             updateAttackInfo();
         }
-        
+
         function deselectAll() {
             state.selectedTargets = [];
             renderNetworks();
             updateAttackInfo();
             document.getElementById('clientInfo').style.display = 'none';
         }
-        
+
         function updateSelectionInfo() {
             const count = state.selectedTargets.length;
             let info = `${count} targets selected`;
-            
+
             if (state.attackType === 'beacon') {
                 info = 'ℹ️ Beacon: No targets needed';
             } else if (state.attackType === 'authdos' && count > 1) {
                 info = `⚠️ Auth DOS: Only 1 target allowed! (${count} selected, using first)`;
             }
-            
-            selectionInfo.innerHTML = info;
+
+            selectionInfo.textContent = info;
+            statusTargetInfo.textContent = info;
         }
-        
+
         // ====================== ATTACK ======================
         function selectAttackType(type) {
             if (state.attackRunning) {
                 addLog('Attack is running! Stop first.', 'warning');
                 return;
             }
-            
+
             state.attackType = type;
-            
+
             document.querySelectorAll('.attack-option').forEach(el => {
                 el.classList.toggle('active', el.dataset.type === type);
             });
-            
-            attackTypeDisplay.textContent = type ? type.toUpperCase() : 'None';
-            
+
+            attackTypeDisplay.textContent = type ? type.toUpperCase() : 'NONE SELECTED';
+
             if (type === 'beacon') {
                 state.selectedTargets = [];
                 document.getElementById('clientInfo').style.display = 'none';
@@ -971,67 +705,60 @@
                     addLog('Auth DOS: Auto-selected first target', 'info');
                 }
             }
-            
+
             renderNetworks();
             updateAttackInfo();
             addLog(`Attack type set to: ${type}`, 'info');
         }
-        
+
         function updateAttackInfo() {
             const targetCount = state.selectedTargets.length;
             const type = state.attackType || 'none';
-            
+
             let info = '';
-            let displayInfo = '';
-            
+
             if (type === 'beacon') {
                 info = '📡 Beacon flood - No targets needed';
-                displayInfo = 'Beacon: Fake AP flood';
             } else if (type === 'authdos') {
                 if (targetCount === 0) {
                     info = '⚠️ Auth DOS needs 1 target. Select a target or use "Select All"';
                 } else if (targetCount === 1) {
                     const target = state.networks[state.selectedTargets[0]];
                     info = `🎯 Auth DOS: ${target.essid} (${target.bssid})`;
-                    displayInfo = `Auth DOS: ${target.essid}`;
                 } else {
                     info = `⚠️ Auth DOS only 1 target! Using first: ${state.networks[state.selectedTargets[0]].essid}`;
-                    displayInfo = `Auth DOS: ${state.networks[state.selectedTargets[0]].essid} (+${targetCount-1} ignored)`;
                 }
             } else if (type === 'deauth') {
                 if (targetCount === 0) {
                     info = '⚠️ Deauth needs at least 1 target. Select targets or use "Select All"';
                 } else {
                     info = `🎯 Deauth: ${targetCount} target(s) selected`;
-                    displayInfo = `Deauth: ${targetCount} targets`;
                 }
             } else {
                 info = 'Select targets and attack type';
-                displayInfo = '-';
             }
-            
+
             attackInfo.textContent = info;
-            attackInfoDisplay.textContent = displayInfo;
             updateSelectionInfo();
         }
-        
+
         // ====================== START ATTACK ======================
         async function startAttack() {
             if (state.attackRunning) {
                 addLog('Attack already running!', 'warning');
                 return;
             }
-            
+
             if (!state.selectedInterface) {
                 addLog('No interface selected!', 'error');
                 return;
             }
-            
+
             if (!state.attackType) {
                 addLog('No attack type selected!', 'error');
                 return;
             }
-            
+
             if (state.attackType === 'beacon') {
                 state.selectedTargets = [];
                 renderNetworks();
@@ -1052,16 +779,16 @@
                     return;
                 }
             }
-            
+
             const targets = state.selectedTargets.map(idx => state.networks[idx]);
             const payload = {
                 type: state.attackType,
                 targets: targets,
                 interface: state.selectedInterface
             };
-            
+
             addLog(`Starting ${state.attackType} attack...`, 'info');
-            
+
             try {
                 const res = await fetch('/api/attack/start', {
                     method: 'POST',
@@ -1069,22 +796,24 @@
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     state.attackRunning = true;
                     updateUIState();
-                    
+
                     let msg = `✅ ${state.attackType} attack started`;
                     if (data.targets !== undefined) {
                         msg += ` (${data.targets} target${data.targets > 1 ? 's' : ''})`;
                     }
-                    
+
                     addLog(msg, 'success');
                     statusText.textContent = `Running: ${state.attackType}`;
-                    
+
                     const targetNames = targets.map(t => t.essid).join(', ');
                     targetInfo.textContent = targets.length > 0 ? targetNames : 'All networks (beacon)';
-                    
+                    statusTargetInfo.textContent = targets.length > 0 ? targetNames : 'All networks (beacon)';
+                    attackStatusLabel.textContent = `STATUS: RUNNING - ${state.attackType.toUpperCase()}`;
+
                     startStatusPolling();
                     startMonitoring();
                 } else {
@@ -1094,36 +823,38 @@
                 addLog(`Error: ${e}`, 'error');
             }
         }
-        
+
         // ====================== STOP ATTACK ======================
         async function stopAttack() {
             if (!state.attackRunning) {
                 addLog('No attack running', 'warning');
                 return;
             }
-            
+
             addLog('Stopping attack...', 'info');
             $('stopBtn').disabled = true;
             $('stopBtn2').disabled = true;
-            
+
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
-                const res = await fetch('/api/attack/stop', { 
+
+                const res = await fetch('/api/attack/stop', {
                     method: 'POST',
                     signal: controller.signal
                 });
-                
+
                 clearTimeout(timeoutId);
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     state.attackRunning = false;
                     updateUIState();
                     addLog('✅ Attack stopped', 'success');
                     statusText.textContent = 'Idle';
                     targetInfo.textContent = 'No target';
+                    statusTargetInfo.textContent = 'NO TARGET SELECTED';
+                    attackStatusLabel.textContent = 'STATUS: IDLE';
                     stopStatusPolling();
                     stopMonitoring();
                     resetMonitorDisplay();
@@ -1140,19 +871,21 @@
                     addLog(`⚠️ Error stopping: ${e.message}`, 'warning');
                 }
             }
-            
+
             // FORCE STOP
             try {
                 addLog('🔄 Attempting force stop...', 'warning');
                 const res2 = await fetch('/api/attack/force_stop', { method: 'POST' });
                 const data2 = await res2.json();
-                
+
                 if (data2.status === 'success') {
                     state.attackRunning = false;
                     updateUIState();
                     addLog('✅ Attack force stopped', 'success');
                     statusText.textContent = 'Idle';
                     targetInfo.textContent = 'No target';
+                    statusTargetInfo.textContent = 'NO TARGET SELECTED';
+                    attackStatusLabel.textContent = 'STATUS: IDLE';
                     stopStatusPolling();
                     stopMonitoring();
                     resetMonitorDisplay();
@@ -1164,114 +897,110 @@
                 addLog(`❌ Force stop error: ${e2.message}`, 'error');
                 addLog('💡 Run in terminal: sudo pkill -9 -f mdk4', 'info');
             }
-            
+
             $('stopBtn').disabled = false;
             $('stopBtn2').disabled = false;
         }
-        
+
         // ====================== STATUS POLLING ======================
         let statusInterval = null;
-        
+
         function startStatusPolling() {
             if (statusInterval) clearInterval(statusInterval);
             statusInterval = setInterval(checkStatus, 2000);
         }
-        
+
         function stopStatusPolling() {
             if (statusInterval) {
                 clearInterval(statusInterval);
                 statusInterval = null;
             }
         }
-        
+
         async function checkStatus() {
             try {
                 const res = await fetch('/api/attack/status');
                 const data = await res.json();
-                
+
                 if (!data.running && state.attackRunning) {
                     state.attackRunning = false;
                     updateUIState();
                     addLog('Attack ended (process stopped)', 'warning');
                     statusText.textContent = 'Idle';
                     targetInfo.textContent = 'No target';
+                    statusTargetInfo.textContent = 'NO TARGET SELECTED';
+                    attackStatusLabel.textContent = 'STATUS: IDLE';
                     stopStatusPolling();
                     stopMonitoring();
                     resetMonitorDisplay();
                 }
             } catch (e) {}
         }
-        
+
         // ====================== MONITORING ======================
         let monitorInterval = null;
-        
+
         function startMonitoring() {
             if (monitorInterval) clearInterval(monitorInterval);
             monitorInterval = setInterval(fetchMonitorData, 3000);
             $('monitorStatusDot').className = 'monitor-status active';
-            $('monitorStatusText').textContent = 'Active';
-            $('monitorStatusText').style.background = '#00ff00';
-            $('monitorStatusText').style.color = '#000';
+            $('monitorStatusText').textContent = 'ACTIVE';
         }
-        
+
         function stopMonitoring() {
             if (monitorInterval) {
                 clearInterval(monitorInterval);
                 monitorInterval = null;
             }
             $('monitorStatusDot').className = 'monitor-status idle';
-            $('monitorStatusText').textContent = 'Idle';
-            $('monitorStatusText').style.background = '#666';
-            $('monitorStatusText').style.color = '#fff';
+            $('monitorStatusText').textContent = 'IDLE';
         }
-        
+
         function resetMonitorDisplay() {
-            document.getElementById('apStatus').textContent = 'Idle';
-            document.getElementById('apStatus').className = 'value idle';
+            document.getElementById('apStatus').textContent = 'IDLE';
             document.getElementById('clientCount').textContent = '0';
-            document.getElementById('clientCount').className = 'value idle';
-            document.getElementById('clientList').innerHTML = '<div style="color:#666; text-align:center; padding:10px 0;">No clients connected</div>';
+            document.getElementById('clientList').innerHTML = 'No active clients connected';
             document.getElementById('lastUpdate').textContent = 'Last update: -';
         }
-        
+
         async function fetchMonitorData() {
             try {
                 const res = await fetch('/api/monitor');
                 const data = await res.json();
-                
+
                 if (data.status === 'success') {
                     const monitor = data.data;
-                    
                     const apStatus = document.getElementById('apStatus');
-                    if (monitor.ap_status === '⚠️ AP OFFLINE / FREEZE!') {
+                    const apStatusText = monitor.ap_status || 'unknown';
+
+                    if (apStatusText === '⚠️ AP OFFLINE / FREEZE!') {
                         apStatus.textContent = '🔴 OFFLINE / FREEZE!';
-                        apStatus.className = 'value offline';
+                        apStatus.className = 'text-error text-body-lg';
                         addLog('🚨 AP OFFLINE / FREEZE!', 'error');
-                    } else if (monitor.ap_status === 'online') {
+                    } else if (apStatusText === 'online') {
                         apStatus.textContent = '🟢 Online';
-                        apStatus.className = 'value online';
+                        apStatus.className = 'text-green-400 text-body-lg';
                     } else {
-                        apStatus.textContent = '🟡 ' + monitor.ap_status;
-                        apStatus.className = 'value warning';
+                        apStatus.textContent = '🟡 ' + apStatusText;
+                        apStatus.className = 'text-yellow-400 text-body-lg';
                     }
-                    
+
                     const clients = monitor.clients || [];
                     const clientCount = document.getElementById('clientCount');
                     clientCount.textContent = clients.length;
-                    clientCount.className = clients.length === 0 ? 'value offline' : 'value online';
-                    
+                    clientCount.className = clients.length === 0 ? 'text-on-surface/40 text-body-lg' : 'text-green-400 text-body-lg';
+
                     const clientList = document.getElementById('clientList');
                     if (clients.length === 0) {
-                        clientList.innerHTML = '<div style="color:#ff0000; text-align:center; padding:10px 0;">🔥 NO CLIENTS CONNECTED! AP DOWN!</div>';
+                        clientList.innerHTML = '🔴 NO CLIENTS CONNECTED! AP DOWN!';
+                        clientList.className = 'h-16 border border-primary/10 flex items-center justify-center text-[6px] text-error italic uppercase';
                     } else {
-                        clientList.innerHTML = clients.map(c => `
-                            <div class="client-item">
-                                <span class="mac">${c.station || 'Unknown'}</span>
-                                <span class="power">${c.power || '?'} dBm</span>
-                            </div>
-                        `).join('');
+                        clientList.className = 'h-16 border border-primary/10 flex items-center justify-center text-[6px] text-primary/80';
+                        clientList.innerHTML = clients.map(c =>
+                            `${c.station || 'Unknown'} (${c.power || '?'} dBm)`
+                        ).join(' | ');
                     }
-                    
+
                     if (monitor.last_update) {
                         const date = new Date(monitor.last_update * 1000);
                         document.getElementById('lastUpdate').textContent = `Last update: ${date.toLocaleTimeString()}`;
@@ -1279,52 +1008,60 @@
                 }
             } catch (e) {}
         }
-        
+
         // ====================== UI STATE ======================
         function updateUIState() {
             const running = state.attackRunning;
-            
-            const indicator = attackStatus.querySelector('.status-indicator');
-            indicator.className = `status-indicator ${running ? 'status-running' : 'status-idle'}`;
-            attackStatus.querySelector('span:last-child').textContent = running ? 'Running' : 'Idle';
-            
+
+            if (running) {
+                statusIndicator.className = 'status-indicator running';
+            } else {
+                statusIndicator.className = 'status-indicator idle';
+            }
+
             $('startBtn').disabled = running;
             $('stopBtn').disabled = !running;
             $('stopBtn2').disabled = !running;
-            
+
             document.querySelectorAll('.attack-option').forEach(el => {
-                el.style.cursor = running ? 'not-allowed' : 'pointer';
                 if (running && el.dataset.type !== state.attackType) {
-                    el.style.opacity = '0.3';
+                    el.classList.add('disabled');
                 } else {
-                    el.style.opacity = '1';
+                    el.classList.remove('disabled');
                 }
             });
         }
-        
+
         // ====================== EVENT BINDINGS ======================
         document.addEventListener('DOMContentLoaded', () => {
             loadInterfaces();
-            
+
             $('scanBtn').addEventListener('click', scanNetworks);
             $('scanDuration').addEventListener('change', (e) => {
                 state.scanDuration = parseInt(e.target.value) || 10;
             });
-            
+
             $('refreshInterfacesBtn').addEventListener('click', loadInterfaces);
-            
+
             $('startBtn').addEventListener('click', startAttack);
             $('stopBtn').addEventListener('click', stopAttack);
             $('stopBtn2').addEventListener('click', stopAttack);
-            
+
             $('selectAllBtn').addEventListener('click', selectAll);
             $('deselectAllBtn').addEventListener('click', deselectAll);
-            
+
             $('clearLogBtn').addEventListener('click', () => {
                 logBox.innerHTML = '';
                 addLog('Log cleared', 'info');
             });
-            
+
+            // Attack type buttons
+            document.querySelectorAll('.attack-option').forEach(el => {
+                el.addEventListener('click', () => {
+                    selectAttackType(el.dataset.type);
+                });
+            });
+
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && e.ctrlKey) {
                     e.preventDefault();
@@ -1335,17 +1072,17 @@
                     stopAttack();
                 }
             });
-            
+
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && document.activeElement === $('scanDuration')) {
                     scanNetworks();
                 }
             });
-            
+
             updateUIState();
             updateAttackInfo();
             resetMonitorDisplay();
-            
+
             addLog('🎯 MDK4 Web Interface ready', 'success');
             addLog('📡 Select interface, scan networks, choose attack type', 'info');
             addLog('💡 Ctrl+Enter = Start | Ctrl+S = Stop', 'info');
