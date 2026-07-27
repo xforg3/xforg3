@@ -2,8 +2,8 @@
 """
 start.py - MDK4 Web Version Launcher
 -----------------------------------
-1. Pilih interface dulu (interaktif) - pake ip link + iw dev
-2. Setup monitor mode
+1. Pilih interface wireless (interaktif)
+2. Setup monitor mode via airmon-ng
 3. Jalankan FastAPI + Ngrok
 """
 
@@ -16,7 +16,7 @@ import requests
 import os
 import re
 
-# Warna
+# Warna ANSI
 GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
@@ -54,79 +54,62 @@ def print_banner():
     print(f"{CYAN}  MDK4 Web Interface - FastAPI + Ngrok{RESET}")
     print(f"{GREEN}{'='*60}{RESET}\n")
 
-# ====================== INTERFACE FUNCTIONS (FIXED) ======================
+# ====================== INTERFACE FUNCTIONS ======================
 
 def find_wireless_interfaces():
-    """Cari semua interface wireless pake ip link + iw dev"""
-    interfaces = []
+    """Cari semua interface wireless murni (mengabaikan lo, eth, docker, dll)"""
+    interfaces = set()
     
-    # 🔥 Method 1: Pake iw dev (lebih akurat)
+    # Method 1: iw dev
     try:
         result = subprocess.run(["iw", "dev"], capture_output=True, text=True, timeout=5)
         for line in result.stdout.split('\n'):
-            if "Interface" in line:
-                iface = line.split()[1]
-                if iface and iface not in interfaces:
-                    interfaces.append(iface)
-    except:
+            line = line.strip()
+            if line.startswith("Interface"):
+                parts = line.split()
+                if len(parts) > 1:
+                    interfaces.add(parts[1])
+    except Exception:
         pass
     
-    # 🔥 Method 2: Pake ip link (fallback)
-    try:
-        result = subprocess.run(["ip", "link"], capture_output=True, text=True, timeout=5)
-        for line in result.stdout.split('\n'):
-            # Cari interface yang punya flag UP atau state UP
-            if "state UP" in line or "state DOWN" in line:
-                match = re.search(r':\s+([a-zA-Z0-9_.-]+):', line)
-                if match:
-                    iface = match.group(1)
-                    # Skip ethernet, loopback, docker, veth
-                    if iface not in ["lo", "eth0", "eth1", "enp0s3", "enp0s8", "docker0"]:
-                        if iface not in interfaces:
-                            interfaces.append(iface)
-    except:
-        pass
-    
-    # 🔥 Method 3: Pake iwconfig (buat yg gak kedeteksi)
+    # Method 2: iwconfig fallback
     try:
         result = subprocess.run(["iwconfig"], capture_output=True, text=True, timeout=5)
         for line in result.stdout.split('\n'):
-            if "no wireless extensions" in line:
+            if "no wireless extensions" in line or not line.strip():
                 continue
-            if line.strip() and not line.startswith(" "):
+            if not line.startswith(" "):
                 iface = line.split()[0]
-                if iface not in interfaces and iface not in ["lo", "eth0", "eth1"]:
-                    interfaces.append(iface)
-    except:
+                interfaces.add(iface)
+    except Exception:
         pass
-    
-    # Filter interface yang beneran wireless
-    wireless_ifaces = []
-    for iface in interfaces:
+
+    # Verifikasi akhir untuk memastikan interface benar-benar wireless
+    verified_ifaces = []
+    for iface in sorted(list(interfaces)):
+        # Abaikan interface non-wireless biasa
+        if iface in ["lo", "eth0", "eth1", "docker0"]:
+            continue
+        
         try:
-            result = subprocess.run(["iw", "dev", iface, "info"], capture_output=True, text=True, timeout=2)
-            if result.returncode == 0 and "wiphy" in result.stdout:
-                wireless_ifaces.append(iface)
-            else:
-                # Coba cek pake iwconfig
-                result2 = subprocess.run(["iwconfig", iface], capture_output=True, text=True, timeout=2)
-                if "no wireless extensions" not in result2.stdout:
-                    wireless_ifaces.append(iface)
-        except:
+            res = subprocess.run(["iwconfig", iface], capture_output=True, text=True, timeout=2)
+            if "no wireless extensions" not in res.stdout:
+                verified_ifaces.append(iface)
+        except Exception:
             pass
-    
-    return wireless_ifaces if wireless_ifaces else interfaces
+
+    return verified_ifaces
 
 def is_monitor_mode(iface):
-    """Cek apakah interface dalam mode monitor"""
+    """Cek apakah interface berada dalam Mode:Monitor"""
     try:
         result = subprocess.run(["iwconfig", iface], capture_output=True, text=True, timeout=3)
         return "Mode:Monitor" in result.stdout
-    except:
+    except Exception:
         return False
 
 def get_interface_info(iface):
-    """Dapatkan info tambahan tentang interface"""
+    """Dapatkan informasi detail interface (mode, state, PHY)"""
     info = {
         "name": iface,
         "monitor": is_monitor_mode(iface),
@@ -134,49 +117,47 @@ def get_interface_info(iface):
         "state": "unknown"
     }
     
-    # Dapatkan PHY dari iw dev
+    # Ambil info PHY
     try:
         result = subprocess.run(["iw", "dev", iface, "info"], capture_output=True, text=True, timeout=2)
         for line in result.stdout.split('\n'):
             if "wiphy" in line:
                 info["phy"] = line.strip()
-            if "state" in line:
-                info["state"] = line.split()[-1]
-    except:
+            if "type" in line:
+                mode_type = line.split()[-1]
+                if mode_type == "monitor":
+                    info["monitor"] = True
+    except Exception:
         pass
     
-    # Dapatkan state dari ip link
+    # Ambil state dari ip link
     try:
         result = subprocess.run(["ip", "link", "show", iface], capture_output=True, text=True, timeout=2)
-        if "state UP" in result.stdout:
+        if "state UP" in result.stdout or "<UP" in result.stdout:
             info["state"] = "UP"
         elif "state DOWN" in result.stdout:
             info["state"] = "DOWN"
-    except:
+    except Exception:
         pass
     
     return info
 
 def select_interface_interactive():
-    """Tampilkan menu interaktif untuk pilih interface"""
-    clear_screen()
+    """Tampilkan menu interaktif untuk memilih interface"""
     print_banner()
-    
     print(f"{BOLD}{CYAN}📡 WIRELESS INTERFACE SELECTION{RESET}")
     print(f"{GREEN}{'='*60}{RESET}\n")
     
-    # Scan interfaces
     print_status("Scanning wireless interfaces...", "info")
     interfaces = find_wireless_interfaces()
     
     if not interfaces:
         print_status("No wireless interfaces found!", "error")
-        print_status("Please plug in WiFi adapter and try again.", "warning")
-        print_status("Or check: ip link && iw dev", "info")
+        print_status("Please connect a Wi-Fi adapter and try again.", "warning")
+        print_status("Check manually with: ip link && iw dev", "info")
         input("\nPress Enter to exit...")
         sys.exit(1)
     
-    # Tampilkan daftar interface dengan info
     print(f"\n{BOLD}Available interfaces:{RESET}\n")
     print(f"  {'No':<4} {'Interface':<18} {'Mode':<12} {'State':<8} {'PHY'}")
     print(f"  {GREEN}{'-'*70}{RESET}")
@@ -192,11 +173,10 @@ def select_interface_interactive():
     
     print(f"  {GREEN}{'-'*70}{RESET}")
     
-    # Pilihan
     print(f"\n  {BOLD}Options:{RESET}")
     print(f"  {CYAN}0{RESET}  Exit")
     print(f"  {CYAN}r{RESET}  Refresh interfaces")
-    print(f"  {CYAN}m{RESET}  Create monitor mode from selected interface")
+    print(f"  {CYAN}m{RESET}  Manual monitor mode info")
     
     while True:
         try:
@@ -208,19 +188,17 @@ def select_interface_interactive():
             elif choice.lower() == 'r':
                 return select_interface_interactive()
             elif choice.lower() == 'm':
-                print_status("You can create monitor mode in the web interface", "info")
-                print_status("Or manually: sudo airmon-ng start <interface>", "info")
+                print_status("Manual setup command: sudo airmon-ng start <interface>", "info")
                 continue
             
             if choice.isdigit():
                 num = int(choice)
                 if 1 <= num <= len(interface_list):
-                    selected = interface_list[num - 1]
-                    return selected
+                    return interface_list[num - 1]
                 else:
-                    print_status(f"Please enter number between 1 and {len(interface_list)}", "error")
+                    print_status(f"Please enter a number between 1 and {len(interface_list)}", "error")
             else:
-                print_status("Invalid input! Enter number or 0 to exit.", "error")
+                print_status("Invalid input!", "error")
                 
         except KeyboardInterrupt:
             print(f"\n{YELLOW}Interrupted, exiting...{RESET}")
@@ -229,86 +207,66 @@ def select_interface_interactive():
 # ====================== MONITOR MODE SETUP ======================
 
 def setup_monitor_mode(interface):
-    """Setup monitor mode untuk interface yang dipilih"""
-    clear_screen()
+    """Setup monitor mode pada interface"""
     print_banner()
-    
     print(f"{BOLD}{CYAN}📡 SETUP MONITOR MODE{RESET}")
     print(f"{GREEN}{'='*50}{RESET}\n")
     
-    # Cek apakah udah monitor
     if is_monitor_mode(interface):
         print_status(f"Interface {interface} is already in monitor mode! ✅", "success")
         return interface
     
-    print_status(f"Interface: {interface} is in MANAGED mode", "warning")
-    print_status(f"Creating monitor mode on {interface}...", "info")
+    print_status(f"Interface {interface} is in MANAGED mode", "warning")
+    print_status(f"Enabling monitor mode on {interface}...", "info")
     
     try:
-        # Kill interfering processes
-        print_status("Killing interfering processes...", "info")
-        subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=False, timeout=5)
+        print_status("Killing interfering processes (airmon-ng check kill)...", "info")
+        subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=False, timeout=10)
         
-        # Start monitor mode
         result = subprocess.run(
             ["sudo", "airmon-ng", "start", interface],
-            capture_output=True, text=True, timeout=10
+            capture_output=True, text=True, timeout=15
         )
         
-        # Cari nama interface monitor baru
+        # Cari nama interface monitor yang terbentuk
         monitor_iface = None
         for line in result.stdout.split('\n'):
-            if "monitor mode enabled on" in line:
+            if "monitor mode enabled on" in line or "monitor mode vif enabled on" in line:
                 parts = line.split()
                 for i, part in enumerate(parts):
-                    if part == "on" and i+1 < len(parts):
-                        monitor_iface = parts[i+1].strip()
+                    if part in ["on", "for"] and i + 1 < len(parts):
+                        monitor_iface = parts[i+1].strip("]")
                         break
         
         if monitor_iface:
-            print_status(f"✅ Monitor mode created: {monitor_iface}", "success")
+            print_status(f"✅ Monitor mode enabled: {monitor_iface}", "success")
             time.sleep(1)
             return monitor_iface
         
-        # Fallback: cari interface yang berakhir "mon"
-        interfaces = find_wireless_interfaces()
-        for iface in interfaces:
-            if iface.endswith("mon") and iface != interface:
-                print_status(f"✅ Found monitor interface: {iface}", "success")
+        # Fallback check
+        current_ifaces = find_wireless_interfaces()
+        for iface in current_ifaces:
+            if iface.endswith("mon") or is_monitor_mode(iface):
+                print_status(f"✅ Active monitor interface found: {iface}", "success")
                 return iface
         
-        print_status("Failed to find monitor interface!", "error")
-        print_status(f"Try manually: sudo airmon-ng start {interface}", "info")
-        return None
+        print_status("Failed to verify monitor mode automatically.", "error")
+        return interface
         
     except Exception as e:
-        print_status(f"Error creating monitor mode: {e}", "error")
-        return None
+        print_status(f"Error enabling monitor mode: {e}", "error")
+        return interface
 
-# ====================== NGROK FUNCTIONS ======================
-
-def get_ngrok_url():
-    for i in range(10):
-        try:
-            response = requests.get('http://localhost:4040/api/tunnels', timeout=3)
-            if response.status_code == 200:
-                data = response.json()
-                for tunnel in data['tunnels']:
-                    if tunnel['proto'] == 'https':
-                        return tunnel['public_url']
-        except:
-            pass
-        time.sleep(1)
-    return None
+# ====================== NGROK & APP FUNCTIONS ======================
 
 def check_ngrok():
     ngrok_paths = ['/usr/local/bin/ngrok', '/usr/bin/ngrok', 'ngrok']
     for path in ngrok_paths:
         try:
-            result = subprocess.run([path, '--version'], capture_output=True, text=True, timeout=1)
+            result = subprocess.run([path, '--version'], capture_output=True, text=True, timeout=2)
             if result.returncode == 0:
                 return path
-        except:
+        except Exception:
             continue
     return None
 
@@ -319,36 +277,46 @@ def setup_ngrok_root():
         return False
     
     try:
-        result = subprocess.run(['sudo', ngrok_path, 'config', 'check'], 
-                              capture_output=True, text=True)
+        result = subprocess.run(['sudo', ngrok_path, 'config', 'check'], capture_output=True, text=True)
         if "Valid configuration" in result.stdout:
             print_status("Ngrok root already configured", "success")
             return True
-    except:
+    except Exception:
         pass
     
-    print_status("Setting up ngrok for root...", "info")
+    print_status("Setting up ngrok token for root...", "info")
     try:
         subprocess.run(['sudo', ngrok_path, 'config', 'add-authtoken', token], check=True)
-        print_status("Ngrok root setup complete", "success")
+        print_status("Ngrok setup complete", "success")
         return True
     except Exception as e:
-        print_status(f"Failed to setup ngrok: {e}", "error")
+        print_status(f"Failed to setup ngrok authtoken: {e}", "error")
         return False
 
-# ====================== RUN APP ======================
+def get_ngrok_url():
+    for _ in range(10):
+        try:
+            response = requests.get('http://localhost:4040/api/tunnels', timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                for tunnel in data.get('tunnels', []):
+                    if tunnel.get('proto') == 'https':
+                        return tunnel.get('public_url')
+        except Exception:
+            pass
+        time.sleep(1)
+    return None
 
 def print_app_output(process):
     try:
         for line in iter(process.stdout.readline, ''):
             if line:
                 print(f"{CYAN}[FastAPI]{RESET} {line.strip()}")
-    except Exception as e:
+    except Exception:
         pass
 
 def run_app_with_interface(interface):
-    """Jalankan FastAPI dengan interface yang sudah dipilih"""
-    print_status(f"Starting FastAPI with interface: {interface}", "info")
+    print_status(f"Starting FastAPI server with interface: {interface}", "info")
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     app_path = os.path.join(script_dir, "app.py")
@@ -357,7 +325,6 @@ def run_app_with_interface(interface):
         print_status(f"app.py not found at: {app_path}", "error")
         return None
     
-    # 🔥 Set environment variable biar app.py tau interface yang dipilih
     env = os.environ.copy()
     env["MDK4_INTERFACE"] = interface
     
@@ -375,87 +342,54 @@ def run_app_with_interface(interface):
         thread.daemon = True
         thread.start()
         
-        print_status("Waiting for FastAPI to be ready...", "info")
-        time.sleep(5)
-        
-        for i in range(5):
-            try:
-                response = requests.get('http://localhost:5000/api/interfaces', timeout=2)
-                if response.status_code == 200:
-                    print_status("FastAPI running at http://localhost:5000", "success")
-                    return app_process
-            except:
-                pass
-            time.sleep(1)
-            
-        print_status("FastAPI might be starting, continuing...", "warning")
+        print_status("Waiting for FastAPI to initialize...", "info")
+        time.sleep(3)
         return app_process
         
     except Exception as e:
-        print_status(f"Failed to start FastAPI: {e}", "error")
+        print_status(f"Failed to launch app.py: {e}", "error")
         return None
 
-# ====================== MAIN ======================
+# ====================== MAIN EXECUTION ======================
 
 def main():
-    # 1. Pilih interface
+    # 1. Select Interface
     selected_interface = select_interface_interactive()
     print_status(f"Selected interface: {selected_interface}", "success")
     
-    # 2. Setup monitor mode
+    # 2. Setup Monitor Mode
     monitor_iface = setup_monitor_mode(selected_interface)
-    if not monitor_iface:
-        print_status("Failed to setup monitor mode!", "error")
-        print_status("You can still continue, but scan may not work properly.", "warning")
-        monitor_iface = selected_interface
     
-    # 3. Setup ngrok
+    # 3. Setup Ngrok Auth
     setup_ngrok_root()
     
-    # 4. Jalankan app
+    # 4. Run App
     app_process = run_app_with_interface(monitor_iface)
     if not app_process:
-        print_status("Failed to start FastAPI!", "error")
+        print_status("Cannot proceed without FastAPI app. Exiting.", "error")
         sys.exit(1)
     
-    # 5. Jalankan ngrok
+    # 5. Run Ngrok
     ngrok_path = check_ngrok()
-    if not ngrok_path:
-        print_status("Ngrok not found!", "error")
-        print_status("FastAPI still running at http://localhost:5000", "warning")
-        print_status("Press Ctrl+C to stop.", "info")
-        
+    ngrok_process = None
+    url = None
+    
+    if ngrok_path:
         try:
-            while True:
-                time.sleep(1)
-                if app_process.poll() is not None:
-                    print_status("FastAPI stopped!", "error")
-                    break
-        except KeyboardInterrupt:
-            pass
-        finally:
-            app_process.terminate()
-            sys.exit(0)
-    
-    print_status(f"Running ngrok from: {ngrok_path}", "info")
-    
-    try:
-        ngrok_process = subprocess.Popen(
-            [ngrok_path, 'http', '5000'],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        print_status("Ngrok running in background", "success")
-    except Exception as e:
-        print_status(f"Failed to run ngrok: {e}", "error")
-        app_process.terminate()
-        sys.exit(1)
-    
-    print_status("Waiting for ngrok to be ready...", "info")
-    time.sleep(5)
-    
-    url = get_ngrok_url()
-    
+            ngrok_process = subprocess.Popen(
+                [ngrok_path, 'http', '5000'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            print_status("Ngrok process started", "success")
+            time.sleep(3)
+            url = get_ngrok_url()
+        except Exception as e:
+            print_status(f"Failed to start Ngrok: {e}", "error")
+    else:
+        print_status("Ngrok binary not found! Running in local-only mode.", "warning")
+
+    # Display Information Banner
     print()
     print(f"{GREEN}{'='*70}{RESET}")
     print(f"{MAGENTA}{BOLD}🌐 MDK4 WEB INTERFACE READY{RESET}")
@@ -463,62 +397,40 @@ def main():
     print(f"{GREEN}{BOLD}   Local URL  :{RESET} http://localhost:5000")
     if url:
         print(f"{GREEN}{BOLD}   Public URL :{RESET} {url}")
-    else:
-        print(f"{RED}{BOLD}   Public URL :{RESET} Failed to get ngrok URL")
-    
-    print()
-    if url:
-        print(f"{YELLOW}📱 Buka URL di HP atau dari mana saja!{RESET}")
-    else:
-        print(f"{YELLOW}📱 Buka di HP (WiFi yang sama):{RESET}")
-        try:
-            import socket
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            print(f"{CYAN}   http://{ip}:5000{RESET}")
-        except:
-            pass
-    
     print(f"{GREEN}{'='*70}{RESET}")
-    print(f"{YELLOW}Press Ctrl+C to stop everything{RESET}\n")
-    
+    print(f"{YELLOW}Press Ctrl+C to exit and cleanup{RESET}\n")
+
+    # Cleanup Handler
     def cleanup(sig, frame):
-        print("\n[*] Stopping all processes...")
-        try:
-            ngrok_process.terminate()
-            ngrok_process.wait(timeout=2)
-        except:
-            pass
-        try:
-            app_process.terminate()
-            app_process.wait(timeout=2)
-        except:
-            pass
+        print("\n[*] Shutting down services...")
+        if ngrok_process:
+            try:
+                ngrok_process.terminate()
+            except Exception:
+                pass
+        if app_process:
+            try:
+                app_process.terminate()
+            except Exception:
+                pass
         
-        # Stop monitor mode
         print(f"[*] Stopping monitor mode on {monitor_iface}...")
-        subprocess.run(["sudo", "airmon-ng", "stop", monitor_iface], check=False, timeout=3)
-        subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False, timeout=3)
-        
+        subprocess.run(["sudo", "airmon-ng", "stop", monitor_iface], check=False, timeout=5)
+        subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=False, timeout=5)
         subprocess.run("sudo pkill -f mdk4", shell=True, check=False)
-        print("[+] Cleanup complete.")
+        
+        print("[+] Cleanup complete. Goodbye!")
         sys.exit(0)
-    
+
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
-    
+
+    # Monitor App Loop
     try:
         while True:
             if app_process.poll() is not None:
-                print_status(f"FastAPI stopped! Exit code: {app_process.returncode}", "error")
-                print_status("Auto-restarting in 3 seconds...", "warning")
-                time.sleep(3)
-                app_process = run_app_with_interface(monitor_iface)
-                if not app_process:
-                    print_status("Failed to restart FastAPI!", "error")
-                    break
+                print_status("FastAPI process exited unexpectedly.", "error")
+                break
             time.sleep(2)
     except KeyboardInterrupt:
         cleanup(None, None)
