@@ -2,7 +2,7 @@
 """
 start.py - MDK4 Web Version Launcher
 -----------------------------------
-1. Pilih interface dulu (interaktif)
+1. Pilih interface dulu (interaktif) - pake ip link + iw dev
 2. Setup monitor mode
 3. Jalankan FastAPI + Ngrok
 """
@@ -54,26 +54,68 @@ def print_banner():
     print(f"{CYAN}  MDK4 Web Interface - FastAPI + Ngrok{RESET}")
     print(f"{GREEN}{'='*60}{RESET}\n")
 
-# ====================== INTERFACE FUNCTIONS ======================
+# ====================== INTERFACE FUNCTIONS (FIXED) ======================
 
 def find_wireless_interfaces():
-    """Cari semua interface wireless"""
+    """Cari semua interface wireless pake ip link + iw dev"""
+    interfaces = []
+    
+    # 🔥 Method 1: Pake iw dev (lebih akurat)
+    try:
+        result = subprocess.run(["iw", "dev"], capture_output=True, text=True, timeout=5)
+        for line in result.stdout.split('\n'):
+            if "Interface" in line:
+                iface = line.split()[1]
+                if iface and iface not in interfaces:
+                    interfaces.append(iface)
+    except:
+        pass
+    
+    # 🔥 Method 2: Pake ip link (fallback)
+    try:
+        result = subprocess.run(["ip", "link"], capture_output=True, text=True, timeout=5)
+        for line in result.stdout.split('\n'):
+            # Cari interface yang punya flag UP atau state UP
+            if "state UP" in line or "state DOWN" in line:
+                match = re.search(r':\s+([a-zA-Z0-9_.-]+):', line)
+                if match:
+                    iface = match.group(1)
+                    # Skip ethernet, loopback, docker, veth
+                    if iface not in ["lo", "eth0", "eth1", "enp0s3", "enp0s8", "docker0"]:
+                        if iface not in interfaces:
+                            interfaces.append(iface)
+    except:
+        pass
+    
+    # 🔥 Method 3: Pake iwconfig (buat yg gak kedeteksi)
     try:
         result = subprocess.run(["iwconfig"], capture_output=True, text=True, timeout=5)
-        lines = result.stdout.split('\n')
-        interfaces = []
-        for line in lines:
-            if "no wireless extensions" in line or not line.strip():
+        for line in result.stdout.split('\n'):
+            if "no wireless extensions" in line:
                 continue
-            if not line.startswith(" "):
+            if line.strip() and not line.startswith(" "):
                 iface = line.split()[0]
-                # Skip ethernet, loopback
-                if iface not in ["lo", "eth0", "eth1", "enp0s3", "enp0s8", "docker0"]:
+                if iface not in interfaces and iface not in ["lo", "eth0", "eth1"]:
                     interfaces.append(iface)
-        return interfaces
-    except Exception as e:
-        print_status(f"Error finding interfaces: {e}", "error")
-        return []
+    except:
+        pass
+    
+    # Filter interface yang beneran wireless
+    wireless_ifaces = []
+    for iface in interfaces:
+        try:
+            result = subprocess.run(["iw", "dev", iface, "info"], capture_output=True, text=True, timeout=2)
+            if result.returncode == 0 and "wiphy" in result.stdout:
+                wireless_ifaces.append(iface)
+            else:
+                # Coba cek pake iwconfig
+                result2 = subprocess.run(["iwconfig", iface], capture_output=True, text=True, timeout=2)
+                if "no wireless extensions" not in result2.stdout:
+                    wireless_ifaces.append(iface)
+        except:
+            pass
+    
+    return wireless_ifaces if wireless_ifaces else interfaces
 
 def is_monitor_mode(iface):
     """Cek apakah interface dalam mode monitor"""
@@ -88,16 +130,28 @@ def get_interface_info(iface):
     info = {
         "name": iface,
         "monitor": is_monitor_mode(iface),
-        "phy": "?"
+        "phy": "?",
+        "state": "unknown"
     }
     
-    # Coba dapatkan PHY
+    # Dapatkan PHY dari iw dev
     try:
         result = subprocess.run(["iw", "dev", iface, "info"], capture_output=True, text=True, timeout=2)
         for line in result.stdout.split('\n'):
             if "wiphy" in line:
                 info["phy"] = line.strip()
-                break
+            if "state" in line:
+                info["state"] = line.split()[-1]
+    except:
+        pass
+    
+    # Dapatkan state dari ip link
+    try:
+        result = subprocess.run(["ip", "link", "show", iface], capture_output=True, text=True, timeout=2)
+        if "state UP" in result.stdout:
+            info["state"] = "UP"
+        elif "state DOWN" in result.stdout:
+            info["state"] = "DOWN"
     except:
         pass
     
@@ -109,7 +163,7 @@ def select_interface_interactive():
     print_banner()
     
     print(f"{BOLD}{CYAN}📡 WIRELESS INTERFACE SELECTION{RESET}")
-    print(f"{GREEN}{'='*50}{RESET}\n")
+    print(f"{GREEN}{'='*60}{RESET}\n")
     
     # Scan interfaces
     print_status("Scanning wireless interfaces...", "info")
@@ -118,23 +172,25 @@ def select_interface_interactive():
     if not interfaces:
         print_status("No wireless interfaces found!", "error")
         print_status("Please plug in WiFi adapter and try again.", "warning")
+        print_status("Or check: ip link && iw dev", "info")
         input("\nPress Enter to exit...")
         sys.exit(1)
     
     # Tampilkan daftar interface dengan info
     print(f"\n{BOLD}Available interfaces:{RESET}\n")
-    print(f"  {'No':<4} {'Interface':<15} {'Mode':<12} {'PHY'}")
-    print(f"  {GREEN}{'-'*50}{RESET}")
+    print(f"  {'No':<4} {'Interface':<18} {'Mode':<12} {'State':<8} {'PHY'}")
+    print(f"  {GREEN}{'-'*70}{RESET}")
     
     interface_list = []
     for idx, iface in enumerate(interfaces, 1):
         info = get_interface_info(iface)
         mode = f"{GREEN}Monitor{RESET}" if info["monitor"] else f"{YELLOW}Managed{RESET}"
+        state = f"{GREEN}UP{RESET}" if info["state"] == "UP" else f"{RED}DOWN{RESET}"
         phy = info["phy"][:20] if info["phy"] != "?" else "?"
-        print(f"  {CYAN}{idx:<4}{RESET} {iface:<15} {mode:<12} {phy}")
+        print(f"  {CYAN}{idx:<4}{RESET} {iface:<18} {mode:<12} {state:<8} {phy}")
         interface_list.append(iface)
     
-    print(f"  {GREEN}{'-'*50}{RESET}")
+    print(f"  {GREEN}{'-'*70}{RESET}")
     
     # Pilihan
     print(f"\n  {BOLD}Options:{RESET}")
@@ -415,7 +471,6 @@ def main():
         print(f"{YELLOW}📱 Buka URL di HP atau dari mana saja!{RESET}")
     else:
         print(f"{YELLOW}📱 Buka di HP (WiFi yang sama):{RESET}")
-        # Dapatkan IP lokal
         try:
             import socket
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
