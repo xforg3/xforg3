@@ -11,17 +11,18 @@
     <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            font-size: 14px;
+            font-size: 20px;
         }
 
         ::-webkit-scrollbar {
-            width: 4px;
+            width: 8px;
         }
         ::-webkit-scrollbar-track {
             background: #1b110a;
         }
         ::-webkit-scrollbar-thumb {
             background: #ff8c00;
+            border-radius: 4px;
         }
 
         .crt-overlay {
@@ -38,29 +39,30 @@
         }
 
         .pixel-border {
-            border: 1px solid #ff8c00;
+            border: 2px solid #ff8c00;
         }
 
         .glow-text {
-            text-shadow: 0 0 5px rgba(255, 140, 0, 0.5);
+            text-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
         }
 
         .custom-scroll::-webkit-scrollbar {
-            width: 4px;
+            width: 8px;
         }
         .custom-scroll::-webkit-scrollbar-track {
             background: #1b110a;
         }
         .custom-scroll::-webkit-scrollbar-thumb {
             background: #ff8c00;
+            border-radius: 4px;
         }
 
         .status-indicator {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
-            margin-right: 6px;
+            margin-right: 10px;
         }
         .status-indicator.idle {
             background: #666;
@@ -82,10 +84,10 @@
 
         .monitor-status {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            margin-right: 6px;
+            margin-right: 8px;
         }
         .monitor-status.active {
             background: #00ff00;
@@ -97,7 +99,7 @@
 
         .attack-option.active {
             border-color: #ff8c00 !important;
-            background: rgba(255, 140, 0, 0.1) !important;
+            background: rgba(255, 140, 0, 0.15) !important;
         }
 
         .attack-option.disabled {
@@ -110,14 +112,122 @@
             transition: background 0.2s;
         }
         .network-table tr:hover td {
-            background: rgba(255, 140, 0, 0.05);
+            background: rgba(255, 140, 0, 0.08);
         }
         .network-table tr.selected td {
-            background: rgba(255, 140, 0, 0.15);
+            background: rgba(255, 140, 0, 0.2);
         }
         .network-table tr.disabled td {
             opacity: 0.3;
             cursor: not-allowed;
+        }
+
+        /* FIX: Ganti selector yang error */
+        .text-xxs {
+            font-size: 10px !important;
+        }
+        .text-xxxs {
+            font-size: 9px !important;
+        }
+
+        body {
+            font-size: 14px;
+        }
+
+        .text-body-md {
+            font-size: 12px !important;
+            line-height: 20px !important;
+        }
+        .text-body-lg {
+            font-size: 14px !important;
+            line-height: 22px !important;
+        }
+        .text-headline-md {
+            font-size: 14px !important;
+            line-height: 22px !important;
+        }
+        .text-display {
+            font-size: 24px !important;
+            line-height: 34px !important;
+        }
+
+        .p-container-padding {
+            padding: 24px !important;
+        }
+        .p-gutter {
+            padding: 24px !important;
+        }
+        .gap-gutter {
+            gap: 24px !important;
+        }
+        .space-y-gutter>*+* {
+            margin-top: 24px !important;
+        }
+
+        .h-14 {
+            height: 64px !important;
+        }
+        .px-gutter {
+            padding-left: 24px !important;
+            padding-right: 24px !important;
+        }
+
+        input,
+        button,
+        select {
+            font-size: 12px !important;
+        }
+
+        .network-table {
+            font-size: 12px !important;
+        }
+        .network-table th,
+        .network-table td {
+            padding: 10px 8px !important;
+        }
+
+        .attack-option {
+            padding: 16px !important;
+        }
+        .attack-option .text-body-md {
+            font-size: 13px !important;
+        }
+        .attack-option .text-xxxs {
+            font-size: 9px !important;
+        }
+
+        #logBox {
+            font-size: 12px !important;
+            line-height: 22px !important;
+        }
+        #logBox .text-body-md {
+            font-size: 12px !important;
+        }
+        #logBox .text-xxs {
+            font-size: 10px !important;
+        }
+
+        .text-xxs {
+            font-size: 10px !important;
+        }
+        .text-xxxs {
+            font-size: 9px !important;
+        }
+
+        .client-list-detail .text-xxxs {
+            font-size: 11px !important;
+        }
+
+        #clientListDetail {
+            font-size: 11px !important;
+        }
+
+        .monitor-box .text-body-lg {
+            font-size: 18px !important;
+        }
+
+        .status-bar-text {
+            font-size: 14px !important;
         }
     </style>
     <script id="tailwind-config">
@@ -161,104 +271,104 @@
     <div class="crt-overlay"></div>
 
     <!-- Top Bar -->
-    <header class="flex justify-between items-center px-gutter h-14 border-b border-primary bg-background/90 backdrop-blur-md sticky top-0 z-50">
-        <div class="flex items-center gap-4">
-            <span class="text-primary glow-text">⚡</span>
-            <h1 class="text-display text-primary tracking-tighter">MDK4 WEB</h1>
-            <span class="text-primary glow-text">⚡</span>
-        </div>
+    <header class="flex justify-between items-center px-gutter h-14 border-b-2 border-primary bg-background/90 backdrop-blur-md sticky top-0 z-50">
         <div class="flex items-center gap-6">
-            <div class="flex items-center gap-2">
-                <span class="w-1.5 h-1.5 bg-primary/40 rounded-full animate-pulse"></span>
-                <span class="text-[6px] text-primary/60" id="statusText">Idle</span>
+            <span class="text-primary glow-text text-3xl">⚡</span>
+            <h1 class="text-display text-primary tracking-tighter" style="font-size:28px !important;">MDK4 WEB</h1>
+            <span class="text-primary glow-text text-3xl">⚡</span>
+        </div>
+        <div class="flex items-center gap-8">
+            <div class="flex items-center gap-3">
+                <span class="w-2 h-2 bg-primary/40 rounded-full animate-pulse"></span>
+                <span class="text-sm text-primary/60" id="statusText">Idle</span>
             </div>
-            <div class="h-4 w-[1px] bg-primary/20"></div>
-            <span class="text-[6px] text-on-surface/40" id="targetInfo">No target</span>
+            <div class="h-6 w-[1px] bg-primary/20"></div>
+            <span class="text-xs text-on-surface/40" id="targetInfo">No target</span>
         </div>
     </header>
 
     <main class="p-gutter max-w-[1600px] mx-auto space-y-gutter">
         <!-- Status Summary Bar -->
-        <div class="pixel-border bg-surface-variant/30 p-4 flex items-center justify-between">
-            <div class="flex items-center gap-4">
+        <div class="pixel-border bg-surface-variant/30 p-5 flex items-center justify-between">
+            <div class="flex items-center gap-6">
                 <span class="status-indicator idle" id="statusIndicator"></span>
-                <span class="text-primary text-body-lg" id="attackStatusLabel">STATUS: IDLE</span>
-                <span class="text-on-surface/40">|</span>
-                <span class="text-on-surface/60" id="statusTargetInfo">NO TARGET SELECTED</span>
+                <span class="text-primary text-lg font-bold" id="attackStatusLabel">STATUS: IDLE</span>
+                <span class="text-on-surface/40 text-base">|</span>
+                <span class="text-on-surface/60 text-base" id="statusTargetInfo">NO TARGET SELECTED</span>
             </div>
             <div>
-                <button class="border border-error/30 text-error/30 px-4 py-1 text-body-md hover:border-error hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed" id="stopBtn" disabled>
+                <button class="border-2 border-error/30 text-error/30 px-6 py-2 text-sm hover:border-error hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed font-bold" id="stopBtn" disabled>
                     ⏹ STOP
                 </button>
             </div>
         </div>
 
         <!-- Dashboard Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <!-- Left Column: Setup -->
-            <div class="lg:col-span-4 space-y-gutter">
+            <div class="lg:col-span-4 space-y-6">
                 <!-- Interface Panel -->
-                <section class="pixel-border bg-surface p-container-padding">
-                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">router</span>
-                            <h3 class="text-headline-md text-primary">INTERFACE</h3>
+                <section class="pixel-border bg-surface p-6">
+                    <div class="flex justify-between items-center mb-6 border-b-2 border-primary/20 pb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl">router</span>
+                            <h3 class="text-headline-md text-primary" style="font-size:16px !important;">INTERFACE</h3>
                         </div>
-                        <span class="px-2 py-0.5 bg-primary/10 text-primary text-[6px] border border-primary/20" id="interfaceCount">0</span>
+                        <span class="px-3 py-1 bg-primary/10 text-primary text-xxs border border-primary/20" id="interfaceCount">0</span>
                     </div>
                     <div class="space-y-4">
-                        <div id="interfaceList" class="space-y-2">
-                            <div class="text-[6px] text-on-surface/40">Loading interfaces...</div>
+                        <div id="interfaceList" class="space-y-3">
+                            <div class="text-sm text-on-surface/40">Loading interfaces...</div>
                         </div>
-                        <button class="w-full border border-primary/40 p-2 text-primary/60 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-2 text-body-md" id="refreshInterfacesBtn">
-                            <span class="material-symbols-outlined !text-[10px]">refresh</span>
+                        <button class="w-full border-2 border-primary/40 p-3 text-primary/60 hover:border-primary hover:text-primary transition-all flex items-center justify-center gap-3 text-sm font-bold" id="refreshInterfacesBtn">
+                            <span class="material-symbols-outlined !text-[16px]">refresh</span>
                             REFRESH INTERFACES
                         </button>
                     </div>
                 </section>
 
                 <!-- Scan Panel -->
-                <section class="pixel-border bg-surface p-container-padding">
-                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">search</span>
-                            <h3 class="text-headline-md text-primary">SCAN NETWORKS</h3>
+                <section class="pixel-border bg-surface p-6">
+                    <div class="flex justify-between items-center mb-6 border-b-2 border-primary/20 pb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl">search</span>
+                            <h3 class="text-headline-md text-primary" style="font-size:16px !important;">SCAN NETWORKS</h3>
                         </div>
-                        <span class="px-2 py-0.5 bg-primary/10 text-primary text-[6px] border border-primary/20" id="networkCount">0</span>
+                        <span class="px-3 py-1 bg-primary/10 text-primary text-xxs border border-primary/20" id="networkCount">0</span>
                     </div>
                     <div class="space-y-6">
                         <div class="flex items-center gap-4">
-                            <span class="text-on-surface/60 text-body-md">DURATION:</span>
-                            <input class="w-16 bg-surface-variant/50 border border-primary/30 text-primary text-center p-1 focus:outline-none focus:border-primary text-body-md" type="number" id="scanDuration" value="10">
-                            <span class="text-on-surface/40 text-body-md">SEC</span>
-                            <button class="flex-1 bg-primary text-on-primary p-2 text-body-md hover:brightness-110 flex items-center justify-center gap-2" id="scanBtn">
-                                <span class="material-symbols-outlined !text-[12px]">play_arrow</span>
+                            <span class="text-on-surface/60 text-sm">DURATION:</span>
+                            <input class="w-20 bg-surface-variant/50 border-2 border-primary/30 text-primary text-center p-2 focus:outline-none focus:border-primary text-sm" type="number" id="scanDuration" value="10">
+                            <span class="text-on-surface/40 text-sm">SEC</span>
+                            <button class="flex-1 bg-primary text-on-primary p-3 text-sm hover:brightness-110 flex items-center justify-center gap-3 font-bold" id="scanBtn">
+                                <span class="material-symbols-outlined !text-[16px]">play_arrow</span>
                                 SCAN
                             </button>
                         </div>
 
                         <!-- Network List -->
-                        <div id="networkList" class="max-h-60 overflow-y-auto custom-scroll border border-primary/10 p-2">
-                            <div class="text-[6px] text-on-surface/40">Click "Scan" to find networks</div>
+                        <div id="networkList" class="max-h-72 overflow-y-auto custom-scroll border-2 border-primary/10 p-3">
+                            <div class="text-sm text-on-surface/40">Click "Scan" to find networks</div>
                         </div>
 
-                        <div class="text-[6px] text-on-surface/40 uppercase leading-relaxed" id="selectionInfo">
+                        <div class="text-xxs text-on-surface/40 uppercase leading-relaxed font-bold" id="selectionInfo">
                             0 targets selected
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button class="border border-primary/40 p-2 text-primary/60 hover:text-primary text-[6px] transition-all" id="selectAllBtn">SELECT ALL</button>
-                            <button class="border border-primary/40 p-2 text-primary/60 hover:text-primary text-[6px] transition-all" id="deselectAllBtn">DESELECT ALL</button>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button class="border-2 border-primary/40 p-3 text-primary/60 hover:text-primary text-xxs transition-all font-bold" id="selectAllBtn">SELECT ALL</button>
+                            <button class="border-2 border-primary/40 p-3 text-primary/60 hover:text-primary text-xxs transition-all font-bold" id="deselectAllBtn">DESELECT ALL</button>
                         </div>
 
                         <!-- Client Info -->
                         <div id="clientInfo" style="display:none;">
-                            <div class="border-t border-primary/20 pt-4 mt-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-[6px] text-primary">👥 CLIENTS: <span id="clientBSSID" class="text-primary/60">-</span></span>
-                                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-[6px] border border-primary/20" id="clientCountBadge">0</span>
+                            <div class="border-t-2 border-primary/20 pt-4 mt-4">
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="text-xxs text-primary font-bold">👥 CLIENTS: <span id="clientBSSID" class="text-primary/60">-</span></span>
+                                    <span class="px-3 py-1 bg-primary/10 text-primary text-xxs border border-primary/20" id="clientCountBadge">0</span>
                                 </div>
-                                <div id="clientListDetail" class="border border-primary/10 p-2 max-h-32 overflow-y-auto custom-scroll">
-                                    <div class="text-[6px] text-on-surface/40 text-center py-2">Click a network to scan connected clients</div>
+                                <div id="clientListDetail" class="border-2 border-primary/10 p-3 max-h-40 overflow-y-auto custom-scroll">
+                                    <div class="text-sm text-on-surface/40 text-center py-3">Click a network to scan connected clients</div>
                                 </div>
                             </div>
                         </div>
@@ -267,103 +377,102 @@
             </div>
 
             <!-- Right Column: Action & Monitoring -->
-            <div class="lg:col-span-8 space-y-gutter">
+            <div class="lg:col-span-8 space-y-6">
                 <!-- Attack Controls -->
-                <section class="pixel-border bg-surface p-container-padding">
-                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">rocket_launch</span>
-                            <h3 class="text-headline-md text-primary">ATTACK CONTROLS</h3>
+                <section class="pixel-border bg-surface p-6">
+                    <div class="flex justify-between items-center mb-6 border-b-2 border-primary/20 pb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl">rocket_launch</span>
+                            <h3 class="text-headline-md text-primary" style="font-size:16px !important;">ATTACK CONTROLS</h3>
                         </div>
-                        <span class="px-2 py-0.5 border border-primary/20 text-primary/40 text-[6px]" id="attackTypeDisplay">NONE SELECTED</span>
+                        <span class="px-3 py-1 border-2 border-primary/20 text-primary/40 text-xxs font-bold" id="attackTypeDisplay">NONE SELECTED</span>
                     </div>
                     <div class="mb-6">
-                        <span class="text-[6px] text-on-surface/40 mb-3 block">SELECT ATTACK TYPE:</span>
+                        <span class="text-xxs text-on-surface/40 mb-4 block font-bold">SELECT ATTACK TYPE:</span>
                         <div class="grid grid-cols-3 gap-4" id="attackOptions">
-                            <button class="attack-option border border-primary/20 bg-surface-variant/20 p-4 text-center group hover:border-primary transition-all" data-type="deauth">
-                                <div class="text-on-surface/60 group-hover:text-primary mb-1 text-body-md">DEAUTH</div>
-                                <div class="text-[5px] text-primary/40 group-hover:text-primary/60">MULTIPLE TARGETS</div>
+                            <button class="attack-option border-2 border-primary/20 bg-surface-variant/20 p-5 text-center group hover:border-primary transition-all" data-type="deauth">
+                                <div class="text-on-surface/60 group-hover:text-primary mb-2 text-base font-bold">DEAUTH</div>
+                                <div class="text-xxxs text-primary/40 group-hover:text-primary/60">MULTIPLE TARGETS</div>
                             </button>
-                            <button class="attack-option border border-primary/20 bg-surface-variant/20 p-4 text-center group hover:border-primary transition-all" data-type="beacon">
-                                <div class="text-on-surface/60 group-hover:text-primary mb-1 text-body-md">BEACON</div>
-                                <div class="text-[5px] text-primary/40 group-hover:text-primary/60">NO TARGET NEEDED</div>
+                            <button class="attack-option border-2 border-primary/20 bg-surface-variant/20 p-5 text-center group hover:border-primary transition-all" data-type="beacon">
+                                <div class="text-on-surface/60 group-hover:text-primary mb-2 text-base font-bold">BEACON</div>
+                                <div class="text-xxxs text-primary/40 group-hover:text-primary/60">NO TARGET NEEDED</div>
                             </button>
-                            <button class="attack-option border border-primary/20 bg-surface-variant/20 p-4 text-center group hover:border-primary transition-all" data-type="authdos">
-                                <div class="text-on-surface/60 group-hover:text-primary mb-1 text-body-md">AUTH DOS</div>
-                                <div class="text-[5px] text-primary/40 group-hover:text-primary/60">1 TARGET ONLY</div>
+                            <button class="attack-option border-2 border-primary/20 bg-surface-variant/20 p-5 text-center group hover:border-primary transition-all" data-type="authdos">
+                                <div class="text-on-surface/60 group-hover:text-primary mb-2 text-base font-bold">AUTH DOS</div>
+                                <div class="text-xxxs text-primary/40 group-hover:text-primary/60">1 TARGET ONLY</div>
                             </button>
                         </div>
                     </div>
-                    <div class="flex gap-4 p-4 bg-surface-variant/10 border border-primary/10">
-                        <button class="flex-1 bg-primary text-on-primary py-3 flex items-center justify-center gap-3 text-body-md hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed" id="startBtn">
-                            <span class="material-symbols-outlined !text-[14px]">play_arrow</span>
+                    <div class="flex gap-4 p-5 bg-surface-variant/10 border-2 border-primary/10">
+                        <button class="flex-1 bg-primary text-on-primary py-4 flex items-center justify-center gap-3 text-base hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed font-bold" id="startBtn">
+                            <span class="material-symbols-outlined !text-[20px]">play_arrow</span>
                             START ATTACK
                         </button>
-                        <button class="px-8 border border-error/30 text-error/30 py-3 flex items-center justify-center gap-3 text-body-md hover:border-error hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed" id="stopBtn2" disabled>
-                            <span class="material-symbols-outlined !text-[14px]">stop</span>
+                        <button class="px-10 border-2 border-error/30 text-error/30 py-4 flex items-center justify-center gap-3 text-base hover:border-error hover:text-error transition-all disabled:opacity-30 disabled:cursor-not-allowed font-bold" id="stopBtn2" disabled>
+                            <span class="material-symbols-outlined !text-[20px]">stop</span>
                             STOP
                         </button>
                     </div>
-                    <div class="mt-4 p-3 border border-primary/10 bg-surface-variant/10">
-                        <span class="text-[6px] text-on-surface/40" id="attackInfo">Select targets and attack type</span>
+                    <div class="mt-4 p-4 border-2 border-primary/10 bg-surface-variant/10">
+                        <span class="text-sm text-on-surface/40 font-bold" id="attackInfo">Select targets and attack type</span>
                     </div>
                 </section>
 
                 <!-- Live Monitoring -->
-                <section class="pixel-border bg-surface p-container-padding">
-                    <div class="flex justify-between items-center mb-6 border-b border-primary/20 pb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-primary">bar_chart</span>
-                            <h3 class="text-headline-md text-primary">LIVE MONITORING</h3>
+                <section class="pixel-border bg-surface p-6">
+                    <div class="flex justify-between items-center mb-6 border-b-2 border-primary/20 pb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary text-2xl">bar_chart</span>
+                            <h3 class="text-headline-md text-primary" style="font-size:16px !important;">LIVE MONITORING</h3>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-3">
                             <span class="monitor-status idle" id="monitorStatusDot"></span>
-                            <span class="text-[6px] text-on-surface/40" id="monitorStatusText">IDLE</span>
+                            <span class="text-sm text-on-surface/40 font-bold" id="monitorStatusText">IDLE</span>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-gutter mb-6">
-                        <div class="bg-surface-variant/30 border border-primary/10 p-4">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="material-symbols-outlined text-primary/40 !text-[10px]">sensors</span>
-                                <span class="text-[6px] text-on-surface/40 uppercase">AP Status</span>
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div class="bg-surface-variant/30 border-2 border-primary/10 p-5">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="material-symbols-outlined text-primary/40 !text-[16px]">sensors</span>
+                                <span class="text-xxs text-on-surface/40 uppercase font-bold">AP Status</span>
                             </div>
-                            <div class="text-primary text-body-lg" id="apStatus">IDLE</div>
+                            <div class="text-primary text-xl font-bold" id="apStatus">IDLE</div>
                         </div>
-                        <div class="bg-surface-variant/30 border border-primary/10 p-4">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="material-symbols-outlined text-primary/40 !text-[10px]">group</span>
-                                <span class="text-[6px] text-on-surface/40 uppercase">Clients</span>
+                        <div class="bg-surface-variant/30 border-2 border-primary/10 p-5">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="material-symbols-outlined text-primary/40 !text-[16px]">group</span>
+                                <span class="text-xxs text-on-surface/40 uppercase font-bold">Clients</span>
                             </div>
-                            <div class="text-primary text-body-lg" id="clientCount">0</div>
+                            <div class="text-primary text-xl font-bold" id="clientCount">0</div>
                         </div>
                     </div>
-                    <div class="h-16 border border-primary/10 flex items-center justify-center text-[6px] text-on-surface/30 italic uppercase overflow-y-auto custom-scroll" id="clientList">
+                    <div class="h-20 border-2 border-primary/10 flex items-center justify-center text-sm text-on-surface/30 italic uppercase overflow-y-auto custom-scroll p-3" id="clientList">
                         No active clients connected
                     </div>
-                    <div class="text-right text-[5px] text-on-surface/30 mt-2" id="lastUpdate">Last update: -</div>
+                    <div class="text-right text-xxs text-on-surface/30 mt-3" id="lastUpdate">Last update: -</div>
                 </section>
             </div>
         </div>
 
         <!-- System Log - Full Width Bottom -->
-        <section class="pixel-border bg-surface p-container-padding">
+        <section class="pixel-border bg-surface p-6">
             <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-primary">terminal</span>
-                    <h3 class="text-headline-md text-primary uppercase">System Log</h3>
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-primary text-2xl">terminal</span>
+                    <h3 class="text-headline-md text-primary uppercase" style="font-size:16px !important;">System Log</h3>
                 </div>
-                <button class="text-primary/40 hover:text-primary text-[6px] transition-colors border border-primary/20 px-3 py-1" id="clearLogBtn">CLEAR LOG</button>
+                <button class="text-primary/40 hover:text-primary text-xxs transition-colors border-2 border-primary/20 px-4 py-2 font-bold" id="clearLogBtn">CLEAR LOG</button>
             </div>
-            <div class="h-40 overflow-y-auto bg-black/40 border border-primary/20 p-4 font-mono leading-relaxed custom-scroll" id="logBox">
-                <div class="text-primary/60 text-body-md mb-1">[System] MDK4 Web Interface ready</div>
-                <div class="text-primary/60 text-body-md mb-1">[System] Select interface and scan for networks</div>
+            <div class="h-56 overflow-y-auto bg-black/40 border-2 border-primary/20 p-4 font-mono leading-relaxed custom-scroll" id="logBox">
+                <div class="text-primary/60 text-sm mb-2">[System] MDK4 Web Interface ready</div>
+                <div class="text-primary/60 text-sm mb-2">[System] Select interface and scan for networks</div>
             </div>
         </section>
     </main>
 
+    <!-- SCRIPT LOGIC SAMA PERSIS KAYAK SEBELUMNYA -->
     <script>
-        // ====================== LOGIC SAMA PERSIS KAYAK INDEX.HTML LAMA ======================
-
         // ====================== STATE ======================
         let state = {
             interfaces: [],
@@ -401,8 +510,8 @@
                 warning: 'text-yellow-400',
                 info: 'text-primary/80'
             };
-            div.className = `${colors[type] || colors.info} text-body-md mb-1`;
-            div.innerHTML = `<span class="opacity-40 text-[6px]">[${time}]</span> ${message}`;
+            div.className = `${colors[type] || colors.info} text-sm mb-2`;
+            div.innerHTML = `<span class="opacity-40 text-xxs">[${time}]</span> ${message}`;
             logBox.appendChild(div);
             logBox.scrollTop = logBox.scrollHeight;
         }
@@ -426,14 +535,14 @@
 
         function renderInterfaces() {
             if (state.interfaces.length === 0) {
-                interfaceList.innerHTML = '<div class="text-[6px] text-on-surface/40">No wireless interfaces found</div>';
+                interfaceList.innerHTML = '<div class="text-sm text-on-surface/40">No wireless interfaces found</div>';
                 return;
             }
             interfaceList.innerHTML = state.interfaces.map(iface => `
-                    <div class="border border-primary/20 bg-primary/5 p-3 flex items-center justify-between cursor-pointer hover:border-primary transition-all ${state.selectedInterface === iface ? 'border-primary' : ''}"
+                    <div class="border-2 border-primary/20 bg-primary/5 p-4 flex items-center justify-between cursor-pointer hover:border-primary transition-all ${state.selectedInterface === iface ? 'border-primary' : ''}"
                          onclick="selectInterface('${iface}')">
-                        <span class="text-primary text-body-lg">${iface} ${iface.includes('mon') ? '<span class="opacity-40 text-[6px]">[mon]</span>' : ''}</span>
-                        <span class="material-symbols-outlined text-primary ${state.selectedInterface === iface ? '' : 'opacity-30'}">${state.selectedInterface === iface ? 'check_circle' : 'radio_button_unchecked'}</span>
+                        <span class="text-primary text-base">${iface} ${iface.includes('mon') ? '<span class="opacity-40 text-xxs">[mon]</span>' : ''}</span>
+                        <span class="material-symbols-outlined text-primary text-2xl ${state.selectedInterface === iface ? '' : 'opacity-30'}">${state.selectedInterface === iface ? 'check_circle' : 'radio_button_unchecked'}</span>
                     </div>
                 `).join('');
         }
@@ -455,7 +564,7 @@
             }
 
             addLog(`Scanning networks on ${state.selectedInterface} for ${duration}s...`, 'info');
-            networkList.innerHTML = '<div class="text-[6px] text-primary/60 animate-pulse">Scanning... please wait</div>';
+            networkList.innerHTML = '<div class="text-sm text-primary/60 animate-pulse">Scanning... please wait</div>';
 
             try {
                 const res = await fetch(`/api/scan?duration=${duration}`);
@@ -470,32 +579,32 @@
                     updateAttackInfo();
                 } else {
                     addLog(`Scan failed: ${data.message}`, 'error');
-                    networkList.innerHTML = `<div class="text-[6px] text-red-400">Error: ${data.message}</div>`;
+                    networkList.innerHTML = `<div class="text-sm text-red-400">Error: ${data.message}</div>`;
                 }
             } catch (e) {
                 addLog(`Scan error: ${e}`, 'error');
-                networkList.innerHTML = `<div class="text-[6px] text-red-400">Error: ${e}</div>`;
+                networkList.innerHTML = `<div class="text-sm text-red-400">Error: ${e}</div>`;
             }
         }
 
         // ====================== RENDER NETWORKS ======================
         function renderNetworks() {
             if (state.networks.length === 0) {
-                networkList.innerHTML = '<div class="text-[6px] text-on-surface/40">No networks found</div>';
+                networkList.innerHTML = '<div class="text-sm text-on-surface/40">No networks found</div>';
                 return;
             }
 
             const isDisabled = state.attackType === 'beacon';
 
             let html = `
-                    <table class="network-table w-full text-[6px]">
+                    <table class="network-table w-full text-sm">
                         <thead>
-                            <tr class="border-b border-primary/20">
-                                <th class="text-left text-primary/40 py-1 px-1">#</th>
-                                <th class="text-left text-primary/40 py-1 px-1">ESSID</th>
-                                <th class="text-left text-primary/40 py-1 px-1">CH</th>
-                                <th class="text-left text-primary/40 py-1 px-1">BSSID</th>
-                                <th class="text-left text-primary/40 py-1 px-1">PWR</th>
+                            <tr class="border-b-2 border-primary/20">
+                                <th class="text-left text-primary/40 py-2 px-2">#</th>
+                                <th class="text-left text-primary/40 py-2 px-2">ESSID</th>
+                                <th class="text-left text-primary/40 py-2 px-2">CH</th>
+                                <th class="text-left text-primary/40 py-2 px-2">BSSID</th>
+                                <th class="text-left text-primary/40 py-2 px-2">PWR</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -505,11 +614,11 @@
                 const isSelected = state.selectedTargets.includes(idx);
                 html += `
                         <tr class="${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" onclick="${isDisabled ? '' : `toggleTarget(${idx})`}">
-                            <td class="py-1 px-1 text-on-surface/40">${idx + 1}</td>
-                            <td class="py-1 px-1 text-on-surface">${net.essid || '[Hidden]'}</td>
-                            <td class="py-1 px-1 text-primary/60">${net.channel || '?'}</td>
-                            <td class="py-1 px-1 text-primary/60">${net.bssid}</td>
-                            <td class="py-1 px-1 text-on-surface/40">${net.power !== null ? net.power : '?'}</td>
+                            <td class="py-2 px-2 text-on-surface/40">${idx + 1}</td>
+                            <td class="py-2 px-2 text-on-surface">${net.essid || '[Hidden]'}</td>
+                            <td class="py-2 px-2 text-primary/60">${net.channel || '?'}</td>
+                            <td class="py-2 px-2 text-primary/60">${net.bssid}</td>
+                            <td class="py-2 px-2 text-on-surface/40">${net.power !== null ? net.power : '?'}</td>
                         </tr>
                     `;
             });
@@ -519,7 +628,7 @@
 
             if (isDisabled) {
                 const hint = document.createElement('div');
-                hint.className = 'text-[6px] text-primary/60 mt-2';
+                hint.className = 'text-sm text-primary/60 mt-3 font-bold';
                 hint.textContent = 'ℹ️ Beacon mode: No targets needed';
                 networkList.appendChild(hint);
             }
@@ -585,7 +694,7 @@
 
             clientInfo.style.display = 'block';
             clientBSSID.textContent = bssid;
-            clientList.innerHTML = '<div class="text-[6px] text-primary/60 text-center py-2 animate-pulse">Scanning clients...</div>';
+            clientList.innerHTML = '<div class="text-sm text-primary/60 text-center py-3 animate-pulse">Scanning clients...</div>';
             clientCountBadge.textContent = '...';
 
             let channel = '';
@@ -606,10 +715,10 @@
                     clientCountBadge.textContent = clients.length;
 
                     if (clients.length === 0) {
-                        clientList.innerHTML = '<div class="text-[6px] text-on-surface/40 text-center py-2">No clients connected</div>';
+                        clientList.innerHTML = '<div class="text-sm text-on-surface/40 text-center py-3">No clients connected</div>';
                     } else {
                         let html = `
-                                <div class="grid grid-cols-3 gap-2 text-[5px] text-primary/40 border-b border-primary/10 pb-1 mb-1">
+                                <div class="grid grid-cols-3 gap-3 text-xxs text-primary/40 border-b-2 border-primary/10 pb-2 mb-2 font-bold">
                                     <span>STATION</span>
                                     <span>POWER</span>
                                     <span>PACKETS</span>
@@ -617,7 +726,7 @@
                             `;
                         clients.forEach(c => {
                             html += `
-                                    <div class="grid grid-cols-3 gap-2 text-[5px] py-1 border-b border-primary/5">
+                                    <div class="grid grid-cols-3 gap-3 text-sm py-2 border-b border-primary/5">
                                         <span class="text-primary/60">${c.station || 'Unknown'}</span>
                                         <span class="text-on-surface/40">${c.power || '?'} dBm</span>
                                         <span class="text-primary/40">${c.packets || '0'}</span>
@@ -628,11 +737,11 @@
                     }
                     addLog(`📡 Found ${clients.length} client(s) connected to ${bssid}`, 'info');
                 } else {
-                    clientList.innerHTML = `<div class="text-[6px] text-red-400 text-center py-2">Error: ${data.message}</div>`;
+                    clientList.innerHTML = `<div class="text-sm text-red-400 text-center py-3">Error: ${data.message}</div>`;
                     clientCountBadge.textContent = '0';
                 }
             } catch (e) {
-                clientList.innerHTML = `<div class="text-[6px] text-red-400 text-center py-2">Error: ${e}</div>`;
+                clientList.innerHTML = `<div class="text-sm text-red-400 text-center py-3">Error: ${e}</div>`;
                 clientCountBadge.textContent = '0';
                 addLog(`Error scanning clients: ${e}`, 'error');
             }
@@ -975,27 +1084,27 @@
 
                     if (apStatusText === '⚠️ AP OFFLINE / FREEZE!') {
                         apStatus.textContent = '🔴 OFFLINE / FREEZE!';
-                        apStatus.className = 'text-error text-body-lg';
+                        apStatus.className = 'text-error text-xl font-bold';
                         addLog('🚨 AP OFFLINE / FREEZE!', 'error');
                     } else if (apStatusText === 'online') {
                         apStatus.textContent = '🟢 Online';
-                        apStatus.className = 'text-green-400 text-body-lg';
+                        apStatus.className = 'text-green-400 text-xl font-bold';
                     } else {
                         apStatus.textContent = '🟡 ' + apStatusText;
-                        apStatus.className = 'text-yellow-400 text-body-lg';
+                        apStatus.className = 'text-yellow-400 text-xl font-bold';
                     }
 
                     const clients = monitor.clients || [];
                     const clientCount = document.getElementById('clientCount');
                     clientCount.textContent = clients.length;
-                    clientCount.className = clients.length === 0 ? 'text-on-surface/40 text-body-lg' : 'text-green-400 text-body-lg';
+                    clientCount.className = clients.length === 0 ? 'text-on-surface/40 text-xl font-bold' : 'text-green-400 text-xl font-bold';
 
                     const clientList = document.getElementById('clientList');
                     if (clients.length === 0) {
                         clientList.innerHTML = '🔴 NO CLIENTS CONNECTED! AP DOWN!';
-                        clientList.className = 'h-16 border border-primary/10 flex items-center justify-center text-[6px] text-error italic uppercase';
+                        clientList.className = 'h-20 border-2 border-primary/10 flex items-center justify-center text-sm text-error italic uppercase p-3';
                     } else {
-                        clientList.className = 'h-16 border border-primary/10 flex items-center justify-center text-[6px] text-primary/80';
+                        clientList.className = 'h-20 border-2 border-primary/10 flex items-center justify-center text-sm text-primary/80 p-3 flex-wrap gap-2';
                         clientList.innerHTML = clients.map(c =>
                             `${c.station || 'Unknown'} (${c.power || '?'} dBm)`
                         ).join(' | ');
@@ -1055,7 +1164,6 @@
                 addLog('Log cleared', 'info');
             });
 
-            // Attack type buttons
             document.querySelectorAll('.attack-option').forEach(el => {
                 el.addEventListener('click', () => {
                     selectAttackType(el.dataset.type);
