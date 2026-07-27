@@ -15,6 +15,7 @@ import threading
 import tempfile
 import uvicorn
 import logging
+import argparse
 
 # ====================== SETUP ======================
 app = FastAPI(title="MDK4 Web API", version="1.0")
@@ -66,6 +67,7 @@ class AttackState:
         self.monitor_iface = None
         self.original_iface = None
         self.temp_files = []
+        self.selected_interface = None  # Tambahan
 
 state = AttackState()
 
@@ -95,6 +97,40 @@ def is_monitor_mode(iface):
         return False
 
 def get_monitor_interface():
+    # Jika ada interface yang dipilih, gunakan itu
+    if state.selected_interface:
+        logger.info(f"Using selected interface: {state.selected_interface}")
+        try:
+            # Kill proses yang mengganggu
+            subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=False, timeout=5)
+            
+            # Coba start monitor mode
+            result = subprocess.run(
+                ["sudo", "airmon-ng", "start", state.selected_interface],
+                capture_output=True, text=True, timeout=10
+            )
+            logger.info(f"airmon-ng output: {result.stdout}")
+            
+            # Cari nama interface monitor yang baru
+            for line in result.stdout.split('\n'):
+                if "monitor mode enabled on" in line:
+                    parts = line.split()
+                    for i, part in enumerate(parts):
+                        if part == "on" and i+1 < len(parts):
+                            new_iface = parts[i+1].strip()
+                            state.monitor_iface = new_iface
+                            logger.info(f"Monitor interface created: {new_iface}")
+                            return new_iface
+            
+            # Jika tidak ketemu, coba cek interface asli
+            if is_monitor_mode(state.selected_interface):
+                state.monitor_iface = state.selected_interface
+                return state.selected_interface
+                
+        except Exception as e:
+            logger.error(f"Failed to create monitor from {state.selected_interface}: {e}")
+    
+    # Fallback ke logika sebelumnya
     if state.monitor_iface and is_monitor_mode(state.monitor_iface):
         return state.monitor_iface
     
@@ -274,7 +310,6 @@ def stop_attack_internal():
     logger.info("Stopping attack...")
     state.running = False
     
-    # Stop monitor
     state.monitor_running = False
     if state.monitor_thread and state.monitor_thread.is_alive():
         try:
@@ -283,7 +318,6 @@ def stop_attack_internal():
             pass
         state.monitor_thread = None
     
-    # Kill process
     if state.process:
         try:
             if state.process.poll() is None:
@@ -293,13 +327,11 @@ def stop_attack_internal():
             pass
         state.process = None
     
-    # Pkill
     try:
         subprocess.run("sudo pkill -f mdk4", shell=True, check=False, timeout=5)
     except:
         subprocess.run("sudo pkill -9 -f mdk4", shell=True, check=False)
     
-    # Clean temp files
     for f in state.temp_files:
         try:
             os.remove(f)
@@ -307,7 +339,6 @@ def stop_attack_internal():
             pass
     state.temp_files = []
     
-    # Reset
     state.monitor_data = MonitorData()
     state.targets = []
     
@@ -342,18 +373,15 @@ async def scan_networks(duration: int = 10):
         interface = get_monitor_interface()
         logger.info(f"Scanning with {interface}")
         
-        # Clean old files
         for f in glob.glob("/tmp/scan_output*.csv"):
             try:
                 os.remove(f)
             except:
                 pass
         
-        # Run scan
         cmd = f"timeout {duration+2} sudo airodump-ng {interface} -w /tmp/scan_output --output-format csv"
         subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=duration+5)
         
-        # Parse results
         networks = []
         for f in ["/tmp/scan_output-01.csv", "/tmp/scan_output.csv"]:
             if os.path.exists(f):
@@ -386,7 +414,6 @@ async def start_attack(req: AttackRequest):
         if not req.type:
             raise HTTPException(status_code=400, detail="No attack type selected")
         
-        # Build command
         cmd = None
         if req.type == "deauth":
             if req.targets:
@@ -418,13 +445,11 @@ async def start_attack(req: AttackRequest):
         if not cmd:
             raise HTTPException(status_code=400, detail="Invalid attack type")
         
-        # Start process
         logger.info(f"Starting: {' '.join(cmd)}")
         state.process = subprocess.Popen(cmd, preexec_fn=os.setsid)
         state.running = True
         state.type = req.type
         
-        # Start monitor
         if state.targets:
             if state.monitor_thread is None or not state.monitor_thread.is_alive():
                 state.monitor_thread = threading.Thread(target=monitor_loop)
@@ -493,6 +518,14 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 # ====================== MAIN ======================
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--interface', help='Wireless interface to use')
+    args = parser.parse_args()
+    
+    if args.interface:
+        state.selected_interface = args.interface
+        logger.info(f"Selected interface: {state.selected_interface}")
+    
     try:
         get_monitor_interface()
         logger.info(f"Monitor interface: {state.monitor_iface}")

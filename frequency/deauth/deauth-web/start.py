@@ -30,22 +30,19 @@ def get_wireless_interfaces():
     """Dapatkan daftar interface wireless yang tersedia"""
     interfaces = []
     try:
-        # Pakai ip link untuk daftar interface
-        result = subprocess.run(['ip', 'link', 'show'], capture_output=True, text=True)
+        result = subprocess.run(['iwconfig'], capture_output=True, text=True, timeout=5)
         lines = result.stdout.split('\n')
         
         for line in lines:
-            # Cari interface dengan format: angka: nama: <status>
-            if ':' in line and 'LOOPBACK' not in line.upper():
-                parts = line.split(':')
-                if len(parts) >= 2:
-                    iface = parts[1].strip()
-                    # Filter hanya interface wireless (biasanya wlan*, wlp*, mon*)
-                    if iface.startswith(('wlan', 'wlp', 'wl', 'mon', 'eth')):
-                        # Cek apakah wireless
-                        iw_result = subprocess.run(['iwconfig', iface], capture_output=True, text=True)
-                        if 'no wireless extensions' not in iw_result.stdout:
-                            interfaces.append(iface)
+            if "no wireless extensions" in line or not line.strip():
+                continue
+            if not line.startswith(" "):
+                iface = line.split()[0]
+                if iface not in ["lo", "eth0", "eth1"]:
+                    # Cek apakah benar-benar wireless
+                    iface_check = subprocess.run(['iwconfig', iface], capture_output=True, text=True)
+                    if 'no wireless extensions' not in iface_check.stdout:
+                        interfaces.append(iface)
     except Exception as e:
         print_status(f"Gagal mendapatkan interface: {e}", "error")
     
@@ -151,22 +148,17 @@ def run_flask_as_sudo(interface):
     print_status(f"Menjalankan Flask (app.py) dengan interface {interface}...", "info")
     
     try:
-        # Set environment variable untuk interface
-        env = os.environ.copy()
-        env['WIFI_INTERFACE'] = interface
-        
-        # Jalankan Flask dengan sudo
+        # Jalankan Flask dengan sudo dan pass interface sebagai argumen
         flask_process = subprocess.Popen(
-            ['sudo', '-E', 'python3', 'app.py'],
+            ['sudo', 'python3', 'app.py', '--interface', interface],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1,
-            env=env
+            bufsize=1
         )
         
         # Tunggu sebentar
-        time.sleep(3)
+        time.sleep(5)
         
         # Cek apakah Flask berjalan
         try:
