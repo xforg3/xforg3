@@ -44,8 +44,11 @@ def print_menu():
     cols, rows = get_size()
 
     options = [
-        "1. MDK4 (TERMINAL VERSION)",
-        "2. MDK4 (WEB VERSION) 🚀",
+        "1. MDK4 DEAUTH (MULTI TARGET)",
+        "2. MDK4 BEACON FLOOD",
+        "3. MDK4 AUTH DOS",
+        "4. MDK4 (TERMINAL MENU) 🖥️",
+        "5. MDK4 (WEB VERSION) 🚀",
         "",
         "0. EXIT"
     ]
@@ -83,28 +86,64 @@ def print_menu():
     print("\n")
 
 
-def launch_mdk4_terminal():
-    """Jalankan MDK4 Terminal Version"""
+def launch_deauth():
+    """Jalankan MDK4 Deauth (mdk4-deauth.py)"""
     clear_screen()
-    print(f"{CYAN}[*] Launching MDK4 Terminal Version...{RESET}")
+    print(f"{CYAN}[*] Launching MDK4 Deauth...{RESET}")
     
-    # Cari file mdk4-deauth.py atau mdk4-menu.py di direktori yang sama
     script_dir = os.path.dirname(os.path.abspath(__file__))
+    target_file = os.path.join(script_dir, "mdk4-deauth.py")
     
-    # Coba cari mdk4-menu.py dulu
-    possible_paths = [
-        os.path.join(script_dir, "mdk4-menu.py"),
-        os.path.join(script_dir, "mdk4", "mdk4-menu.py"),
-    ]
+    if os.path.exists(target_file):
+        print(f"{GREEN}[+] Found: {target_file}{RESET}")
+        os.execvp(sys.executable, [sys.executable, target_file])
+        return
     
-    for path in possible_paths:
-        if os.path.exists(path):
-            print(f"{GREEN}[+] Found: {path}{RESET}")
-            os.execvp(sys.executable, [sys.executable, path])
-            return
+    print(f"{RED}[-] mdk4-deauth.py not found!{RESET}")
+    input("\nPress Enter to continue...")
+    main()
+
+
+def launch_beacon():
+    """Jalankan MDK4 Beacon (mdk4-beacon.py)"""
+    clear_screen()
+    print(f"{CYAN}[*] Launching MDK4 Beacon...{RESET}")
     
-    print(f"{RED}[-] mdk4-menu.py not found!{RESET}")
-    print(f"{YELLOW}[!] Make sure mdk4-menu.py exists{RESET}")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    target_file = os.path.join(script_dir, "mdk4-beacon.py")
+    
+    if os.path.exists(target_file):
+        print(f"{GREEN}[+] Found: {target_file}{RESET}")
+        os.execvp(sys.executable, [sys.executable, target_file])
+        return
+    
+    print(f"{RED}[-] mdk4-beacon.py not found!{RESET}")
+    input("\nPress Enter to continue...")
+    main()
+
+
+def launch_authdos():
+    """Jalankan MDK4 Auth DOS (mdk4-authdos.py)"""
+    clear_screen()
+    print(f"{CYAN}[*] Launching MDK4 Auth DOS...{RESET}")
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    target_file = os.path.join(script_dir, "mdk4-authdos.py")
+    
+    if os.path.exists(target_file):
+        print(f"{GREEN}[+] Found: {target_file}{RESET}")
+        os.execvp(sys.executable, [sys.executable, target_file])
+        return
+    
+    print(f"{RED}[-] mdk4-authdos.py not found!{RESET}")
+    input("\nPress Enter to continue...")
+    main()
+
+
+def launch_mdk4_terminal_menu():
+    """Jalankan MDK4 Terminal Menu (mdk4-menu.py) - YANG INI ADALAH DIRINYA SENDIRI"""
+    clear_screen()
+    print(f"{YELLOW}[!] You are already in the terminal menu!{RESET}")
     input("\nPress Enter to continue...")
     main()
 
@@ -117,11 +156,9 @@ def launch_mdk4_web():
     print(f"{MAGENTA}{BOLD}╚══════════════════════════════════════════════════════════════╝{RESET}")
     print()
     
-    # Cari folder mdk4-website
     script_dir = os.path.dirname(os.path.abspath(__file__))
     mdk4_web_dir = os.path.join(script_dir, "mdk4-website")
     
-    # Cek apakah folder mdk4-website ada
     if not os.path.exists(mdk4_web_dir):
         print(f"{RED}[-] Folder mdk4-website not found at: {mdk4_web_dir}{RESET}")
         print(f"{YELLOW}[!] Make sure folder mdk4-website exists{RESET}")
@@ -129,7 +166,6 @@ def launch_mdk4_web():
         main()
         return
     
-    # Cek apakah start.py ada
     start_py = os.path.join(mdk4_web_dir, "start.py")
     if not os.path.exists(start_py):
         print(f"{RED}[-] start.py not found at: {start_py}{RESET}")
@@ -147,7 +183,6 @@ def launch_mdk4_web():
     print(f"{YELLOW}[!] Press Ctrl+C to stop server{RESET}\n")
     print(f"{GREEN}{'='*70}{RESET}\n")
     
-    # Pindah direktori dan jalankan start.py dengan sudo
     try:
         os.chdir(mdk4_web_dir)
         os.execvp("sudo", ["sudo", "python3", "start.py"])
@@ -167,8 +202,14 @@ def main():
             choice = "0"
 
         if choice.strip() == "1":
-            launch_mdk4_terminal()
+            launch_deauth()
         elif choice.strip() == "2":
+            launch_beacon()
+        elif choice.strip() == "3":
+            launch_authdos()
+        elif choice.strip() == "4":
+            launch_mdk4_terminal_menu()
+        elif choice.strip() == "5":
             launch_mdk4_web()
         elif choice.strip() == "0":
             clear_screen()
