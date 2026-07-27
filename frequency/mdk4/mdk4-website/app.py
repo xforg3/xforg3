@@ -236,8 +236,8 @@ def monitor_loop():
                 continue
             
             temp_file = "/tmp/monitor_output"
-            cmd = f"sudo timeout 3 airodump-ng {state.monitor_iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
-            subprocess.run(cmd, shell=True, capture_output=True, timeout=5)
+            cmd = f"sudo timeout 5 airodump-ng {state.monitor_iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
+            subprocess.run(cmd, shell=True, capture_output=True, timeout=8)
             
             csv_file = f"{temp_file}-01.csv"
             if os.path.exists(csv_file):
@@ -396,9 +396,9 @@ async def scan_networks(duration: int = 10):
             content={"status": "error", "message": str(e)}
         )
 
-# ====================== CLIENT SCAN ======================
+# ====================== CLIENT SCAN (FIXED) ======================
 @app.get("/api/clients")
-async def get_clients(bssid: str, interface: Optional[str] = None):
+async def get_clients(bssid: str, channel: Optional[str] = None, interface: Optional[str] = None):
     """
     Scan clients yang terhubung ke AP tertentu
     """
@@ -406,20 +406,45 @@ async def get_clients(bssid: str, interface: Optional[str] = None):
         if not bssid:
             raise HTTPException(status_code=400, detail="BSSID required")
         
-        # Dapatkan interface
         iface = interface or get_monitor_interface()
         if not iface:
             raise HTTPException(status_code=400, detail="No interface available")
         
+        # 🔥 Set channel dulu
+        if channel and channel != "?":
+            try:
+                subprocess.run(["iwconfig", iface, "channel", str(channel)], 
+                             capture_output=True, timeout=2)
+                logger.info(f"Set channel to {channel} for {bssid}")
+            except Exception as e:
+                logger.warning(f"Failed to set channel: {e}")
+        
         logger.info(f"Scanning clients for {bssid} on {iface}")
         
         temp_file = "/tmp/client_scan"
-        cmd = f"sudo timeout 5 airodump-ng {iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
-        subprocess.run(cmd, shell=True, capture_output=True, timeout=8)
-        
-        csv_file = f"{temp_file}-01.csv"
         clients = []
         
+        # 🔥 Retry 2 kali kalau timeout
+        for attempt in range(2):
+            cmd = f"sudo timeout 8 airodump-ng {iface} --bssid {bssid} -w {temp_file} --output-format csv 2>/dev/null"
+            try:
+                subprocess.run(cmd, shell=True, capture_output=True, timeout=10)
+                break
+            except subprocess.TimeoutExpired:
+                logger.warning(f"Client scan attempt {attempt+1} timeout for {bssid}")
+                if attempt == 0:
+                    time.sleep(1)
+                else:
+                    # Return empty on second timeout
+                    return {
+                        "status": "success",
+                        "bssid": bssid,
+                        "clients": [],
+                        "count": 0,
+                        "message": "Scan timeout - AP mungkin tidak aktif"
+                    }
+        
+        csv_file = f"{temp_file}-01.csv"
         if os.path.exists(csv_file):
             _, clients = parse_csv(csv_file)
             try:

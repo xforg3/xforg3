@@ -831,11 +831,13 @@
             renderNetworks();
             updateAttackInfo();
             
-            // Scan clients otomatis kalau 1 target dipilih
+            // 🔥 Scan clients otomatis kalau 1 target dipilih
             if (state.selectedTargets.length === 1) {
                 const targetIdx = state.selectedTargets[0];
                 const target = state.networks[targetIdx];
                 if (target && target.bssid) {
+                    // 🔥 Delay 500ms biar gak spam
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     await scanClients(target.bssid);
                 }
             } else if (state.selectedTargets.length === 0) {
@@ -855,8 +857,18 @@
             clientList.innerHTML = '<div style="color:#ff8800; text-align:center; padding:10px 0;">🔄 Scanning clients...</div>';
             clientCountBadge.textContent = '...';
             
+            // 🔥 Cari channel dari network yang dipilih
+            let channel = '';
+            for (let i = 0; i < state.networks.length; i++) {
+                if (state.networks[i].bssid === bssid) {
+                    channel = state.networks[i].channel || '';
+                    break;
+                }
+            }
+            
             try {
-                const res = await fetch(`/api/clients?bssid=${bssid}`);
+                const url = `/api/clients?bssid=${bssid}${channel ? `&channel=${channel}` : ''}`;
+                const res = await fetch(url);
                 const data = await res.json();
                 
                 if (data.status === 'success') {
