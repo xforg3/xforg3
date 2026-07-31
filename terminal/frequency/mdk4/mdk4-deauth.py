@@ -443,8 +443,8 @@ def select_attack_mode():
     draw_box_bottom(CYAN)
     
     print(f"\n  {BOLD}Pilih mode serangan:{RESET}")
-    print(f"  {GREEN}1.{RESET} Target spesifik (pilih target sendiri)")
-    print(f"  {GREEN}2.{RESET} Semua target (serang semua jaringan)")
+    print(f"  {GREEN}1.{RESET} Target spesifik")
+    print(f"  {GREEN}2.{RESET} Semua target")
 
     while True:
         choice = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
