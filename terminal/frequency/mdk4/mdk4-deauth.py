@@ -232,13 +232,19 @@ def scan_networks(adapter, duration=10):
                 bssid = row[0].strip()
                 channel = row[3].strip()
                 essid = row[13].strip()
+                power = row[8].strip() if len(row) > 8 else "N/A"
                 if not bssid or bssid.lower() == "bssid" or not essid:
                     continue
                 key = (bssid, channel, essid)
                 if key in seen:
                     continue
                 seen.add(key)
-                networks.append({"bssid": bssid, "channel": channel, "essid": essid})
+                networks.append({
+                    "bssid": bssid, 
+                    "channel": channel, 
+                    "essid": essid,
+                    "power": power
+                })
 
     for path in glob.glob(prefix + "-*.csv"):
         try:
@@ -303,6 +309,23 @@ def parse_target_selection(choice_str, total_targets):
     
     return sorted(selected)
 
+def get_power_status(power):
+    """Mengembalikan status sinyal berdasarkan nilai power"""
+    if power == "N/A":
+        return "N/A", GRAY
+    try:
+        pwr = int(power)
+        if pwr >= -30:
+            return "Kuat", GREEN
+        elif pwr >= -50:
+            return "Kuat", CYAN
+        elif pwr >= -70:
+            return "Sedang", YELLOW
+        else:
+            return "Lemah", RED
+    except ValueError:
+        return "N/A", GRAY
+
 # ================= SELECT FUNCTIONS =================
 
 def select_interface():
@@ -342,12 +365,36 @@ def select_targets(networks):
 
     print(f"\n  {YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7{RESET}\n")
 
-    header = f"{'No':<3} {'ESSID':<25} {'CH':<3} {'BSSID'}"
+    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'PWR':<5} {'SINYAL':<8} {'BSSID'}"
     print(f"  {header}")
-    print(f"  {YELLOW}{'=' * 55}{RESET}")
+    print(f"  {YELLOW}{'=' * 75}{RESET}")
+    
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:25]
-        print(f"  {GREEN}{idx:<3}{RESET} {essid:<25} {net['channel']:<3} {net['bssid']}")
+        essid = net["essid"][:20]
+        power = net.get("power", "N/A")
+        status, status_color = get_power_status(power)
+        
+        # Warna untuk power
+        if power != "N/A":
+            try:
+                pwr = int(power)
+                if pwr >= -30:
+                    pwr_color = GREEN
+                elif pwr >= -50:
+                    pwr_color = CYAN
+                elif pwr >= -70:
+                    pwr_color = YELLOW
+                else:
+                    pwr_color = RED
+                power_display = f"{pwr_color}{power}{RESET}"
+            except ValueError:
+                power_display = f"{GRAY}{power}{RESET}"
+        else:
+            power_display = f"{GRAY}{power}{RESET}"
+            
+        status_display = f"{status_color}{status}{RESET}"
+            
+        print(f"  {GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {power_display} {status_display:<8} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
@@ -366,7 +413,9 @@ def select_targets(networks):
         
         print(f"\n  {GREEN}[✓] Terpilih {len(selected_targets)} target:{RESET}")
         for target in selected_targets:
-            print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
+            power = target.get("power", "N/A")
+            status, _ = get_power_status(power)
+            print(f"  - {target['essid']} | CH {target['channel']} | PWR {power} | {status} | {target['bssid']}")
         
         confirm = input(f"\n  {YELLOW}Lanjutkan? (y/n): {RESET}").strip().lower()
         if confirm in ['y', 'yes', '']:
@@ -430,7 +479,9 @@ def run_deauth_mdk4(targets, monitor_iface):
         
         print(f"\n  {CYAN}[*] Menyerang {len(targets)} target...{RESET}")
         for target in targets:
-            print(f"  - {target['essid'][:20]} | CH {target['channel']} | {target['bssid']}")
+            power = target.get("power", "N/A")
+            status, _ = get_power_status(power)
+            print(f"  - {target['essid'][:20]} | CH {target['channel']} | PWR {power} | {status} | {target['bssid']}")
         
         mdk4_cmd = [
             "sudo", "mdk4", monitor_iface, "d",
@@ -446,7 +497,6 @@ def run_deauth_mdk4(targets, monitor_iface):
         
         proc = subprocess.Popen(mdk4_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         
-        # Tampilkan output MDK4 dengan indentasi
         try:
             while True:
                 output = proc.stdout.readline()
@@ -558,7 +608,6 @@ def main():
                 
                 run_deauth_mdk4(targets, monitor_iface)
                 
-                # Setelah serangan selesai
                 print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
                 input()
                 stop_monitor_mode(monitor_iface)
@@ -567,7 +616,6 @@ def main():
             else:
                 run_deauth_all_mdk4(monitor_iface)
                 
-                # Setelah serangan selesai
                 print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
                 input()
                 stop_monitor_mode(monitor_iface)
