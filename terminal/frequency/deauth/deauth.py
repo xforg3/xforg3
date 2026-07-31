@@ -354,30 +354,21 @@ def back_to_menu():
         print(f"\n  {RED}[✗] deauth-menu.py tidak ditemukan.{RESET}")
         input("\n  Tekan Enter untuk kembali...")
 
-def select_interface():
-    clear_screen()
-    draw_box_top(CYAN)
-    draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
-    draw_box_bottom(CYAN)
-    
-    loading("Scanning interfaces...", 1)
+def get_monitor_interface():
+    """Mendapatkan interface monitor yang aktif atau membuatnya dari wlan0"""
+    # Cek interface monitor yang sudah ada
     ifaces = get_wireless_interfaces()
-    if not ifaces:
-        print(f"  {RED}[✗] Tidak ada interface ditemukan.{RESET}")
-        sys.exit(1)
-
-    print(f"\n  {BOLD}Pilih interface:{RESET}")
-    for idx, name in enumerate(ifaces, start=1):
-        print(f"  {GREEN}{idx}.{RESET} {name}")
-
-    while True:
-        choice = input(f"\n  {YELLOW}>> nomor : {RESET}").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
-            selected = ifaces[int(choice) - 1]
-            glitch_print(f"LOCKED: {selected}", CYAN)
-            time.sleep(0.3)
-            return selected
-        print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
+    for iface in ifaces:
+        if iface.endswith("mon"):
+            return iface
+    
+    # Jika tidak ada, coba wlan0
+    for iface in ifaces:
+        if iface.startswith("wlan"):
+            return start_monitor_mode(iface)
+    
+    # Fallback ke wlan0
+    return start_monitor_mode("wlan0")
 
 def select_target(networks):
     if not networks:
@@ -498,14 +489,21 @@ def get_attack_params():
     return power_level, packet_count
 
 def main():
-    adapter = None
     monitor_iface = None
 
     while True:
         try:
             if monitor_iface is None:
-                adapter = select_interface()
-                monitor_iface = start_monitor_mode(adapter)
+                # Auto detect monitor interface
+                clear_screen()
+                draw_box_top(CYAN)
+                draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
+                draw_box_bottom(CYAN)
+                
+                print(f"\n  {YELLOW}[*] Mencari interface monitor...{RESET}")
+                monitor_iface = get_monitor_interface()
+                glitch_print(f"MONITOR INTERFACE: {monitor_iface}", CYAN)
+                time.sleep(0.5)
             
             clear_screen()
             draw_box_top(CYAN)
