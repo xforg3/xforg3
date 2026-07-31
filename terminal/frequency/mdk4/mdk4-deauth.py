@@ -9,8 +9,6 @@ import sys
 import tempfile
 import time
 
-from xforg3 import clear_screen
-
 # ---------- ANSI ----------
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -300,7 +298,6 @@ def parse_target_selection(choice_str, total_targets):
 # ================= SELECT FUNCTIONS =================
 
 def select_interface():
-    clear_screen()
     draw_box_top(CYAN)
     draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
     draw_box_bottom(CYAN)
@@ -329,7 +326,6 @@ def select_targets(networks):
         print(f"\n  {RED}[✗] Tidak ada jaringan ditemukan.{RESET}")
         return None
 
-    clear_screen()
     draw_box_top(CYAN)
     draw_box_title("PILIH TARGET", CYAN, YELLOW)
     draw_box_bottom(CYAN)
@@ -371,7 +367,6 @@ def select_targets(networks):
             continue
 
 def select_attack_mode():
-    clear_screen()
     draw_box_top(CYAN)
     draw_box_title("MODE SERANGAN", CYAN, YELLOW)
     draw_box_bottom(CYAN)
@@ -401,7 +396,7 @@ def run_deauth_mdk4(targets, monitor_iface):
             target_file.write(f"{target['bssid']},{target['channel']}\n")
         target_file.close()
         
-        clear_screen()
+
         draw_box_top(RED)
         draw_box_title("🔥 MDK4 OP MODE 🔥", RED, YELLOW)
         draw_box_bottom(RED)
@@ -444,7 +439,6 @@ def run_deauth_mdk4(targets, monitor_iface):
             pass
 
 def run_deauth_all_mdk4(monitor_iface):
-    clear_screen()
     draw_box_top(RED)
     draw_box_title("🔥 MDK4 OP MODE - ALL TARGETS 🔥", RED, YELLOW)
     draw_box_bottom(RED)
@@ -498,7 +492,7 @@ def main():
         attack_mode = select_attack_mode()
         
         if attack_mode == "target":
-            clear_screen()
+    
             draw_box_top(CYAN)
             draw_box_title("SCAN WIFI", CYAN, YELLOW)
             draw_box_bottom(CYAN)
