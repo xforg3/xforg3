@@ -124,6 +124,20 @@ def run_sosials_script():
         input("\n  Tekan Enter untuk kembali...")
         return False
 
+def run_xforg3():
+    """Kembali ke xforg3.py di parent directory"""
+    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "xforg3.py")
+    
+    if os.path.exists(script_path):
+        print(f"\n  {COLORS['green']}[✓] Kembali ke: {script_path}{RESET}")
+        time.sleep(1)
+        os.execvp(sys.executable, [sys.executable, script_path])
+        return True
+    else:
+        print(f"\n  {COLORS['red']}[✗] xforg3.py tidak ditemukan: {script_path}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
+        return False
+
 # ================= Main App =================
 
 def app_loop():
@@ -164,11 +178,13 @@ def app_loop():
                     print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
                     time.sleep(1)
                     
-        elif choice == "3":  # BACK
+        elif choice == "3":  # BACK - Kembali ke xforg3.py
             clear_screen()
-            print(f"\n  {COLORS['green']}[+] Kembali ke menu utama...{RESET}")
-            time.sleep(0.5)
-            break
+            print(f"\n  {COLORS['green']}[+] Kembali ke XFORG3...{RESET}\n")
+            time.sleep(1)
+            if run_xforg3():
+                return  # Script akan menggantikan proses
+            # Jika gagal, lanjutkan loop
             
         else:
             print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
