@@ -129,8 +129,6 @@ def run_frequency_script():
     script_path = os.path.join(os.path.dirname(__file__), "frequency", "frequency.py")
 
     if os.path.exists(script_path):
-        print(f"\n  {COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
-        time.sleep(1)
         os.execvp(sys.executable, [sys.executable, script_path])
         return True
     else:
@@ -144,8 +142,6 @@ def run_sosials_script():
     script_path = os.path.join(os.path.dirname(__file__), "sosials", "sosials.py")
 
     if os.path.exists(script_path):
-        print(f"\n  {COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
-        time.sleep(1)
         os.execvp(sys.executable, [sys.executable, script_path])
         return True
     else:
@@ -159,8 +155,6 @@ def run_xforg3():
     script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "xforg3.py")
 
     if os.path.exists(script_path):
-        print(f"\n  {COLORS['green']}[✓] Kembali ke: {script_path}{RESET}")
-        time.sleep(1)
         os.execvp(sys.executable, [sys.executable, script_path])
         return True
     else:
@@ -176,9 +170,6 @@ def app_loop():
         choice = terminal_menu()
 
         if choice == "1":  # FREQUENCY - langsung jalankan script
-            clear_screen()
-            print(f"\n  {COLORS['green']}[+] Starting FREQUENCY...{RESET}\n")
-            time.sleep(1)
             if run_frequency_script():
                 return  # Script akan menggantikan proses
 
@@ -189,29 +180,19 @@ def app_loop():
                 if sos_choice == "0":
                     break
                 elif sos_choice == "1":
-                    clear_screen()
-                    print(f"\n  {COLORS['green']}[+] Starting Social Media Scanner...{RESET}\n")
-                    time.sleep(1)
                     if run_sosials_script():
                         return
                 elif sos_choice == "2":
-                    clear_screen()
                     print(f"\n  {COLORS['green']}[+] Starting Social Media Analysis...{RESET}\n")
-                    time.sleep(1)
                     input("\n  Tekan Enter untuk kembali...")
                 elif sos_choice == "3":
-                    clear_screen()
                     print(f"\n  {COLORS['green']}[+] Exporting Data...{RESET}\n")
-                    time.sleep(1)
                     input("\n  Tekan Enter untuk kembali...")
                 else:
                     print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
                     time.sleep(1)
 
         elif choice == "3":  # BACK - Kembali ke xforg3.py
-            clear_screen()
-            print(f"\n  {COLORS['green']}[+] Kembali ke XFORG3...{RESET}\n")
-            time.sleep(1)
             if run_xforg3():
                 return  # Script akan menggantikan proses
             # Jika gagal, lanjutkan loop

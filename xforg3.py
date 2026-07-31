@@ -100,7 +100,6 @@ def app_loop():
         choice = main_menu()
 
         if choice == "1":  # TERMINAL
-            clear_screen()
             terminal_path = os.path.join(os.path.dirname(__file__), "terminal", "terminal.py")
             if os.path.exists(terminal_path):
                 os.execvp(sys.executable, [sys.executable, terminal_path])
@@ -109,7 +108,6 @@ def app_loop():
                 input("\nTekan Enter untuk kembali...")
 
         elif choice == "2":  # WEBSITE
-            clear_screen()
             website_path = os.path.join(os.path.dirname(__file__), "website", "website.py")
             if os.path.exists(website_path):
                 os.execvp(sys.executable, [sys.executable, website_path])
