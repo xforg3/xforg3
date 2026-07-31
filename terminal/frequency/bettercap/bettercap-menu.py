@@ -2,138 +2,162 @@
 """
 bettercap-menu.py - Clean Terminal UI
 -------------------------------------
-Seluruh fungsi animasi loading, glitch burst, dan penundaan waktu dihapus.
-Menu langsung tercetak instan dengan tata letak vertikal tengah yang presisi.
+Menu untuk BAN dan NORMAL BETTERCAP
 """
 
 import sys
 import os
 import shutil
+import time
 
 # ---------- ANSI ----------
-RED = "\033[91m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-CYAN = "\033[96m"
-MAGENTA = "\033[95m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
+CLEAR = "\033[2J\033[H"
 
-ASCII_ART = r"""
- ___ ___ _____ _____ ___ ___  ___   _   ___ 
-| _ ) __|_   _|_   _| __| _ \/ __| /_\ | _ \
-| _ \ _|  | |   | | | _||   / (__ / _ \|  _/
-|___/___| |_|   |_| |___|_|_\___/_/ \_\_|  """
+COLORS = {
+    "green": "\033[92m",
+    "red": "\033[91m",
+    "cyan": "\033[96m",
+    "yellow": "\033[93m",
+    "purple": "\033[95m",
+    "white": "\033[97m",
+    "magenta": "\033[35m",
+}
 
+BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
+
+# ================= Util =================
 
 def get_size():
     return shutil.get_terminal_size(fallback=(80, 24))
 
-
 def clear_screen():
-    """Membersihkan layar terminal."""
-    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.write(CLEAR)
     sys.stdout.flush()
 
+def draw_box_top():
+    print(f"\n{COLORS['cyan']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
 
-def quick_print(text, color=CYAN):
-    """Cetak teks konfirmasi modul langsung tanpa jeda."""
-    print(f"{color}{BOLD}{text}{RESET}")
+def draw_box_bottom():
+    print(f"{COLORS['cyan']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
+def draw_box_title(title: str):
+    """Cetak baris judul dalam box, padding dihitung otomatis
+    biar sisi kanan box selalu nyambung rapi."""
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"{COLORS['cyan']}{BOLD}║{RESET}"
+        f"{COLORS['yellow']}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{COLORS['cyan']}{BOLD}║{RESET}"
+    )
+
+# ================= Menu Bettercap =================
+
+def bettercap_menu():
+    """Menu utama bettercap - Rata Kiri"""
+    clear_screen()
+
+    # Header - Rata Kiri
+    draw_box_top()
+    draw_box_title("BETTERCAP MENU")
+    draw_box_bottom()
+
+    print()
+
+    # Menu Options - Rata Kiri
+    print(f"  {COLORS['yellow']}{BOLD}[1]{RESET} {COLORS['green']}BAN{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}[2]{RESET} {COLORS['green']}NORMAL BETTERCAP{RESET}")
+    print()
+    print(f"  {COLORS['yellow']}{BOLD}[0]{RESET} {COLORS['red']}BACK TO FREQUENCY{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}[99]{RESET} {COLORS['red']}EXIT{RESET}")
+
+    print()
+    # Garis pemisah yang menyambung
+    terminal_width = shutil.get_terminal_size().columns
+    line_length = min(terminal_width - 4, 40)  # Max 40 karakter
+    print(f"  {COLORS['green']}{BOLD}{'=' * line_length}{RESET}")
+    print()
+
+    # Input
+    try:
+        choice = input(f"  {COLORS['cyan']}>> option : {RESET}")
+    except (KeyboardInterrupt, EOFError):
+        return "0"
+
+    return choice.strip()
+
+# ================= Eksekusi =================
 
 def launch_ban():
+    """Menjalankan bettercap-ban.py"""
     clear_screen()
-    quick_print("LAUNCHING BAN MODULE...", CYAN)
-    
     ban_path = os.path.join(os.path.dirname(__file__), "bettercap-ban.py")
     if not os.path.exists(ban_path):
         ban_path = os.path.join(os.path.dirname(__file__), "ban.py")
-        
+    
     if os.path.exists(ban_path):
         os.execvp(sys.executable, [sys.executable, ban_path])
     else:
-        print(f"      {YELLOW}{BOLD}Ban script not found. Placeholder only.{RESET}")
-        sys.exit(1)
-
+        print(f"\n  {COLORS['red']}[✗] Ban script tidak ditemukan: {ban_path}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
 def launch_bettercap():
-    """Menjalankan sudo bettercap secara otomatis."""
+    """Menjalankan sudo bettercap"""
     clear_screen()
-    quick_print("LAUNCHING SUDO BETTERCAP...", CYAN)
     try:
         os.execvp("sudo", ["sudo", "bettercap"])
     except FileNotFoundError:
-        print(f"      {RED}{BOLD}Error: 'sudo' atau 'bettercap' tidak ditemukan di sistem.{RESET}")
-        sys.exit(1)
+        print(f"\n  {COLORS['red']}[✗] 'sudo' atau 'bettercap' tidak ditemukan!{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
+def return_to_frequency():
+    """Kembali ke frequency.py di parent directory"""
+    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frequency.py")
+    
+    if os.path.exists(script_path):
+        os.execvp(sys.executable, [sys.executable, script_path])
+    else:
+        print(f"\n  {COLORS['red']}[✗] frequency.py tidak ditemukan: {script_path}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
-def show_menu():
+def exit_program():
     clear_screen()
-    _, height = get_size()
+    sys.exit(0)
 
-    options = [
-        "1. BAN",
-        "2. NORMAL BETTERCAP",
-        "",
-        "0. BACK TO MAIN MENU",
-        "99. EXIT"
-    ]
-    
-    col_indent = " " * 6
-    separator = "=" * 112
-    art_lines = ASCII_ART.splitlines()
-    
-    total_lines_len = len(art_lines) + 3 + len(options)
-    start_row = max(1, (height // 2) - (total_lines_len // 2) - 2)
-    
-    print("\n" * (start_row - 1))
-    
-    for line in art_lines:
-        print(f"{col_indent}{RED}{BOLD}{line}{RESET}")
-        
-    print()
-    print(f"{col_indent}{GREEN}{separator}{RESET}")
-    
-    for opt in options:
-        if not opt:
-            print()
-            continue
-            
-        color = CYAN
-        if opt.startswith(("0.", "99.")):
-            color = RED
-            
-        print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
+# ================= Main App =================
 
-    print(f"{col_indent}{GREEN}{separator}{RESET}")
-    print("\n")
+def app_loop():
+    """Loop utama aplikasi"""
+    while True:
+        choice = bettercap_menu()
 
+        if choice == "1":  # BAN
+            launch_ban()
+        elif choice == "2":  # NORMAL BETTERCAP
+            launch_bettercap()
+            input("\n  Tekan Enter untuk kembali...")
+        elif choice == "0":  # BACK TO FREQUENCY
+            return_to_frequency()
+            return
+        elif choice == "99":  # EXIT
+            exit_program()
+        else:
+            print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
+            time.sleep(1)
 
 def main():
-    show_menu()
-    
     try:
-        choice = input(f"      {BOLD}{MAGENTA}>> option :{RESET}")
-    except (KeyboardInterrupt, EOFError):
-        choice = "0"
-
-    if choice.strip() == "1":
-        launch_ban()
-    elif choice.strip() == "2":
-        launch_bettercap()
-    elif choice.strip() == "0":
-        parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frequency.py"))
-        if not os.path.exists(parent):
-            parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frequency.py"))
-        os.execvp(sys.executable, [sys.executable, parent])
-    elif choice.strip() == "99":
+        app_loop()
+    except KeyboardInterrupt:
         clear_screen()
+        print(f"\n  {COLORS['yellow']}[!] Program dihentikan oleh user{RESET}")
         sys.exit(0)
-    else:
-        print(f"      {RED}{BOLD}Pilihan tidak valid!{RESET}")
-        import time
-        time.sleep(0.6)
-
 
 if __name__ == "__main__":
     main()
