@@ -25,6 +25,29 @@ COLORS = {
 
 GLITCH_CHARS = "!@#$%^&*<>/\\|_+=~`"
 
+BOX_WIDTH = 40
+
+# ================= DRAW BOX =================
+
+def draw_box_top(color=COLORS["cyan"]):
+    print(f"\n  {color}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+
+def draw_box_bottom(color=COLORS["cyan"]):
+    print(f"  {color}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+
+def draw_box_title(title: str, color=COLORS["cyan"], text_color=COLORS["yellow"]):
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"  {color}{BOLD}║{RESET}"
+        f"{text_color}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{color}{BOLD}║{RESET}"
+    )
+
 # ================= LOADING FUNCTION =================
 
 def loading(text, duration=1):
@@ -104,15 +127,14 @@ def jalankan_bettercap_otomatis():
     bettercap_cmds = "net.probe on; sleep 3; net.show; quit"
     cmd = ["bettercap", "-silent", "-eval", bettercap_cmds]
     
+    # Tampilkan loading
     loading("Scanning network...", 2)
     
     try:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
-        # Tunggu proses selesai dengan animasi sederhana
+        # Tunggu proses selesai
         while process.poll() is None:
-            sys.stdout.write(f"\r  {COLORS['cyan']}Scanning network...{RESET}")
-            sys.stdout.flush()
             time.sleep(0.1)
             
         output, _ = process.communicate()
@@ -147,10 +169,10 @@ def jalankan_bettercap_otomatis():
                     })
                     
     except FileNotFoundError:
-        print(f"\n{COLORS['red']}[!] Error: 'bettercap' tidak ditemukan di sistem Anda.{RESET}")
+        print(f"\n  {COLORS['red']}[!] Error: 'bettercap' tidak ditemukan di sistem Anda.{RESET}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n{COLORS['red']}[!] Terjadi kesalahan: {e}{RESET}")
+        print(f"\n  {COLORS['red']}[!] Terjadi kesalahan: {e}{RESET}")
         
     return devices
 
@@ -276,9 +298,9 @@ def display_targets(live_devices):
     sys.stdout.write(CLEAR)
     sys.stdout.flush()
     
-    print(f"\n  {COLORS['cyan']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}TARGET LIST{RESET}                      {COLORS['cyan']}{BOLD}║{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+    draw_box_top(COLORS["cyan"])
+    draw_box_title("TARGET LIST", COLORS["cyan"], COLORS["yellow"])
+    draw_box_bottom(COLORS["cyan"])
     
     print("\n" + "  " + "-" * 61)
     header = f"{'NO':<5}{'IP ADDRESS':<18}{'MAC ADDRESS':<20}{'VENDOR'}"
@@ -306,10 +328,11 @@ def display_targets(live_devices):
 def run_simulation():
     pastikan_root()
 
-    # Initial scan - Tampilkan box tanpa text glitch
-    print(f"\n  {COLORS['cyan']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}BETTERCAP BAN{RESET}                  {COLORS['cyan']}{BOLD}║{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+    # Initial scan
+    draw_box_top(COLORS["cyan"])
+    draw_box_title("BETTERCAP BAN", COLORS["cyan"], COLORS["yellow"])
+    draw_box_bottom(COLORS["cyan"])
+    print()
     
     live_devices = jalankan_bettercap_otomatis()
     
