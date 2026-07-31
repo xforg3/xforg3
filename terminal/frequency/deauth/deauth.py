@@ -438,10 +438,10 @@ def get_attack_params():
     draw_box_title("PARAMETER SERANGAN", CYAN, YELLOW)
     draw_box_bottom(CYAN)
     
-    print(f"\n  {BOLD}Pilih kekuatan sinyal:{RESET}")
-    print(f"  {GREEN}1.{RESET} LEMAH  (jarak dekat, stealth)")
-    print(f"  {GREEN}2.{RESET} SEDANG (jarak sedang, balance)")
-    print(f"  {GREEN}3.{RESET} KUAT   (jarak jauh, agresif)")
+    print(f"\n  {BOLD}Pilih kekuatan sinyal & serangan:{RESET}")
+    print(f"  {GREEN}1.{RESET} LEMAH")
+    print(f"  {GREEN}2.{RESET} SEDANG")
+    print(f"  {GREEN}3.{RESET} KUAT")
     
     power_level = "sedang"
     while True:
@@ -458,10 +458,10 @@ def get_attack_params():
         print(f"  {RED}[!] Pilih 1, 2, atau 3.{RESET}")
     
     print(f"\n  {BOLD}Pilih jumlah paket deauth:{RESET}")
-    print(f"  {GREEN}1.{RESET} 100 paket (cepat)")
-    print(f"  {GREEN}2.{RESET} 1000 paket (standar)")
-    print(f"  {GREEN}3.{RESET} Unlimited (terus menerus)")
-    print(f"  {GREEN}4.{RESET} Custom (input sendiri)")
+    print(f"  {GREEN}1.{RESET} 100 paket")
+    print(f"  {GREEN}2.{RESET} 1000 paket")
+    print(f"  {GREEN}3.{RESET} Unlimited")
+    print(f"  {GREEN}4.{RESET} Custom")
     
     packet_count = "1000"
     while True:
