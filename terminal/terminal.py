@@ -22,6 +22,8 @@ COLORS = {
     "yellow": "\033[93m",
     "purple": "\033[95m",
     "white": "\033[97m",
+    "blue": "\033[94m",
+    "magenta": "\033[35m",
 }
 
 BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
@@ -36,10 +38,10 @@ def clear_screen():
     sys.stdout.flush()
 
 def draw_box_top():
-    print(f"\n{COLORS['red']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+    print(f"\n{COLORS['green']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
 
 def draw_box_bottom():
-    print(f"{COLORS['red']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+    print(f"{COLORS['green']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
 def draw_box_title(title: str):
     """Cetak baris judul dalam box, padding dihitung otomatis
@@ -47,14 +49,13 @@ def draw_box_title(title: str):
     inner = f" {title}"
     pad = BOX_WIDTH - len(inner)
     if pad < 0:
-        # kalau judul kepanjangan, potong biar tetap muat
         inner = inner[:BOX_WIDTH]
         pad = 0
     print(
-        f"{COLORS['red']}{BOLD}║{RESET}"
+        f"{COLORS['green']}{BOLD}║{RESET}"
         f"{COLORS['yellow']}{BOLD}{inner}{RESET}"
         f"{' ' * pad}"
-        f"{COLORS['red']}{BOLD}║{RESET}"
+        f"{COLORS['green']}{BOLD}║{RESET}"
     )
 
 # ================= Menu Terminal =================
@@ -71,8 +72,8 @@ def terminal_menu():
     print()
 
     # Menu Options - Rata Kiri
-    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}FREQUENCY{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}SOSIALS{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['purple']}FREQUENCY{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['purple']}SOSIALS{RESET}")
     print()
     print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['red']}BACK{RESET}")
 
@@ -85,7 +86,7 @@ def terminal_menu():
 
     # Input
     try:
-        choice = input(f"  {COLORS['yellow']}pilihan : {RESET}")
+        choice = input(f"  {COLORS['cyan']}{BOLD}pilihan : {RESET}")
     except (KeyboardInterrupt, EOFError):
         return "3"
 
@@ -102,21 +103,21 @@ def sosials_menu():
     draw_box_bottom()
 
     print()
-    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}Social Media Scanner{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}Social Media Analysis{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['green']}Export Data{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}[1]{RESET} {COLORS['green']}Social Media Scanner{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}[2]{RESET} {COLORS['green']}Social Media Analysis{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}[3]{RESET} {COLORS['green']}Export Data{RESET}")
     print()
-    print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}Back{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}[0]{RESET} {COLORS['red']}Back{RESET}")
 
     print()
     # Garis pemisah yang menyambung
     terminal_width = shutil.get_terminal_size().columns
     line_length = min(terminal_width - 4, 40)  # Max 40 karakter
-    print(f"  {COLORS['yellow']}{BOLD}{'=' * line_length}{RESET}")
+    print(f"  {COLORS['magenta']}{BOLD}{'=' * line_length}{RESET}")
     print()
 
     try:
-        choice = input(f"  {COLORS['yellow']}pilihan : {RESET}")
+        choice = input(f"  {COLORS['yellow']}{BOLD}pilihan : {RESET}")
     except (KeyboardInterrupt, EOFError):
         return "0"
 
