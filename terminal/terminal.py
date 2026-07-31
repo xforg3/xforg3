@@ -24,6 +24,8 @@ COLORS = {
     "white": "\033[97m",
 }
 
+BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
+
 # ================= Util =================
 
 def get_size():
@@ -33,35 +35,60 @@ def clear_screen():
     sys.stdout.write(CLEAR)
     sys.stdout.flush()
 
+def draw_box_top():
+    print(f"\n{COLORS['red']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+
+def draw_box_bottom():
+    print(f"{COLORS['red']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+
+def draw_box_title(title: str):
+    """Cetak baris judul dalam box, padding dihitung otomatis
+    biar sisi kanan box selalu nyambung rapi."""
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        # kalau judul kepanjangan, potong biar tetap muat
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"{COLORS['red']}{BOLD}║{RESET}"
+        f"{COLORS['yellow']}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{COLORS['red']}{BOLD}║{RESET}"
+    )
+
 # ================= Menu Terminal =================
 
 def terminal_menu():
     """Menu utama terminal dengan 2 opsi - Rata Kiri"""
     clear_screen()
-    
+
     # Header - Rata Kiri
-    print(f"\n{COLORS['red']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"{COLORS['red']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}XFORG3 TERMINAL MENU{RESET}             {COLORS['red']}{BOLD}║{RESET}")
-    print(f"{COLORS['red']}{BOLD}╚══════════════════════════════════════════╝{RESET}")
-    
+    draw_box_top()
+    draw_box_title("XFORG3 TERMINAL MENU")
+    draw_box_bottom()
+
     print()
-    
+
     # Menu Options - Rata Kiri
     print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}FREQUENCY{RESET}")
     print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}SOSIALS{RESET}")
     print()
     print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['red']}BACK{RESET}")
-    
+
     print()
-    print(f"  {COLORS['yellow']}{BOLD}═{RESET}" * 40)
+    # Garis pemisah yang menyambung
+    terminal_width = shutil.get_terminal_size().columns
+    line_length = min(terminal_width - 4, 40)  # Max 40 karakter
+    print(f"  {COLORS['yellow']}{BOLD}{'=' * line_length}{RESET}")
     print()
-    
+
     # Input
     try:
         choice = input(f"  {COLORS['yellow']}pilihan : {RESET}")
     except (KeyboardInterrupt, EOFError):
         return "3"
-    
+
     return choice.strip()
 
 # ================= Menu Sosials =================
@@ -69,27 +96,30 @@ def terminal_menu():
 def sosials_menu():
     """Menu untuk SOSIALS - Rata Kiri"""
     clear_screen()
-    
-    print(f"\n{COLORS['red']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"{COLORS['red']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}SOSIALS MENU{RESET}                     {COLORS['red']}{BOLD}║{RESET}")
-    print(f"{COLORS['red']}{BOLD}╚══════════════════════════════════════════╝{RESET}")
-    
+
+    draw_box_top()
+    draw_box_title("SOSIALS MENU")
+    draw_box_bottom()
+
     print()
     print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}Social Media Scanner{RESET}")
     print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}Social Media Analysis{RESET}")
     print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['green']}Export Data{RESET}")
     print()
     print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}Back{RESET}")
-    
+
     print()
-    print(f"  {COLORS['yellow']}{BOLD}═{RESET}" * 40)
+    # Garis pemisah yang menyambung
+    terminal_width = shutil.get_terminal_size().columns
+    line_length = min(terminal_width - 4, 40)  # Max 40 karakter
+    print(f"  {COLORS['yellow']}{BOLD}{'=' * line_length}{RESET}")
     print()
-    
+
     try:
         choice = input(f"  {COLORS['yellow']}pilihan : {RESET}")
     except (KeyboardInterrupt, EOFError):
         return "0"
-    
+
     return choice.strip()
 
 # ================= Eksekusi Script =================
@@ -97,7 +127,7 @@ def sosials_menu():
 def run_frequency_script():
     """Menjalankan script frequency dari folder frequency/frequency.py"""
     script_path = os.path.join(os.path.dirname(__file__), "frequency", "frequency.py")
-    
+
     if os.path.exists(script_path):
         print(f"\n  {COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
         time.sleep(1)
@@ -112,7 +142,7 @@ def run_frequency_script():
 def run_sosials_script():
     """Menjalankan script sosials dari folder sosials/sosials.py"""
     script_path = os.path.join(os.path.dirname(__file__), "sosials", "sosials.py")
-    
+
     if os.path.exists(script_path):
         print(f"\n  {COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
         time.sleep(1)
@@ -127,7 +157,7 @@ def run_sosials_script():
 def run_xforg3():
     """Kembali ke xforg3.py di parent directory"""
     script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "xforg3.py")
-    
+
     if os.path.exists(script_path):
         print(f"\n  {COLORS['green']}[✓] Kembali ke: {script_path}{RESET}")
         time.sleep(1)
@@ -144,18 +174,18 @@ def app_loop():
     """Loop utama aplikasi"""
     while True:
         choice = terminal_menu()
-        
+
         if choice == "1":  # FREQUENCY - langsung jalankan script
             clear_screen()
             print(f"\n  {COLORS['green']}[+] Starting FREQUENCY...{RESET}\n")
             time.sleep(1)
             if run_frequency_script():
                 return  # Script akan menggantikan proses
-                    
+
         elif choice == "2":  # SOSIALS
             while True:
                 sos_choice = sosials_menu()
-                
+
                 if sos_choice == "0":
                     break
                 elif sos_choice == "1":
@@ -177,7 +207,7 @@ def app_loop():
                 else:
                     print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
                     time.sleep(1)
-                    
+
         elif choice == "3":  # BACK - Kembali ke xforg3.py
             clear_screen()
             print(f"\n  {COLORS['green']}[+] Kembali ke XFORG3...{RESET}\n")
@@ -185,7 +215,7 @@ def app_loop():
             if run_xforg3():
                 return  # Script akan menggantikan proses
             # Jika gagal, lanjutkan loop
-            
+
         else:
             print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
             time.sleep(1)
