@@ -32,6 +32,12 @@ GRAY = COLORS["gray"]
 
 BOX_WIDTH = 40
 
+# ================= CLEAR SCREEN =================
+
+def clear_screen():
+    sys.stdout.write(CLEAR)
+    sys.stdout.flush()
+
 # ================= DRAW BOX =================
 
 def draw_box_top(color=CYAN):
@@ -71,7 +77,6 @@ def loading_with_text(text, duration=2):
     glitch_chars = "!@#$%^&*"
     
     for i in range(duration * 10):
-        # Random glitch effect pada text
         display_text = ""
         for char in text:
             if char == " ":
@@ -186,7 +191,6 @@ def scan_networks(adapter, duration=10):
         stderr=subprocess.DEVNULL,
     )
 
-    # Tampilkan loading selama scan
     chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
     start_time = time.time()
     while proc.poll() is None:
@@ -298,6 +302,7 @@ def parse_target_selection(choice_str, total_targets):
 # ================= SELECT FUNCTIONS =================
 
 def select_interface():
+    clear_screen()
     draw_box_top(CYAN)
     draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
     draw_box_bottom(CYAN)
@@ -326,6 +331,7 @@ def select_targets(networks):
         print(f"\n  {RED}[✗] Tidak ada jaringan ditemukan.{RESET}")
         return None
 
+    clear_screen()
     draw_box_top(CYAN)
     draw_box_title("PILIH TARGET", CYAN, YELLOW)
     draw_box_bottom(CYAN)
@@ -367,6 +373,7 @@ def select_targets(networks):
             continue
 
 def select_attack_mode():
+    clear_screen()  # <--- INI YANG DITAMBAHKAN
     draw_box_top(CYAN)
     draw_box_title("MODE SERANGAN", CYAN, YELLOW)
     draw_box_bottom(CYAN)
@@ -396,7 +403,7 @@ def run_deauth_mdk4(targets, monitor_iface):
             target_file.write(f"{target['bssid']},{target['channel']}\n")
         target_file.close()
         
-
+        clear_screen()
         draw_box_top(RED)
         draw_box_title("🔥 MDK4 OP MODE 🔥", RED, YELLOW)
         draw_box_bottom(RED)
@@ -439,6 +446,7 @@ def run_deauth_mdk4(targets, monitor_iface):
             pass
 
 def run_deauth_all_mdk4(monitor_iface):
+    clear_screen()
     draw_box_top(RED)
     draw_box_title("🔥 MDK4 OP MODE - ALL TARGETS 🔥", RED, YELLOW)
     draw_box_bottom(RED)
@@ -477,7 +485,11 @@ def back_to_menu():
     menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
     if not os.path.exists(menu_path):
         menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "deauth-menu.py"))
-    os.execvp(sys.executable, [sys.executable, menu_path])
+    if os.path.exists(menu_path):
+        os.execvp(sys.executable, [sys.executable, menu_path])
+    else:
+        print(f"\n  {RED}[✗] deauth-menu.py tidak ditemukan.{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
 # ================= MAIN =================
 
@@ -492,7 +504,7 @@ def main():
         attack_mode = select_attack_mode()
         
         if attack_mode == "target":
-    
+            clear_screen()
             draw_box_top(CYAN)
             draw_box_title("SCAN WIFI", CYAN, YELLOW)
             draw_box_bottom(CYAN)
