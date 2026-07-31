@@ -75,7 +75,7 @@ def main_menu():
     print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}WEBSITE{RESET}")
     print()
     print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}EXIT{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[99]{RESET} {COLORS['red']}REGULAR{RESET}")
+   
 
     print()
     # Garis pemisah yang menyambung
@@ -118,12 +118,6 @@ def app_loop():
         elif choice == "0":
             clear_screen()
             break
-
-        elif choice == "99":
-            clear_screen()
-            # Menjalankan perintah eksternal standar bawaan dari kode lama kamu
-            os.system("ls")
-            sys.exit(0)
 
         else:
             print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
