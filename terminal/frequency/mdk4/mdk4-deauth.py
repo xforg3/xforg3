@@ -365,12 +365,12 @@ def select_targets(networks):
 
     print(f"\n  {YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7{RESET}\n")
 
-    # Header dengan lebar fixed
+    # Header dengan lebar fixed - RAPI!
     no_width = 4
     essid_width = 22
     ch_width = 4
     pwr_width = 6
-    signal_width = 8
+    signal_width = 9
     bssid_width = 17
     
     header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
@@ -483,7 +483,7 @@ def run_deauth_mdk4(targets, monitor_iface):
         
         clear_screen()
         draw_box_top(RED)
-        draw_box_title("🔥 MDK4 OP MODE 🔥", RED, YELLOW)
+        draw_box_title("MDK4 OP MODE", RED, YELLOW)
         draw_box_bottom(RED)
         
         print(f"\n  {CYAN}[*] Menyerang {len(targets)} target...{RESET}")
@@ -533,7 +533,7 @@ def run_deauth_mdk4(targets, monitor_iface):
 def run_deauth_all_mdk4(monitor_iface):
     clear_screen()
     draw_box_top(RED)
-    draw_box_title("🔥 MDK4 OP MODE - ALL TARGETS 🔥", RED, YELLOW)
+    draw_box_title("MDK4 OP MODE - ALL TARGETS", RED, YELLOW)
     draw_box_bottom(RED)
     
     print(f"\n  {YELLOW}[!] Menyerang SEMUA jaringan yang terdeteksi!{RESET}")
