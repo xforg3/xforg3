@@ -29,11 +29,33 @@ CYAN = COLORS["cyan"]
 YELLOW = COLORS["yellow"]
 MAGENTA = COLORS["magenta"]
 
+BOX_WIDTH = 40  # lebar isi box
+
 # ================= Util =================
 
 def clear_screen():
     sys.stdout.write(CLEAR)
     sys.stdout.flush()
+
+def draw_box_top(color=CYAN):
+    print(f"\n  {color}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+
+def draw_box_bottom(color=CYAN):
+    print(f"  {color}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+
+def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
+    """Cetak baris judul dalam box, padding dihitung otomatis"""
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"  {color}{BOLD}║{RESET}"
+        f"{text_color}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{color}{BOLD}║{RESET}"
+    )
 
 def loading(text, duration=1):
     """Tampilkan loading sederhana"""
@@ -42,7 +64,7 @@ def loading(text, duration=1):
         sys.stdout.write(f"\r  {YELLOW}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
         sys.stdout.flush()
         time.sleep(0.1)
-    sys.stdout.write("\r" + " " * 50 + "\r")
+    sys.stdout.write("\r" + " " * 60 + "\r")
     sys.stdout.flush()
 
 # ================= Wireless Functions =================
@@ -226,9 +248,9 @@ def back_to_menu():
 
 def select_interface():
     clear_screen()
-    print(f"\n  {CYAN}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"  {CYAN}{BOLD}║{RESET} {YELLOW}{BOLD}DEAUTH ATTACK{RESET}                 {CYAN}{BOLD}║{RESET}")
-    print(f"  {CYAN}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+    draw_box_top(CYAN)
+    draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
     
     loading("Scanning interfaces...", 1)
     ifaces = get_wireless_interfaces()
@@ -236,7 +258,7 @@ def select_interface():
         print(f"  {RED}[✗] Tidak ada interface ditemukan.{RESET}")
         sys.exit(1)
 
-    print(f"  {BOLD}Pilih interface:{RESET}")
+    print(f"\n  {BOLD}Pilih interface:{RESET}")
     for idx, name in enumerate(ifaces, start=1):
         print(f"  {GREEN}{idx}.{RESET} {name}")
 
@@ -253,11 +275,11 @@ def select_target(networks):
         return None
 
     clear_screen()
-    print(f"\n  {CYAN}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"  {CYAN}{BOLD}║{RESET} {YELLOW}{BOLD}PILIH TARGET{RESET}                    {CYAN}{BOLD}║{RESET}")
-    print(f"  {CYAN}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+    draw_box_top(CYAN)
+    draw_box_title("PILIH TARGET", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
 
-    print(f"  {'No':<3} {'ESSID':<25} {'CH':<3} {'BSSID'}")
+    print(f"\n  {'No':<3} {'ESSID':<25} {'CH':<3} {'BSSID'}")
     print(f"  {YELLOW}{'=' * 50}{RESET}")
     for idx, net in enumerate(networks, start=1):
         essid = net["essid"][:25]
@@ -274,12 +296,12 @@ def select_target(networks):
 def get_attack_params():
     """Minta input power dan jumlah paket"""
     clear_screen()
-    print(f"\n  {CYAN}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-    print(f"  {CYAN}{BOLD}║{RESET} {YELLOW}{BOLD}PARAMETER SERANGAN{RESET}              {CYAN}{BOLD}║{RESET}")
-    print(f"  {CYAN}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+    draw_box_top(CYAN)
+    draw_box_title("PARAMETER SERANGAN", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
     
     # Pilih power
-    print(f"  {BOLD}Pilih kekuatan sinyal:{RESET}")
+    print(f"\n  {BOLD}Pilih kekuatan sinyal:{RESET}")
     print(f"  {GREEN}1.{RESET} LEMAH  (jarak dekat, stealth)")
     print(f"  {GREEN}2.{RESET} SEDANG (jarak sedang, balance)")
     print(f"  {GREEN}3.{RESET} KUAT   (jarak jauh, agresif)")
@@ -343,11 +365,11 @@ def main():
         
         # Scan duration
         clear_screen()
-        print(f"\n  {CYAN}{BOLD}╔══════════════════════════════════════════╗{RESET}")
-        print(f"  {CYAN}{BOLD}║{RESET} {YELLOW}{BOLD}SCAN WIFI{RESET}                      {CYAN}{BOLD}║{RESET}")
-        print(f"  {CYAN}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+        draw_box_top(CYAN)
+        draw_box_title("SCAN WIFI", CYAN, YELLOW)
+        draw_box_bottom(CYAN)
         
-        print(f"  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
+        print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
         scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
         
         if scan_input.isdigit() and int(scan_input) > 0:
