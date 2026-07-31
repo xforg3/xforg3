@@ -2,224 +2,178 @@
 """
 Main Menu - Terminal UI
 -----------------------
-Menu utama dengan pilihan untuk menjalankan berbagai tools
+Menu utama dengan pilihan untuk menjalankan berbagai tools MDK4
 """
 
 import sys
 import os
 import shutil
-import subprocess
+import time
 
 # ---------- ANSI ----------
-RED = "\033[91m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-CYAN = "\033[96m"
-MAGENTA = "\033[95m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
+CLEAR = "\033[2J\033[H"
 
-ASCII_ART = r"""
-$$\       $$\ $$$$$$$\  $$\   $$\ $$\   $$\       $$\       $$\ $$$$$$$$\ $$\   $$\ $$\   $$\ 
-$$$\     $$$ |$$  __$$\ $$ | $$  |$$ |  $$ |      $$$\     $$$ |$$  _____|$$$\  $$ |$$ |  $$ |
-$$$$\   $$$$ |$$ |  $$ |$$ |$$  / $$ |  $$ |      $$$$\   $$$$ |$$ |      $$$$\ $$ |$$ |  $$ |
-$$\$$\$$ $$ |$$ |  $$ |$$$$$  /  $$$$$$$$ |      $$\$$\$$ $$ |$$$$$\    $$ $$\$$ |$$ |  $$ |
-$$ \$$$  $$ |$$ |  $$ |$$  $$<   \_____$$ |      $$ \$$$  $$ |$$  __|   $$ \$$$$ |$$ |  $$ |
-$$ | \$  /$$ |$$ |  $$ |$$ |\$$\        $$ |      $$ | \$  /$$ |$$ |      $$ |\$$$ |$$ |  $$ |
-$$ |  \_/  $$ |$$$$$$$  |$$ | \$$\       $$ |      $$ |  \_/  $$ |$$$$$$$$\ $$ | \$$ |\$$$$$$  |
-\__|       \__|\_______/ \__|  \__|      \__|      \__|       \__|\________|\__|  \__| \______/ """
+COLORS = {
+    "green": "\033[92m",
+    "red": "\033[91m",
+    "cyan": "\033[96m",
+    "yellow": "\033[93m",
+    "purple": "\033[95m",
+    "white": "\033[97m",
+    "magenta": "\033[35m",
+}
 
+BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
+
+# ================= Util =================
 
 def get_size():
     return shutil.get_terminal_size(fallback=(80, 24))
 
-
 def clear_screen():
-    sys.stdout.write("\033[2J\033[H")
+    sys.stdout.write(CLEAR)
     sys.stdout.flush()
 
+def draw_box_top():
+    print(f"\n{COLORS['yellow']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
 
-def print_menu():
+def draw_box_bottom():
+    print(f"{COLORS['yellow']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+
+def draw_box_title(title: str):
+    """Cetak baris judul dalam box, padding dihitung otomatis
+    biar sisi kanan box selalu nyambung rapi."""
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"{COLORS['yellow']}{BOLD}║{RESET}"
+        f"{COLORS['cyan']}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{COLORS['yellow']}{BOLD}║{RESET}"
+    )
+
+# ================= Menu MDK4 =================
+
+def mdk4_menu():
+    """Menu utama MDK4 - Rata Kiri"""
     clear_screen()
-    cols, rows = get_size()
 
-    options = [
-        "1. MDK4 DEAUTH",
-        "2. MDK4 BEACON FLOOD",
-        "3. MDK4 AUTH DOS",
-        "4. MALAS, GAK GUNA INI",
-        "5. MDK4 (WEB VERSION) 🚀",
-        "",
-        "0. EXIT"
-    ]
-    
-    col_indent = " " * 6
-    separator = "=" * 112
-    art_lines = ASCII_ART.splitlines()
-    
-    total_lines_len = len(art_lines) + 3 + len(options)
-    start_row = max(1, (rows // 2) - (total_lines_len // 2) - 2)
-    
-    print("\n" * (start_row - 1))
-    
-    for line in art_lines:
-        print(f"{col_indent}{RED}{BOLD}{line}{RESET}")
-        
+    # Header - Rata Kiri
+    draw_box_top()
+    draw_box_title("MDK4 MENU")
+    draw_box_bottom()
+
     print()
-    
-    print(f"{col_indent}{GREEN}{separator}{RESET}")
-    
-    for opt in options:
-        if not opt:
-            print()
-            continue
-            
-        color = CYAN
-        if opt.startswith("0."):
-            color = RED
-        elif "🚀" in opt:
-            color = MAGENTA
-            
-        print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
 
-    print(f"{col_indent}{GREEN}{separator}{RESET}")
-    print("\n")
+    # Menu Options - Rata Kiri
+    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}MDK4 DEAUTH{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}MDK4 BEACON FLOOD{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['green']}MDK4 AUTH DOS{RESET}")
+    print()
+    print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}BACK TO FREQUENCY{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[99]{RESET} {COLORS['red']}EXIT{RESET}")
 
+    print()
+    # Garis pemisah yang menyambung
+    terminal_width = shutil.get_terminal_size().columns
+    line_length = min(terminal_width - 4, 40)  # Max 40 karakter
+    print(f"  {COLORS['green']}{BOLD}{'=' * line_length}{RESET}")
+    print()
+
+    # Input
+    try:
+        choice = input(f"  {COLORS['yellow']}>> option : {RESET}")
+    except (KeyboardInterrupt, EOFError):
+        return "0"
+
+    return choice.strip()
+
+# ================= Eksekusi =================
 
 def launch_deauth():
     """Jalankan MDK4 Deauth (mdk4-deauth.py)"""
     clear_screen()
-    print(f"{CYAN}[*] Launching MDK4 Deauth...{RESET}")
-    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     target_file = os.path.join(script_dir, "mdk4-deauth.py")
     
     if os.path.exists(target_file):
-        print(f"{GREEN}[+] Found: {target_file}{RESET}")
         os.execvp(sys.executable, [sys.executable, target_file])
-        return
-    
-    print(f"{RED}[-] mdk4-deauth.py not found!{RESET}")
-    input("\nPress Enter to continue...")
-    main()
-
+    else:
+        print(f"\n  {COLORS['red']}[✗] mdk4-deauth.py tidak ditemukan: {target_file}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
 def launch_beacon():
     """Jalankan MDK4 Beacon (mdk4-beacon.py)"""
     clear_screen()
-    print(f"{CYAN}[*] Launching MDK4 Beacon...{RESET}")
-    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     target_file = os.path.join(script_dir, "mdk4-beacon.py")
     
     if os.path.exists(target_file):
-        print(f"{GREEN}[+] Found: {target_file}{RESET}")
         os.execvp(sys.executable, [sys.executable, target_file])
-        return
-    
-    print(f"{RED}[-] mdk4-beacon.py not found!{RESET}")
-    input("\nPress Enter to continue...")
-    main()
-
+    else:
+        print(f"\n  {COLORS['red']}[✗] mdk4-beacon.py tidak ditemukan: {target_file}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
 def launch_authdos():
     """Jalankan MDK4 Auth DOS (mdk4-authdos.py)"""
     clear_screen()
-    print(f"{CYAN}[*] Launching MDK4 Auth DOS...{RESET}")
-    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     target_file = os.path.join(script_dir, "mdk4-authdos.py")
     
     if os.path.exists(target_file):
-        print(f"{GREEN}[+] Found: {target_file}{RESET}")
         os.execvp(sys.executable, [sys.executable, target_file])
-        return
+    else:
+        print(f"\n  {COLORS['red']}[✗] mdk4-authdos.py tidak ditemukan: {target_file}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
+
+def return_to_frequency():
+    """Kembali ke frequency.py di parent directory"""
+    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frequency.py")
     
-    print(f"{RED}[-] mdk4-authdos.py not found!{RESET}")
-    input("\nPress Enter to continue...")
-    main()
+    if os.path.exists(script_path):
+        os.execvp(sys.executable, [sys.executable, script_path])
+    else:
+        print(f"\n  {COLORS['red']}[✗] frequency.py tidak ditemukan: {script_path}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
-
-def launch_mdk4_terminal_menu():
-    """Jalankan MDK4 Terminal Menu (mdk4-menu.py) - YANG INI ADALAH DIRINYA SENDIRI"""
+def exit_program():
     clear_screen()
-    print(f"{YELLOW}[!] You are already in the terminal menu!{RESET}")
-    input("\nPress Enter to continue...")
-    main()
+    sys.exit(0)
 
+# ================= Main App =================
 
-def launch_mdk4_web():
-    """Jalankan MDK4 Web Version - langsung cd ke mdk4-website dan sudo python3 start.py"""
-    clear_screen()
-    print(f"{MAGENTA}{BOLD}╔══════════════════════════════════════════════════════════════╗{RESET}")
-    print(f"{MAGENTA}{BOLD}║              MDK4 WEB VERSION - STARTING...                  ║{RESET}")
-    print(f"{MAGENTA}{BOLD}╚══════════════════════════════════════════════════════════════╝{RESET}")
-    print()
-    
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    mdk4_web_dir = os.path.join(script_dir, "mdk4-website")
-    
-    if not os.path.exists(mdk4_web_dir):
-        print(f"{RED}[-] Folder mdk4-website not found at: {mdk4_web_dir}{RESET}")
-        print(f"{YELLOW}[!] Make sure folder mdk4-website exists{RESET}")
-        input("\nPress Enter to continue...")
-        main()
-        return
-    
-    start_py = os.path.join(mdk4_web_dir, "start.py")
-    if not os.path.exists(start_py):
-        print(f"{RED}[-] start.py not found at: {start_py}{RESET}")
-        print(f"{YELLOW}[!] Make sure start.py exists in mdk4-website folder{RESET}")
-        input("\nPress Enter to continue...")
-        main()
-        return
-    
-    print(f"{GREEN}[+] Found: {mdk4_web_dir}{RESET}")
-    print(f"{GREEN}[+] Found: {start_py}{RESET}")
-    print()
-    print(f"{CYAN}[*] Changing directory to: {mdk4_web_dir}{RESET}")
-    print(f"{CYAN}[*] Running: sudo python3 start.py{RESET}")
-    print()
-    print(f"{YELLOW}[!] Press Ctrl+C to stop server{RESET}\n")
-    print(f"{GREEN}{'='*70}{RESET}\n")
-    
-    try:
-        os.chdir(mdk4_web_dir)
-        os.execvp("sudo", ["sudo", "python3", "start.py"])
-    except Exception as e:
-        print(f"{RED}[-] Failed to run: {e}{RESET}")
-        input("\nPress Enter to continue...")
-        main()
+def app_loop():
+    """Loop utama aplikasi"""
+    while True:
+        choice = mdk4_menu()
 
+        if choice == "1":  # MDK4 DEAUTH
+            launch_deauth()
+        elif choice == "2":  # MDK4 BEACON FLOOD
+            launch_beacon()
+        elif choice == "3":  # MDK4 AUTH DOS
+            launch_authdos()
+        elif choice == "0":  # BACK TO FREQUENCY
+            return_to_frequency()
+            return
+        elif choice == "99":  # EXIT
+            exit_program()
+        else:
+            print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
+            time.sleep(1)
 
 def main():
-    while True:
-        print_menu()
-        
-        try:
-            choice = input(f"      {BOLD}{YELLOW}>> option : {RESET}")
-        except (KeyboardInterrupt, EOFError):
-            choice = "0"
-
-        if choice.strip() == "1":
-            launch_deauth()
-        elif choice.strip() == "2":
-            launch_beacon()
-        elif choice.strip() == "3":
-            launch_authdos()
-        elif choice.strip() == "4":
-            launch_mdk4_terminal_menu()
-        elif choice.strip() == "5":
-            launch_mdk4_web()
-        elif choice.strip() == "0":
-            clear_screen()
-            print(f"{GREEN}Goodbye!{RESET}")
-            sys.exit(0)
-        else:
-            print(f"      {RED}{BOLD}Pilihan tidak valid!{RESET}")
-            import time
-            time.sleep(0.6)
-
+    try:
+        app_loop()
+    except KeyboardInterrupt:
+        clear_screen()
+        print(f"\n  {COLORS['yellow']}[!] Program dihentikan oleh user{RESET}")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
