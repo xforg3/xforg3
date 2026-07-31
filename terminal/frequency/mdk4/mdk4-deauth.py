@@ -365,15 +365,24 @@ def select_targets(networks):
 
     print(f"\n  {YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7{RESET}\n")
 
-    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'PWR':<5} {'SINYAL':<8} {'BSSID'}"
+    # Header dengan lebar fixed
+    no_width = 4
+    essid_width = 22
+    ch_width = 4
+    pwr_width = 6
+    signal_width = 8
+    bssid_width = 17
+    
+    header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
     print(f"  {header}")
-    print(f"  {YELLOW}{'=' * 75}{RESET}")
+    print(f"  {YELLOW}{'=' * (no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 5)}{RESET}")
     
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:20]
+        essid = net["essid"][:essid_width]
         power = net.get("power", "N/A")
         status, status_color = get_power_status(power)
         
+        # Format power dengan warna
         if power != "N/A":
             try:
                 pwr = int(power)
@@ -385,15 +394,16 @@ def select_targets(networks):
                     pwr_color = YELLOW
                 else:
                     pwr_color = RED
-                power_display = f"{pwr_color}{power}{RESET}"
+                power_display = f"{pwr_color}{power:>3}{RESET}"
             except ValueError:
-                power_display = f"{GRAY}{power}{RESET}"
+                power_display = f"{GRAY}{power:>3}{RESET}"
         else:
-            power_display = f"{GRAY}{power}{RESET}"
+            power_display = f"{GRAY}{power:>3}{RESET}"
             
         status_display = f"{status_color}{status}{RESET}"
-            
-        print(f"  {GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {power_display} {status_display:<8} {net['bssid']}")
+        
+        # Print dengan lebar fixed
+        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display:<{signal_width}} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
@@ -561,15 +571,13 @@ def run_deauth_all_mdk4(monitor_iface):
 
 def back_to_mdk4_menu():
     """Kembali ke mdk4-menu.py di parent directory"""
-    # Path: mdk4/mdk4-menu.py
     script_dir = os.path.dirname(os.path.abspath(__file__))
     menu_path = os.path.join(script_dir, "mdk4-menu.py")
     
-    # Coba beberapa kemungkinan path
     possible_paths = [
-        menu_path,  # mdk4/mdk4-menu.py
-        os.path.join(script_dir, "..", "mdk4-menu.py"),  # frequency/mdk4-menu.py
-        os.path.join(script_dir, "..", "..", "mdk4-menu.py"),  # terminal/mdk4-menu.py
+        menu_path,
+        os.path.join(script_dir, "..", "mdk4-menu.py"),
+        os.path.join(script_dir, "..", "..", "mdk4-menu.py"),
     ]
     
     for path in possible_paths:
