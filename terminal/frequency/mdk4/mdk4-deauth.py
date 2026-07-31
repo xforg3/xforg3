@@ -181,7 +181,7 @@ def start_monitor_mode(adapter):
     return monitor_iface
 
 def scan_networks(adapter, duration=10):
-    loading_with_text("Scanning WiFi networks...", 2)
+    loading_with_text("Scanning WiFi networks...", 1)
     
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
@@ -191,32 +191,40 @@ def scan_networks(adapter, duration=10):
         stderr=subprocess.DEVNULL,
     )
 
+    # Tampilkan progress scan dengan timer
     chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
     start_time = time.time()
+    
+    # Loop selama proses scan berjalan atau sampai durasi habis
     while proc.poll() is None:
         elapsed = int(time.time() - start_time)
         remaining = max(0, duration - elapsed)
-        for i in range(5):
+        
+        if remaining <= 0:
+            break
+            
+        for i in range(len(chars)):
+            if proc.poll() is not None or elapsed >= duration:
+                break
             sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}Scanning... {remaining}s remaining{RESET}")
             sys.stdout.flush()
             time.sleep(0.1)
-            if proc.poll() is not None:
-                break
+            elapsed = int(time.time() - start_time)
+            remaining = max(0, duration - elapsed)
     
     sys.stdout.write("\r" + " " * 60 + "\r")
     sys.stdout.flush()
 
-    try:
-        time.sleep(duration)
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
+    # Pastikan proses berhenti
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
+    # Baca hasil scan
     networks = []
     seen = set()
     for csv_path in sorted(glob.glob(prefix + "-*.csv")):
@@ -236,6 +244,7 @@ def scan_networks(adapter, duration=10):
                 seen.add(key)
                 networks.append({"bssid": bssid, "channel": channel, "essid": essid})
 
+    # Bersihkan file temporary
     for path in glob.glob(prefix + "-*.csv"):
         try:
             os.remove(path)
@@ -373,7 +382,7 @@ def select_targets(networks):
             continue
 
 def select_attack_mode():
-    clear_screen()  # <--- INI YANG DITAMBAHKAN
+    clear_screen()
     draw_box_top(CYAN)
     draw_box_title("MODE SERANGAN", CYAN, YELLOW)
     draw_box_bottom(CYAN)
