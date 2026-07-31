@@ -380,14 +380,15 @@ def select_target(networks):
     draw_box_title("PILIH TARGET", CYAN, YELLOW)
     draw_box_bottom(CYAN)
 
-    # Header dengan lebar fixed - RAPI!
+    # Lebar kolom yang lebih rapi
     no_width = 4
     essid_width = 22
     ch_width = 4
     pwr_width = 6
-    signal_width = 9
+    signal_width = 8  # Dikurangi dari 9 ke 8
     bssid_width = 17
     
+    # Header
     header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
     print(f"\n  {header}")
     print(f"  {YELLOW}{'=' * (no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 5)}{RESET}")
@@ -414,10 +415,11 @@ def select_target(networks):
         else:
             power_display = f"{GRAY}{power:>3}{RESET}"
             
-        status_display = f"{status_color}{status}{RESET}"
+        # Format status dengan lebar tetap dan padding yang konsisten
+        status_display = f"{status_color}{status:<{signal_width}}{RESET}"
         
-        # Print dengan lebar fixed dan spasi yang konsisten
-        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display:<{signal_width}} {net['bssid']}")
+        # Baris data dengan format yang rapi
+        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
