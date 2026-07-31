@@ -374,7 +374,6 @@ def select_targets(networks):
         power = net.get("power", "N/A")
         status, status_color = get_power_status(power)
         
-        # Warna untuk power
         if power != "N/A":
             try:
                 pwr = int(power)
@@ -448,7 +447,7 @@ def select_attack_mode():
 def prompt_keyboard_interrupt_action():
     print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
     print(f"  {GREEN}1.{RESET} Pilih target lagi")
-    print(f"  {GREEN}2.{RESET} Kembali ke menu")
+    print(f"  {GREEN}2.{RESET} Kembali ke menu MDK4")
     print(f"  {GREEN}3.{RESET} Keluar")
 
     while True:
@@ -560,15 +559,27 @@ def run_deauth_all_mdk4(monitor_iface):
         print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
         time.sleep(0.5)
 
-def back_to_menu():
-    menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
-    if not os.path.exists(menu_path):
-        menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "deauth-menu.py"))
-    if os.path.exists(menu_path):
-        os.execvp(sys.executable, [sys.executable, menu_path])
-    else:
-        print(f"\n  {RED}[✗] deauth-menu.py tidak ditemukan.{RESET}")
-        input("\n  Tekan Enter untuk kembali...")
+def back_to_mdk4_menu():
+    """Kembali ke mdk4-menu.py di parent directory"""
+    # Path: mdk4/mdk4-menu.py
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    menu_path = os.path.join(script_dir, "mdk4-menu.py")
+    
+    # Coba beberapa kemungkinan path
+    possible_paths = [
+        menu_path,  # mdk4/mdk4-menu.py
+        os.path.join(script_dir, "..", "mdk4-menu.py"),  # frequency/mdk4-menu.py
+        os.path.join(script_dir, "..", "..", "mdk4-menu.py"),  # terminal/mdk4-menu.py
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            os.execvp(sys.executable, [sys.executable, path])
+            return
+    
+    print(f"\n  {RED}[✗] mdk4-menu.py tidak ditemukan.{RESET}")
+    print(f"  {YELLOW}Coba cek lokasi: {menu_path}{RESET}")
+    input("\n  Tekan Enter untuk kembali...")
 
 # ================= MAIN =================
 
@@ -604,6 +615,7 @@ def main():
                 if targets is None or not targets:
                     print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
                     stop_monitor_mode(monitor_iface)
+                    back_to_mdk4_menu()
                     return
                 
                 run_deauth_mdk4(targets, monitor_iface)
@@ -611,7 +623,7 @@ def main():
                 print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
                 input()
                 stop_monitor_mode(monitor_iface)
-                back_to_menu()
+                back_to_mdk4_menu()
                 break
             else:
                 run_deauth_all_mdk4(monitor_iface)
@@ -619,7 +631,7 @@ def main():
                 print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
                 input()
                 stop_monitor_mode(monitor_iface)
-                back_to_menu()
+                back_to_mdk4_menu()
                 break
 
         except KeyboardInterrupt:
@@ -633,7 +645,7 @@ def main():
             elif action == "menu":
                 if monitor_iface:
                     stop_monitor_mode(monitor_iface)
-                back_to_menu()
+                back_to_mdk4_menu()
             elif action == "exit":
                 if monitor_iface:
                     stop_monitor_mode(monitor_iface)
