@@ -389,11 +389,20 @@ def select_target(networks):
     draw_box_title("PILIH TARGET", CYAN, YELLOW)
     draw_box_bottom(CYAN)
 
-    print(f"\n  {'No':<4} {'ESSID':<22} {'CH':<4} {'PWR':<6} {'SINYAL':<8} {'BSSID'}")
-    print(f"  {YELLOW}{'=' * 65}{RESET}")
+    # Header dengan lebar fixed - RAPI!
+    no_width = 4
+    essid_width = 22
+    ch_width = 4
+    pwr_width = 6
+    signal_width = 8
+    bssid_width = 17
+    
+    header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
+    print(f"\n  {header}")
+    print(f"  {YELLOW}{'=' * (no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 5)}{RESET}")
     
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:22]
+        essid = net["essid"][:essid_width]
         power = net.get("power", "N/A")
         status, status_color = get_power_status(power)
         
@@ -416,7 +425,7 @@ def select_target(networks):
             
         status_display = f"{status_color}{status}{RESET}"
         
-        print(f"  {GREEN}{idx:<4}{RESET} {essid:<22} {net['channel']:<4} {power_display}  {status_display:<8} {net['bssid']}")
+        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display:<{signal_width}} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
