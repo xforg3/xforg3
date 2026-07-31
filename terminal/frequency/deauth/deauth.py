@@ -88,6 +88,32 @@ def loading_with_text(text, duration=2):
     sys.stdout.write("\r" + " " * 60 + "\r")
     sys.stdout.flush()
 
+def glitch_print(text, color=GREEN, cycles=8):
+    """Animasi glitch sederhana"""
+    chars = "!@#$%^&*<>/\\|~?"
+    n = len(text)
+    revealed = [False] * n
+    
+    for c in range(cycles):
+        display = []
+        for i, ch in enumerate(text):
+            if ch == " ":
+                display.append(" ")
+                continue
+            if revealed[i]:
+                display.append(ch)
+            else:
+                if random.random() < (c / cycles):
+                    revealed[i] = True
+                    display.append(ch)
+                else:
+                    display.append(random.choice(chars))
+        sys.stdout.write(f"\r  {color}{''.join(display)}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.04)
+    
+    print(f"\r  {color}{text}{RESET}")
+
 def get_power_status(power):
     """Mengembalikan status sinyal berdasarkan nilai power"""
     if power == "N/A":
@@ -348,6 +374,8 @@ def select_interface():
         choice = input(f"\n  {YELLOW}>> nomor : {RESET}").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
             selected = ifaces[int(choice) - 1]
+            glitch_print(f"LOCKED: {selected}", CYAN)
+            time.sleep(0.3)
             return selected
         print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
 
@@ -396,7 +424,8 @@ def select_target(networks):
             selected = networks[int(choice) - 1]
             power = selected.get("power", "N/A")
             status, _ = get_power_status(power)
-            print(f"\n  {GREEN}[✓] Target: {selected['essid']} | PWR {power} | {status}{RESET}")
+            glitch_print(f"TARGET LOCKED: {selected['essid']} | PWR {power} | {status}", GREEN)
+            time.sleep(0.3)
             return selected
         print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
 
