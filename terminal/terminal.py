@@ -21,23 +21,8 @@ COLORS = {
     "cyan": "\033[96m",
     "yellow": "\033[93m",
     "purple": "\033[95m",
+    "white": "\033[97m",
 }
-
-ASCII_ART = r"""
-   ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗     
-   ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║██║████╗  ██║██╔══██╗██║     
-      ██║   █████╗  ██████╔╝██╔████╔██║██║██╔██╗ ██║███████║██║     
-      ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║██║██║╚██╗██║██╔══██║██║     
-      ██║   ███████╗██║  ██║██║ ╚═╝ ██║██║██║ ╚████║██║  ██║███████╗
-      ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝╚══════╝
-                                                                      
-   ███╗   ███╗███████╗███╗   ██╗██╗   ██╗                          
-   ████╗ ████║██╔════╝████╗  ██║██║   ██║                          
-   ██╔████╔██║█████╗  ██╔██╗ ██║██║   ██║                          
-   ██║╚██╔╝██║██╔══╝  ██║╚██╗██║██║   ██║                          
-   ██║ ╚═╝ ██║███████╗██║ ╚████║╚██████╔╝                          
-   ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝ ╚═════╝                           
-"""
 
 # ================= Util =================
 
@@ -48,78 +33,60 @@ def clear_screen():
     sys.stdout.write(CLEAR)
     sys.stdout.flush()
 
-def print_centered(text, color=RESET, bold=False):
-    """Mencetak teks di tengah layar"""
-    width = get_size().columns
-    style = BOLD if bold else ""
-    print(f"{style}{color}{text.center(width)}{RESET}")
-
 # ================= Menu Terminal =================
 
 def terminal_menu():
-    """Menu utama terminal dengan 2 opsi"""
+    """Menu utama terminal dengan 2 opsi - Rata Kiri"""
     clear_screen()
-    width = get_size().columns
     
-    # Header
-    print("\n" * 2)
-    print_centered("═" * 60, COLORS["green"])
-    print_centered(" TERMINAL MENU ", COLORS["yellow"], True)
-    print_centered("═" * 60, COLORS["green"])
-    
-    # ASCII Art
-    for line in ASCII_ART.splitlines():
-        if line.strip():
-            print_centered(line, COLORS["purple"])
+    # Header - Rata Kiri
+    print(f"\n{COLORS['red']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
+    print(f"{COLORS['red']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}XFORG3 TERMINAL MENU{RESET}             {COLORS['red']}{BOLD}║{RESET}")
+    print(f"{COLORS['red']}{BOLD}╚══════════════════════════════════════════╝{RESET}")
     
     print()
-    print_centered("═" * 60, COLORS["green"])
     
-    # Menu Options
-    print_centered("", COLORS["cyan"])
-    print_centered(" 1. FREQUENCY ", COLORS["cyan"], True)
-    print_centered(" 2. SOSIALS ", COLORS["cyan"], True)
-    print_centered("", COLORS["cyan"])
-    print_centered(" 0. BACK ", COLORS["red"], True)
+    # Menu Options - Rata Kiri
+    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}FREQUENCY{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}SOSIALS{RESET}")
+    print()
+    print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['red']}BACK{RESET}")
     
-    print_centered("═" * 60, COLORS["green"])
+    print()
+    print(f"  {COLORS['yellow']}{BOLD}═{RESET}" * 40)
     print()
     
     # Input
     try:
-        choice = input(f"{COLORS['yellow']}>> pilihan : {RESET}")
+        choice = input(f"  {COLORS['yellow']}pilihan : {RESET}")
     except (KeyboardInterrupt, EOFError):
-        return "0"
+        return "3"
     
     return choice.strip()
 
 # ================= Menu Sosials =================
 
 def sosials_menu():
-    """Menu untuk SOSIALS"""
+    """Menu untuk SOSIALS - Rata Kiri"""
     clear_screen()
-    width = get_size().columns
     
-    print("\n" * 3)
-    print_centered("═" * 50, COLORS["green"])
-    print_centered(" SOSIALS MENU ", COLORS["yellow"], True)
-    print_centered("═" * 50, COLORS["green"])
+    print(f"\n{COLORS['red']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
+    print(f"{COLORS['red']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}SOSIALS MENU{RESET}                     {COLORS['red']}{BOLD}║{RESET}")
+    print(f"{COLORS['red']}{BOLD}╚══════════════════════════════════════════╝{RESET}")
     
-    print_centered("", COLORS["cyan"])
-    print_centered(" 🌐 SOSIALS MODULE ", COLORS["cyan"], True)
-    print_centered("", COLORS["cyan"])
+    print()
+    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}Social Media Scanner{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}Social Media Analysis{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['green']}Export Data{RESET}")
+    print()
+    print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}Back{RESET}")
     
-    print_centered(" [1] Social Media Scanner ", COLORS["green"])
-    print_centered(" [2] Social Media Analysis ", COLORS["green"])
-    print_centered(" [3] Export Data ", COLORS["green"])
-    print_centered("", COLORS["cyan"])
-    print_centered(" [0] Back ", COLORS["red"], True)
-    
-    print_centered("═" * 50, COLORS["green"])
+    print()
+    print(f"  {COLORS['yellow']}{BOLD}═{RESET}" * 40)
     print()
     
     try:
-        choice = input(f"{COLORS['yellow']}>> pilihan : {RESET}")
+        choice = input(f"  {COLORS['yellow']}pilihan : {RESET}")
     except (KeyboardInterrupt, EOFError):
         return "0"
     
@@ -132,14 +99,14 @@ def run_frequency_script():
     script_path = os.path.join(os.path.dirname(__file__), "frequency", "frequency.py")
     
     if os.path.exists(script_path):
-        print(f"\n{COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
+        print(f"\n  {COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
         time.sleep(1)
         os.execvp(sys.executable, [sys.executable, script_path])
         return True
     else:
-        print(f"\n{COLORS['red']}[✗] Script tidak ditemukan: {script_path}{RESET}")
-        print(f"{COLORS['yellow']}Pastikan file berada di: {script_path}{RESET}")
-        input("\nTekan Enter untuk kembali...")
+        print(f"\n  {COLORS['red']}[✗] Script tidak ditemukan: {script_path}{RESET}")
+        print(f"  {COLORS['yellow']}Pastikan file berada di: {script_path}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
         return False
 
 def run_sosials_script():
@@ -147,14 +114,14 @@ def run_sosials_script():
     script_path = os.path.join(os.path.dirname(__file__), "sosials", "sosials.py")
     
     if os.path.exists(script_path):
-        print(f"\n{COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
+        print(f"\n  {COLORS['green']}[✓] Menjalankan: {script_path}{RESET}")
         time.sleep(1)
         os.execvp(sys.executable, [sys.executable, script_path])
         return True
     else:
-        print(f"\n{COLORS['red']}[✗] Script tidak ditemukan: {script_path}{RESET}")
-        print(f"{COLORS['yellow']}Pastikan file berada di: {script_path}{RESET}")
-        input("\nTekan Enter untuk kembali...")
+        print(f"\n  {COLORS['red']}[✗] Script tidak ditemukan: {script_path}{RESET}")
+        print(f"  {COLORS['yellow']}Pastikan file berada di: {script_path}{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
         return False
 
 # ================= Main App =================
@@ -166,11 +133,10 @@ def app_loop():
         
         if choice == "1":  # FREQUENCY - langsung jalankan script
             clear_screen()
-            print(f"\n{COLORS['green']}[+] Starting FREQUENCY...{RESET}\n")
+            print(f"\n  {COLORS['green']}[+] Starting FREQUENCY...{RESET}\n")
             time.sleep(1)
             if run_frequency_script():
                 return  # Script akan menggantikan proses
-            # Jika return False, lanjutkan loop
                     
         elif choice == "2":  # SOSIALS
             while True:
@@ -180,33 +146,32 @@ def app_loop():
                     break
                 elif sos_choice == "1":
                     clear_screen()
-                    print(f"\n{COLORS['green']}[+] Starting Social Media Scanner...{RESET}\n")
+                    print(f"\n  {COLORS['green']}[+] Starting Social Media Scanner...{RESET}\n")
                     time.sleep(1)
                     if run_sosials_script():
-                        return  # Script akan menggantikan proses
-                    # Jika return False, lanjutkan loop
+                        return
                 elif sos_choice == "2":
                     clear_screen()
-                    print(f"\n{COLORS['green']}[+] Starting Social Media Analysis...{RESET}\n")
+                    print(f"\n  {COLORS['green']}[+] Starting Social Media Analysis...{RESET}\n")
                     time.sleep(1)
-                    input("\nTekan Enter untuk kembali...")
+                    input("\n  Tekan Enter untuk kembali...")
                 elif sos_choice == "3":
                     clear_screen()
-                    print(f"\n{COLORS['green']}[+] Exporting Data...{RESET}\n")
+                    print(f"\n  {COLORS['green']}[+] Exporting Data...{RESET}\n")
                     time.sleep(1)
-                    input("\nTekan Enter untuk kembali...")
+                    input("\n  Tekan Enter untuk kembali...")
                 else:
-                    print(f"\n{COLORS['red']}[!] Pilihan tidak valid!{RESET}")
+                    print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
                     time.sleep(1)
                     
-        elif choice == "0":  # BACK
+        elif choice == "3":  # BACK
             clear_screen()
-            print(f"\n{COLORS['green']}[+] Kembali ke menu utama...{RESET}")
+            print(f"\n  {COLORS['green']}[+] Kembali ke menu utama...{RESET}")
             time.sleep(0.5)
             break
             
         else:
-            print(f"\n{COLORS['red']}[!] Pilihan tidak valid!{RESET}")
+            print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
             time.sleep(1)
 
 def main():
@@ -214,7 +179,7 @@ def main():
         app_loop()
     except KeyboardInterrupt:
         clear_screen()
-        print(f"\n{COLORS['yellow']}[!] Program dihentikan oleh user{RESET}")
+        print(f"\n  {COLORS['yellow']}[!] Program dihentikan oleh user{RESET}")
         sys.exit(0)
 
 if __name__ == "__main__":
