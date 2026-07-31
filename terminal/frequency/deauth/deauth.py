@@ -394,7 +394,7 @@ def select_target(networks):
     essid_width = 22
     ch_width = 4
     pwr_width = 6
-    signal_width = 8
+    signal_width = 9
     bssid_width = 17
     
     header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
@@ -425,6 +425,7 @@ def select_target(networks):
             
         status_display = f"{status_color}{status}{RESET}"
         
+        # Print dengan lebar fixed dan spasi yang konsisten
         print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display:<{signal_width}} {net['bssid']}")
 
     while True:
