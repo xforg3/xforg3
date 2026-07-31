@@ -99,41 +99,21 @@ def pastikan_root():
 # ================= BETTERCAP FUNCTIONS =================
 
 def jalankan_bettercap_otomatis():
-    """Menjalankan net.probe on dengan animasi LOADING..."""
+    """Menjalankan net.probe on dengan loading sederhana"""
     devices = []
     bettercap_cmds = "net.probe on; sleep 3; net.show; quit"
     cmd = ["bettercap", "-silent", "-eval", bettercap_cmds]
     
-    # Tampilkan loading
-    loading("Memulai Bettercap net.probe...", 1)
+    loading("Scanning network...", 2)
     
     try:
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
-        base_text = "SCANNING NETWORK"
-        dots = ""
-        counter = 0
-        
-        # Loop animasi loading selama Bettercap berjalan
+        # Tunggu proses selesai dengan animasi sederhana
         while process.poll() is None:
-            counter += 1
-            if counter % 5 == 0:
-                dots = "." * ((counter // 5) % 4)
-            
-            glitched_loading = []
-            full_string = f"  {base_text}{dots}"
-            
-            for char in full_string:
-                if char in [" ", ">"]:
-                    glitched_loading.append(char)
-                elif random.random() < 0.15:
-                    glitched_loading.append(random.choice(GLITCH_CHARS))
-                else:
-                    glitched_loading.append(char)
-                    
-            sys.stdout.write(f"\r{COLORS['cyan']}{''.join(glitched_loading)}{RESET}   ")
+            sys.stdout.write(f"\r  {COLORS['cyan']}Scanning network...{RESET}")
             sys.stdout.flush()
-            time.sleep(0.08)
+            time.sleep(0.1)
             
         output, _ = process.communicate()
 
@@ -300,9 +280,6 @@ def display_targets(live_devices):
     print(f"  {COLORS['cyan']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}TARGET LIST{RESET}                      {COLORS['cyan']}{BOLD}║{RESET}")
     print(f"  {COLORS['cyan']}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
     
-    print_glitch_line(">> [SYS] NETWORK SCAN COMPLETE.", COLORS["cyan"])
-    print_glitch_line(">> [EXEC] net.show (Displaying discovered targets)", COLORS["bright_green"])
-    
     print("\n" + "  " + "-" * 61)
     header = f"{'NO':<5}{'IP ADDRESS':<18}{'MAC ADDRESS':<20}{'VENDOR'}"
     print(f"  {BOLD}{header}{RESET}")
@@ -310,7 +287,7 @@ def display_targets(live_devices):
     
     for i, dev in enumerate(live_devices, start=1):
         line = f"{i:<5}{dev['ip']:<18}{dev['mac']:<20}{dev['vendor']}"
-        print_glitch_line("  " + line, COLORS["green"], cycles=4)
+        print(f"  {COLORS['green']}{line}{RESET}")
         
     print("  " + "-" * 61)
     all_no = len(live_devices) + 1
@@ -329,13 +306,10 @@ def display_targets(live_devices):
 def run_simulation():
     pastikan_root()
 
-    # Initial scan
+    # Initial scan - Tampilkan box tanpa text glitch
     print(f"\n  {COLORS['cyan']}{BOLD}╔══════════════════════════════════════════╗{RESET}")
     print(f"  {COLORS['cyan']}{BOLD}║{RESET} {COLORS['yellow']}{BOLD}BETTERCAP BAN{RESET}                  {COLORS['cyan']}{BOLD}║{RESET}")
     print(f"  {COLORS['cyan']}{BOLD}╚══════════════════════════════════════════╝{RESET}\n")
-    
-    print_glitch_line(">> [SYS] STARTING AUTOMATED BETTERCAP INSTANCE...", COLORS["cyan"])
-    print_glitch_line(">> [EXEC] net.probe on (Scanning local area network...)", COLORS["bright_green"])
     
     live_devices = jalankan_bettercap_otomatis()
     
@@ -351,7 +325,6 @@ def run_simulation():
         # ===== FITUR REFRESH =====
         if choice.lower() == "r":
             print(f"\n  {COLORS['cyan']}[*] Me-refresh scan...{RESET}")
-            time.sleep(0.5)
             
             # Scan ulang
             live_devices = jalankan_bettercap_otomatis()
