@@ -56,7 +56,8 @@ def main_menu():
     _, height = get_size()
 
     options = [
-        "1. FREQUENCY",
+        "1. TERMINAL",
+        "2. WEBSITE",
         "",
         "0. EXIT",
         "99. REGULAR",
@@ -93,6 +94,8 @@ def main_menu():
         color = COLORS["cyan"]
         if opt in {"0. EXIT", "99. REGULAR"}:
             color = COLORS["red"]
+        elif "TERMINAL" in opt or "WEBSITE" in opt:
+            color = COLORS["yellow"]
             
         print(f"{col_indent}{color}{BOLD}{opt}{RESET}")
 
@@ -115,24 +118,25 @@ def main_menu():
 def app_loop():
     while True:
         choice = main_menu()
-        if choice == "1":
+        
+        if choice == "1":  # TERMINAL
             clear_screen()
-            menu_path = os.path.join(os.path.dirname(__file__), "frequency", "frequency.py")
-            if not os.path.exists(menu_path):
-                fallback_path = os.path.join(os.path.dirname(__file__), "frequency", "bettercap", "bettercap-menu.py")
-                if os.path.exists(fallback_path):
-                    menu_path = fallback_path
-            
-            if os.path.exists(menu_path):
-                os.execvp(sys.executable, [sys.executable, menu_path])
+            terminal_path = os.path.join(os.path.dirname(__file__), "terminal", "terminal.py")
+            if os.path.exists(terminal_path):
+                os.execvp(sys.executable, [sys.executable, terminal_path])
             else:
-                print(f"\n{COLORS['red']}[!] Script tidak ditemukan: {menu_path}{RESET}")
+                print(f"\n{COLORS['red']}[!] Terminal script tidak ditemukan: {terminal_path}{RESET}")
                 input("\nTekan Enter untuk kembali...")
                 
-        elif choice in {"2", "3"}:
-            # Tempat pemicu script/fungsi eksternal
-            pass
-            
+        elif choice == "2":  # WEBSITE
+            clear_screen()
+            website_path = os.path.join(os.path.dirname(__file__), "website", "website.py")
+            if os.path.exists(website_path):
+                os.execvp(sys.executable, [sys.executable, website_path])
+            else:
+                print(f"\n{COLORS['red']}[!] Website script tidak ditemukan: {website_path}{RESET}")
+                input("\nTekan Enter untuk kembali...")
+                
         elif choice == "0":
             clear_screen()
             break
