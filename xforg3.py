@@ -23,8 +23,6 @@ COLORS = {
     "yellow": "\033[93m",
     "purple": "\033[95m",
     "white": "\033[97m",
-    "blue": "\033[94m",
-    "magenta": "\033[35m",
 }
 
 BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
@@ -39,10 +37,10 @@ def clear_screen():
     sys.stdout.flush()
 
 def draw_box_top():
-    print(f"\n{COLORS['blue']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+    print(f"\n{COLORS['red']}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
 
 def draw_box_bottom():
-    print(f"{COLORS['blue']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+    print(f"{COLORS['red']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
 def draw_box_title(title: str):
     """Cetak baris judul dalam box, padding dihitung otomatis
@@ -53,10 +51,10 @@ def draw_box_title(title: str):
         inner = inner[:BOX_WIDTH]
         pad = 0
     print(
-        f"{COLORS['blue']}{BOLD}║{RESET}"
-        f"{COLORS['magenta']}{BOLD}{inner}{RESET}"
+        f"{COLORS['red']}{BOLD}║{RESET}"
+        f"{COLORS['yellow']}{BOLD}{inner}{RESET}"
         f"{' ' * pad}"
-        f"{COLORS['blue']}{BOLD}║{RESET}"
+        f"{COLORS['red']}{BOLD}║{RESET}"
     )
 
 # ================= Menu Utama =================
@@ -73,20 +71,21 @@ def main_menu():
     print()
 
     # Menu Options - Rata Kiri
-    print(f"  {COLORS['yellow']}{BOLD}[1]{RESET} {COLORS['cyan']}TERMINAL{RESET}")
-    print(f"  {COLORS['yellow']}{BOLD}[2]{RESET} {COLORS['cyan']}WEBSITE{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}TERMINAL{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}WEBSITE{RESET}")
     print()
-    print(f"  {COLORS['yellow']}{BOLD}[0]{RESET} {COLORS['red']}EXIT{RESET}")
-   
+    print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}EXIT{RESET}")
+    print(f"  {COLORS['cyan']}{BOLD}[99]{RESET} {COLORS['red']}REGULAR{RESET}")
+
     print()
     # Garis pemisah yang menyambung
     terminal_width = shutil.get_terminal_size().columns
     line_length = min(terminal_width - 4, 40)  # Max 40 karakter
-    print(f"  {COLORS['cyan']}{BOLD}{'=' * line_length}{RESET}")
+    print(f"  {COLORS['yellow']}{BOLD}{'=' * line_length}{RESET}")
     print()
 
     try:
-        choice = input(f"  {COLORS['yellow']}{BOLD}>> option : {RESET}")
+        choice = input(f"  {COLORS['yellow']}>> option : {RESET}")
     except (KeyboardInterrupt, EOFError):
         return "0"
 
@@ -122,6 +121,12 @@ def app_loop():
             clear_screen()
             break
 
+        elif choice == "99":
+            clear_screen()
+            # Menjalankan perintah eksternal standar bawaan dari kode lama kamu
+            os.system("ls")
+            sys.exit(0)
+
         else:
             print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
             time.sleep(0.6)
@@ -132,3 +137,6 @@ def main():
     except KeyboardInterrupt:
         clear_screen()
         sys.exit(0)
+
+if __name__ == "__main__":
+    main()

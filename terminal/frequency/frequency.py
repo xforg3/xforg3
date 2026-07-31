@@ -190,3 +190,6 @@ def main():
         sys.stdout.write(SHOW_CURSOR)
         sys.stdout.flush()
 
+
+if __name__ == "__main__":
+    main()
