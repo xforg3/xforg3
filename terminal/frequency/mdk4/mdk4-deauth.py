@@ -365,32 +365,11 @@ def select_targets(networks):
 
     print(f"\n  {YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7{RESET}\n")
 
-    # Lebar kolom yang konsisten
-    no_width = 4
-    essid_width = 25
-    ch_width = 5
-    pwr_width = 6
-    signal_width = 8
-    bssid_width = 20
-    
-    # Garis pemisah atas
-    total_width = no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 8
-    print(f"  {YELLOW}╔{'═' * total_width}╗{RESET}")
-    
-    # Header dengan padding yang rapi
-    header = f"  {YELLOW}║{RESET}"
-    header += f"{'No':^{no_width}}"
-    header += f"{'ESSID':^{essid_width}}"
-    header += f"{'CH':^{ch_width}}"
-    header += f"{'PWR':^{pwr_width}}"
-    header += f"{'SINYAL':^{signal_width}}"
-    header += f"{'BSSID':^{bssid_width}}"
-    header += f"{YELLOW}║{RESET}"
-    print(header)
-    print(f"  {YELLOW}╠{'═' * total_width}╣{RESET}")
+    # Header sederhana tanpa garis
+    print(f"  {'No':<4} {'ESSID':<22} {'CH':<4} {'PWR':<6} {'SINYAL':<8} BSSID")
     
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:essid_width-1]
+        essid = net["essid"][:22]
         power = net.get("power", "N/A")
         status, status_color = get_power_status(power)
         
@@ -411,19 +390,12 @@ def select_targets(networks):
                 power_display = f"{GRAY}{power:>3}{RESET}"
         else:
             power_display = f"{GRAY}{power:>3}{RESET}"
+            
+        # Format status
+        status_display = f"{status_color}{status:<8}{RESET}"
         
-        # Format data dengan padding yang rapi
-        row = f"  {YELLOW}║{RESET}"
-        row += f"{GREEN}{idx:>{no_width}}{RESET}"
-        row += f"{essid:<{essid_width}}"
-        row += f"{net['channel']:^{ch_width}}"
-        row += f"{power_display} "
-        row += f"{status_color}{status:<{signal_width}}{RESET}"
-        row += f"{net['bssid']:^{bssid_width}}"
-        row += f"{YELLOW}║{RESET}"
-        print(row)
-    
-    print(f"  {YELLOW}╚{'═' * total_width}╝{RESET}")
+        # Baris data tanpa garis
+        print(f"  {GREEN}{idx:<4}{RESET} {essid:<22} {net['channel']:<4} {power_display}  {status_display} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
@@ -469,20 +441,17 @@ def select_attack_mode():
         if choice == "1":
             return "target"
         if choice == "2":
-            # Tampilkan warning sebelum menjalankan all target
+            # Tampilkan warning tanpa garis-garis
             clear_screen()
-            warning_width = 60
-            print(f"\n  {RED}{BOLD}╔{'═' * warning_width}╗{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 15}⚠️  PERINGATAN  ⚠️{' ' * 15}║{RESET}")
-            print(f"  {RED}{BOLD}╠{'═' * warning_width}╣{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * warning_width}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}{RED}{BOLD}  ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * warning_width}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}Mode ini akan menyerang SEMUA jaringan{RESET}{RED}{BOLD}  ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}yang terdeteksi, termasuk jaringan Anda{RESET}{RED}{BOLD}  ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}sendiri jika terhubung ke WiFi!{RESET}{RED}{BOLD}     ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * warning_width}║{RESET}")
-            print(f"  {RED}{BOLD}╚{'═' * warning_width}╝{RESET}")
+            print(f"\n  {RED}{BOLD}PERINGATAN{RESET}")
+            print(f"  {RED}{BOLD}═══════════════════════════════════════════════════════════════════════════════{RESET}")
+            print()
+            print(f"  {RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}")
+            print()
+            print(f"  {YELLOW}Mode ini akan menyerang SEMUA jaringan yang terdeteksi,{RESET}")
+            print(f"  {YELLOW}termasuk jaringan Anda sendiri jika terhubung ke WiFi!{RESET}")
+            print()
+            print(f"  {RED}{BOLD}═══════════════════════════════════════════════════════════════════════════════{RESET}")
             
             print(f"\n  {BOLD}Pilihan:{RESET}")
             print(f"  {GREEN}1.{RESET} I'M READY")
