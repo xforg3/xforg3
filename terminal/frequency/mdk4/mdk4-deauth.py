@@ -453,21 +453,23 @@ def select_attack_mode():
         if choice == "2":
             # Tampilkan warning sebelum menjalankan all target
             clear_screen()
-            print(f"\n  {RED}{BOLD}╔{'═' * 60}╗{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 15}⚠️  PERINGATAN  ⚠️{' ' * 15}║{RESET}")
-            print(f"  {RED}{BOLD}╠{'═' * 60}╣{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 60}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}{RED}{BOLD}  ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 60}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}Mode ini akan menyerang SEMUA jaringan{RESET}{RED}{BOLD}  ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}yang terdeteksi, termasuk jaringan Anda{RESET}{RED}{BOLD}  ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}sendiri jika terhubung ke WiFi!{RESET}{RED}{BOLD}     ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 60}║{RESET}")
-            print(f"  {RED}{BOLD}╚{'═' * 60}╝{RESET}")
-            
-            print(f"\n  {BOLD}Pilihan:{RESET}")
-            print(f"  {GREEN}1.{RESET} I'M READY")
-            print(f"  {GREEN}2.{RESET} NO, BACK PLEASE")
+            print(f"\n  {RED}{BOLD}╔{'═' * 62}╗{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 17}⚠️  PERINGATAN  ⚠️{' ' * 17}║{RESET}")
+            print(f"  {RED}{BOLD}╠{'═' * 62}╣{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}{RED}{BOLD}        ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}Mode ini akan menyerang SEMUA jaringan{RESET}{RED}{BOLD}       ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}yang terdeteksi, termasuk jaringan Anda{RESET}{RED}{BOLD}      ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}sendiri jika terhubung ke WiFi!{RESET}{RED}{BOLD}              ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
+            print(f"  {RED}{BOLD}╠{'═' * 62}╣{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{BOLD}Pilihan:{RESET}{RED}{BOLD}                                        ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{GREEN}1.{RESET} I'M READY{RED}{BOLD}                                        ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{GREEN}2.{RESET} NO, BACK PLEASE{RED}{BOLD}                                 ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
+            print(f"  {RED}{BOLD}╚{'═' * 62}╝{RESET}")
             
             while True:
                 confirm = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
@@ -476,7 +478,7 @@ def select_attack_mode():
                 elif confirm == "2":
                     print(f"\n  {GREEN}[✓] Dibatalkan, kembali ke menu.{RESET}")
                     time.sleep(1)
-                    return select_attack_mode()  # Kembali ke menu pilihan mode
+                    return select_attack_mode()
                 else:
                     print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
         print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
