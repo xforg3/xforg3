@@ -446,6 +446,7 @@ def select_attack_mode():
     print(f"  {GREEN}1.{RESET} Target spesifik")
     print(f"  {GREEN}2.{RESET} Semua target")
 
+
     while True:
         choice = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
         if choice == "1":
