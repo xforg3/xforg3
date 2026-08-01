@@ -129,23 +129,22 @@ def run_command(cmd, description=None, show_output=True):
 
 
 def start_monitor_mode(adapter):
-    glitch_print(f"ACTIVATING MONITOR MODE ON {adapter}...")
-    run_command(["sudo", "airmon-ng", "check", "kill"], "MEMBERSIHKAN PROSES PENGANGGU", show_output=False)
-    result = run_command(["sudo", "airmon-ng", "start", adapter], "MONITOR MODE AKTIF", show_output=False)
-    print("")
-    if result is None:
+    # Jalankan perintah tanpa output (belakang layar)
+    subprocess.run(["sudo", "airmon-ng", "check", "kill"], 
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = subprocess.run(["sudo", "airmon-ng", "start", adapter], 
+                            capture_output=True, text=True)
+    if result.returncode != 0:
         return adapter
-
     output = (result.stdout or "") + (result.stderr or "")
     monitor_iface = get_monitor_interface_name(adapter, output)
-    time.sleep(1)
-    print(glitch_text(f"> Interface monitor aktif: {monitor_iface}"))
-    print()
+    time.sleep(0.3)
     return monitor_iface
 
 
 def scan_networks(adapter, duration=10):
-    glitch_print("SCANNING WIFI NETWORKS...")
+    # Tampilkan loading sederhana tanpa glitch
+    print(f"\n{CYAN}SCANNING WIFI NETWORKS...{RESET}")
     temp_dir = tempfile.mkdtemp(prefix="airodump-", dir="/tmp")
     prefix = os.path.join(temp_dir, "scan")
     proc = subprocess.Popen(
@@ -154,16 +153,23 @@ def scan_networks(adapter, duration=10):
         stderr=subprocess.DEVNULL,
     )
 
-    try:
-        time.sleep(duration)
-    finally:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.wait()
+    # Animasi loading titik-titik
+    dots = 0
+    for _ in range(duration):
+        dots = (dots + 1) % 4
+        sys.stdout.write(f"\r  [*] Scanning{dots * '.'}   ")
+        sys.stdout.flush()
+        time.sleep(1)
+    sys.stdout.write("\r" + " " * 20 + "\r")
+    sys.stdout.flush()
+
+    if proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
 
     networks = []
     seen = set()
@@ -198,7 +204,7 @@ def scan_networks(adapter, duration=10):
 
 
 def stop_monitor_mode(monitor_iface):
-    glitch_print("STOPPING MONITOR MODE...")
+    # Belakang layar, tanpa output
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
         candidates.append(monitor_iface[:-3])
@@ -206,15 +212,15 @@ def stop_monitor_mode(monitor_iface):
         candidates.append(f"{monitor_iface}mon")
 
     for name in candidates:
-        result = run_command(["sudo", "airmon-ng", "stop", name], "MEMATIKAN MONITOR MODE", show_output=False)
-        if result is not None:
-            break
-
-    run_command(["sudo", "systemctl", "restart", "NetworkManager"], "RESTART NETWORKMANAGER", show_output=False)
+        subprocess.run(["sudo", "airmon-ng", "stop", name], 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], 
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(0.5)
 
 
 def select_interface():
-    glitch_print("SCANNING INTERFACES...")
+    print(f"\n{CYAN}SCANNING INTERFACES...{RESET}")
     ifaces = get_wireless_interfaces()
     if not ifaces:
         print("Ga ada interface ditemukan.")
@@ -228,7 +234,7 @@ def select_interface():
         choice = input("\nNomor: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
             selected = ifaces[int(choice) - 1]
-            glitch_print(f"LOCKED: {selected}")
+            print(f"{GREEN}LOCKED: {selected}{RESET}")
             clear_screen()
             return selected
         print("Input salah, coba lagi.")
@@ -251,7 +257,7 @@ def select_target(networks):
         choice = input("\nNomor target: ").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(networks):
             selected = networks[int(choice) - 1]
-            glitch_print(f"TARGET LOCKED: {selected['essid']}")
+            print(f"{GREEN}TARGET LOCKED: {selected['essid']}{RESET}")
             return selected
         print("Input salah, coba lagi.")
 
