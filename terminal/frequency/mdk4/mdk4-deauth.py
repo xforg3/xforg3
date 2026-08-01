@@ -370,7 +370,7 @@ def select_targets(networks):
     essid_width = 22
     ch_width = 4
     pwr_width = 6
-    signal_width = 8  # Dikurangi dari 9 ke 8
+    signal_width = 8
     bssid_width = 17
     
     # Header
@@ -446,13 +446,39 @@ def select_attack_mode():
     print(f"  {GREEN}1.{RESET} Target spesifik")
     print(f"  {GREEN}2.{RESET} Semua target")
 
-
     while True:
         choice = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
         if choice == "1":
             return "target"
         if choice == "2":
-            return "all"
+            # Tampilkan warning sebelum menjalankan all target
+            clear_screen()
+            print(f"\n  {RED}{BOLD}╔{'═' * 60}╗{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 15}⚠️  PERINGATAN  ⚠️{' ' * 15}║{RESET}")
+            print(f"  {RED}{BOLD}╠{'═' * 60}╣{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 60}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}{RED}{BOLD}  ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 60}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}Mode ini akan menyerang SEMUA jaringan{RESET}{RED}{BOLD}  ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}yang terdeteksi, termasuk jaringan Anda{RESET}{RED}{BOLD}  ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}sendiri jika terhubung ke WiFi!{RESET}{RED}{BOLD}     ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 60}║{RESET}")
+            print(f"  {RED}{BOLD}╚{'═' * 60}╝{RESET}")
+            
+            print(f"\n  {BOLD}Pilihan:{RESET}")
+            print(f"  {GREEN}1.{RESET} I'M READY")
+            print(f"  {GREEN}2.{RESET} NO, BACK PLEASE")
+            
+            while True:
+                confirm = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
+                if confirm == "1":
+                    return "all"
+                elif confirm == "2":
+                    print(f"\n  {GREEN}[✓] Dibatalkan, kembali ke menu.{RESET}")
+                    time.sleep(1)
+                    return select_attack_mode()  # Kembali ke menu pilihan mode
+                else:
+                    print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
         print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
 
 # ================= MDK4 FUNCTIONS =================
