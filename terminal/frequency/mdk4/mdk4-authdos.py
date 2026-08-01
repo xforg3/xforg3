@@ -33,6 +33,10 @@ GRAY = COLORS["gray"]
 
 BOX_WIDTH = 50
 
+# ---------- GLOBAL FLAG UNTUK SIGNAL ----------
+should_exit = False
+monitor_iface_global = None
+
 # ================= CLEAR SCREEN =================
 
 def clear_screen():
@@ -77,6 +81,8 @@ def draw_box_line(text: str, color=GRAY):
 def loading(text, duration=1):
     chars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
     for i in range(duration * 10):
+        if should_exit:
+            break
         sys.stdout.write(f"\r  {YELLOW}{BOLD}{chars[i % len(chars)]} {text}{RESET}")
         sys.stdout.flush()
         time.sleep(0.1)
@@ -88,6 +94,8 @@ def loading_with_text(text, duration=2):
     glitch_chars = "!@#$%^&*"
     
     for i in range(duration * 10):
+        if should_exit:
+            break
         display_text = ""
         for char in text:
             if char == " ":
@@ -109,6 +117,8 @@ def glitch_print(text, color=GREEN, cycles=8):
     revealed = [False] * n
     
     for c in range(cycles):
+        if should_exit:
+            break
         display = []
         for i, ch in enumerate(text):
             if ch == " ":
@@ -203,6 +213,9 @@ def scan_networks(adapter, duration=10):
     start_time = time.time()
     
     while proc.poll() is None:
+        if should_exit:
+            proc.terminate()
+            break
         elapsed = int(time.time() - start_time)
         remaining = max(0, duration - elapsed)
         
@@ -210,6 +223,8 @@ def scan_networks(adapter, duration=10):
             break
             
         for i in range(len(chars)):
+            if should_exit:
+                break
             if proc.poll() is not None or elapsed >= duration:
                 break
             sys.stdout.write(f"\r  {CYAN}{BOLD}{chars[i % len(chars)]}{RESET} {YELLOW}Scanning... {remaining}s remaining{RESET}")
@@ -317,6 +332,8 @@ def select_interface():
         print(f"  {GREEN}{idx}.{RESET} {name}")
 
     while True:
+        if should_exit:
+            sys.exit(0)
         choice = input(f"\n  {YELLOW}>> nomor : {RESET}").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(ifaces):
             selected = ifaces[int(choice) - 1]
@@ -373,6 +390,8 @@ def select_target(networks):
         print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display:<{signal_width}} {net['bssid']}")
 
     while True:
+        if should_exit:
+            sys.exit(0)
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(networks):
             selected = networks[int(choice) - 1]
@@ -425,9 +444,22 @@ def run_attack(target, monitor_iface):
     
     mdk4_proc = None
     try:
-        # Jalankan MDK4 dengan Popen biar bisa di-terminate
         mdk4_proc = subprocess.Popen(mdk4_cmd)
-        mdk4_proc.wait()
+        # Loop untuk mengecek signal tiap detik
+        while mdk4_proc.poll() is None:
+            if should_exit:
+                print(f"\n  {YELLOW}[!] Signal exit diterima. Menghentikan serangan...{RESET}")
+                mdk4_proc.terminate()
+                try:
+                    mdk4_proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    mdk4_proc.kill()
+                    mdk4_proc.wait()
+                break
+            time.sleep(1)
+        else:
+            # Jika proses selesai normal
+            pass
     except KeyboardInterrupt:
         print(f"\n  {YELLOW}[!] Keyboard interrupt diterima. Menghentikan serangan...{RESET}")
         if mdk4_proc and mdk4_proc.poll() is None:
@@ -437,7 +469,6 @@ def run_attack(target, monitor_iface):
             except subprocess.TimeoutExpired:
                 mdk4_proc.kill()
                 mdk4_proc.wait()
-        print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
     finally:
         if dump_proc and dump_proc.poll() is None:
             dump_proc.terminate()
@@ -454,6 +485,8 @@ def prompt_post_attack():
     print(f"  {GREEN}99.{RESET} Exit")
     
     while True:
+        if should_exit:
+            sys.exit(0)
         choice = input(f"\n  {YELLOW}>> pilihan : {RESET}").strip()
         if choice == "1":
             return "again"
@@ -483,9 +516,25 @@ def back_to_mdk4_menu():
     input("\n  Tekan Enter untuk kembali...")
     sys.exit(0)
 
+# ================= SIGNAL HANDLER =================
+
+def signal_handler(sig, frame):
+    global should_exit, monitor_iface_global
+    print(f"\n  {YELLOW}[!] Signal {sig} diterima. Membersihkan...{RESET}")
+    should_exit = True
+    if monitor_iface_global:
+        stop_monitor_mode(monitor_iface_global)
+    sys.exit(0)
+
 # ================= MAIN =================
 
 def main():
+    global monitor_iface_global, should_exit
+    
+    # Pasang signal handler
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
     monitor_iface = None
     
     while True:
@@ -493,6 +542,7 @@ def main():
             # Pilih interface dulu
             adapter = select_interface()
             monitor_iface = start_monitor_mode(adapter)
+            monitor_iface_global = monitor_iface
             
             # Scan duration
             clear_screen()
@@ -509,7 +559,12 @@ def main():
                 scan_duration = 10
             
             networks = scan_networks(monitor_iface, duration=scan_duration)
+            if should_exit:
+                break
+                
             target = select_target(networks)
+            if should_exit:
+                break
             
             if target is None:
                 print(f"\n  {RED}[✗] Tidak ada target.{RESET}")
@@ -518,11 +573,16 @@ def main():
                 return
             
             run_attack(target, monitor_iface)
+            if should_exit:
+                break
             
             print("\n  Membersihkan sesi...")
             stop_monitor_mode(monitor_iface)
+            monitor_iface_global = None
             
             while True:
+                if should_exit:
+                    break
                 post_choice = prompt_post_attack()
                 if post_choice == "again":
                     monitor_iface = None
@@ -535,6 +595,7 @@ def main():
                     sys.exit(0)
                 
         except KeyboardInterrupt:
+            # Ini seharusnya sudah ditangani oleh signal handler, tapi jaga-jaga
             print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
             if monitor_iface:
                 stop_monitor_mode(monitor_iface)
