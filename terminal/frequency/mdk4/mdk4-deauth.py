@@ -365,21 +365,32 @@ def select_targets(networks):
 
     print(f"\n  {YELLOW}Format: 1 3 5  atau  2-5  atau  1,3,5-7{RESET}\n")
 
-    # Lebar kolom yang lebih rapi
+    # Lebar kolom yang konsisten
     no_width = 4
-    essid_width = 22
-    ch_width = 4
+    essid_width = 25
+    ch_width = 5
     pwr_width = 6
     signal_width = 8
-    bssid_width = 17
+    bssid_width = 20
     
-    # Header
-    header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
-    print(f"  {header}")
-    print(f"  {YELLOW}{'=' * (no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 5)}{RESET}")
+    # Garis pemisah atas
+    total_width = no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 8
+    print(f"  {YELLOW}╔{'═' * total_width}╗{RESET}")
+    
+    # Header dengan padding yang rapi
+    header = f"  {YELLOW}║{RESET}"
+    header += f"{'No':^{no_width}}"
+    header += f"{'ESSID':^{essid_width}}"
+    header += f"{'CH':^{ch_width}}"
+    header += f"{'PWR':^{pwr_width}}"
+    header += f"{'SINYAL':^{signal_width}}"
+    header += f"{'BSSID':^{bssid_width}}"
+    header += f"{YELLOW}║{RESET}"
+    print(header)
+    print(f"  {YELLOW}╠{'═' * total_width}╣{RESET}")
     
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:essid_width]
+        essid = net["essid"][:essid_width-1]
         power = net.get("power", "N/A")
         status, status_color = get_power_status(power)
         
@@ -400,12 +411,19 @@ def select_targets(networks):
                 power_display = f"{GRAY}{power:>3}{RESET}"
         else:
             power_display = f"{GRAY}{power:>3}{RESET}"
-            
-        # Format status dengan lebar tetap dan padding yang konsisten
-        status_display = f"{status_color}{status:<{signal_width}}{RESET}"
         
-        # Baris data dengan format yang rapi
-        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display} {net['bssid']}")
+        # Format data dengan padding yang rapi
+        row = f"  {YELLOW}║{RESET}"
+        row += f"{GREEN}{idx:>{no_width}}{RESET}"
+        row += f"{essid:<{essid_width}}"
+        row += f"{net['channel']:^{ch_width}}"
+        row += f"{power_display} "
+        row += f"{status_color}{status:<{signal_width}}{RESET}"
+        row += f"{net['bssid']:^{bssid_width}}"
+        row += f"{YELLOW}║{RESET}"
+        print(row)
+    
+    print(f"  {YELLOW}╚{'═' * total_width}╝{RESET}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
@@ -453,23 +471,22 @@ def select_attack_mode():
         if choice == "2":
             # Tampilkan warning sebelum menjalankan all target
             clear_screen()
-            print(f"\n  {RED}{BOLD}╔{'═' * 62}╗{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 17}⚠️  PERINGATAN  ⚠️{' ' * 17}║{RESET}")
-            print(f"  {RED}{BOLD}╠{'═' * 62}╣{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}{RED}{BOLD}        ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}Mode ini akan menyerang SEMUA jaringan{RESET}{RED}{BOLD}       ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}yang terdeteksi, termasuk jaringan Anda{RESET}{RED}{BOLD}      ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}sendiri jika terhubung ke WiFi!{RESET}{RED}{BOLD}              ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
-            print(f"  {RED}{BOLD}╠{'═' * 62}╣{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{BOLD}Pilihan:{RESET}{RED}{BOLD}                                        ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{GREEN}1.{RESET} I'M READY{RED}{BOLD}                                        ║{RESET}")
-            print(f"  {RED}{BOLD}║  {RESET}{GREEN}2.{RESET} NO, BACK PLEASE{RED}{BOLD}                                 ║{RESET}")
-            print(f"  {RED}{BOLD}║{' ' * 62}║{RESET}")
-            print(f"  {RED}{BOLD}╚{'═' * 62}╝{RESET}")
+            warning_width = 60
+            print(f"\n  {RED}{BOLD}╔{'═' * warning_width}╗{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * 15}⚠️  PERINGATAN  ⚠️{' ' * 15}║{RESET}")
+            print(f"  {RED}{BOLD}╠{'═' * warning_width}╣{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * warning_width}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{RED}{BOLD}YOUR NETWORK MIGHT DIE AS WELL{RESET}{RED}{BOLD}  ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * warning_width}║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}Mode ini akan menyerang SEMUA jaringan{RESET}{RED}{BOLD}  ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}yang terdeteksi, termasuk jaringan Anda{RESET}{RED}{BOLD}  ║{RESET}")
+            print(f"  {RED}{BOLD}║  {RESET}{YELLOW}sendiri jika terhubung ke WiFi!{RESET}{RED}{BOLD}     ║{RESET}")
+            print(f"  {RED}{BOLD}║{' ' * warning_width}║{RESET}")
+            print(f"  {RED}{BOLD}╚{'═' * warning_width}╝{RESET}")
+            
+            print(f"\n  {BOLD}Pilihan:{RESET}")
+            print(f"  {GREEN}1.{RESET} I'M READY")
+            print(f"  {GREEN}2.{RESET} NO, BACK PLEASE")
             
             while True:
                 confirm = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
