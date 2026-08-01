@@ -3,16 +3,14 @@
 frequency.py - Frequency Menu
 ---------------------------------
 Menu untuk mengakses BETTERCAP, DEAUTH, MDK4, dan AIRGEDDON
-Dengan navigasi keyboard (arrow keys)
+Dengan navigasi keyboard (arrow keys) - Cross Platform
 """
 
 import os
 import sys
 import shutil
 import time
-import termios
-import tty
-import select
+import platform
 
 # ---------- ANSI ----------
 RESET = "\033[0m"
@@ -29,21 +27,51 @@ COLORS = {
     "purple": "\033[95m",
     "white": "\033[97m",
     "magenta": "\033[35m",
+    "gray": "\033[90m",      # <--- TAMBAHKAN INI
+    "grey": "\033[90m",      # alternatif spelling
 }
 
-BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
+BOX_WIDTH = 44
 
-# ================= Keyboard Input =================
+# ================= Keyboard Input (Cross Platform) =================
 
-def get_key():
-    """Membaca input keyboard tanpa Enter"""
+def get_key_windows():
+    """Membaca input keyboard untuk Windows"""
+    import msvcrt
+    key = msvcrt.getch()
+    
+    if key == b'\xe0':  # Arrow keys on Windows
+        key = msvcrt.getch()
+        if key == b'H':  # Up
+            return '\x1b[A'
+        elif key == b'P':  # Down
+            return '\x1b[B'
+        elif key == b'M':  # Right
+            return '\x1b[C'
+        elif key == b'K':  # Left
+            return '\x1b[D'
+    elif key == b'\r':  # Enter
+        return '\r'
+    elif key == b'\x03':  # Ctrl+C
+        raise KeyboardInterrupt
+    else:
+        try:
+            return key.decode('utf-8')
+        except:
+            return ''
+
+def get_key_unix():
+    """Membaca input keyboard untuk Unix/Linux"""
+    import termios
+    import tty
+    import select
+    
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
         tty.setraw(sys.stdin.fileno())
         ch = sys.stdin.read(1)
         
-        # Arrow keys are represented by escape sequences
         if ch == '\x1b':
             ch2 = sys.stdin.read(1)
             if ch2 == '[':
@@ -55,9 +83,11 @@ def get_key():
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-def kbhit():
-    """Cek apakah ada input keyboard"""
-    return select.select([sys.stdin], [], [], 0)[0] != []
+# Pilih fungsi yang sesuai dengan OS
+if platform.system() == 'Windows':
+    get_key = get_key_windows
+else:
+    get_key = get_key_unix
 
 # ================= Util =================
 
@@ -75,7 +105,6 @@ def draw_box_bottom():
     print(f"{COLORS['yellow']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
 def draw_box_title(title: str):
-    """Cetak baris judul dalam box, padding dihitung otomatis"""
     inner = f" {title}"
     pad = BOX_WIDTH - len(inner)
     if pad < 0:
@@ -115,16 +144,13 @@ def frequency_menu():
     current_selection = 0
     
     while True:
-        # Clear and redraw
         clear_screen()
         
-        # Header
         draw_box_top()
         draw_box_title("FREQUENCY MENU")
         draw_box_bottom()
         print()
         
-        # Draw menu items
         for idx, item in enumerate(menu_items):
             if idx == current_selection:
                 draw_menu_item(item["label"], item["desc"], True)
@@ -133,8 +159,8 @@ def frequency_menu():
         
         print()
         print(f"  {COLORS['gray']}Use {COLORS['cyan']}↑↓{COLORS['gray']} to navigate, {COLORS['green']}ENTER{COLORS['gray']} to select{RESET}")
+        print(f"  {COLORS['gray']}Shortcuts: {COLORS['cyan']}1-4{COLORS['gray']}, {COLORS['cyan']}0{COLORS['gray']} back, {COLORS['cyan']}9{COLORS['gray']} exit{RESET}")
         
-        # Get key input
         key = get_key()
         
         if key == '\x1b[A':  # Up arrow
@@ -145,26 +171,25 @@ def frequency_menu():
             selected_item = menu_items[current_selection]
             sys.stdout.write(SHOW_CURSOR)
             return selected_item["id"]
-        elif key == 'q' or key == 'Q':  # Quick exit
+        elif key == 'q' or key == 'Q':
             sys.stdout.write(SHOW_CURSOR)
             return "99"
-        elif key == 'b' or key == 'B':  # Quick back
+        elif key == 'b' or key == 'B':
             sys.stdout.write(SHOW_CURSOR)
             return "0"
-        elif key in ['1', '2', '3', '4']:  # Number shortcuts
+        elif key in ['1', '2', '3', '4']:
             sys.stdout.write(SHOW_CURSOR)
             return key
-        elif key == '0':  # Number shortcut for back
+        elif key == '0':
             sys.stdout.write(SHOW_CURSOR)
             return "0"
-        elif key == '9':  # Number shortcut for exit
+        elif key == '9':
             sys.stdout.write(SHOW_CURSOR)
             return "99"
 
 # ================= Eksekusi Script =================
 
 def launch_bettercap():
-    """Menjalankan bettercap-menu.py"""
     script_path = os.path.join(os.path.dirname(__file__), "bettercap", "bettercap-menu.py")
     if os.path.exists(script_path):
         os.execvp(sys.executable, [sys.executable, script_path])
@@ -173,7 +198,6 @@ def launch_bettercap():
         input("\n  Tekan Enter untuk kembali...")
 
 def launch_deauth():
-    """Menjalankan deauth-menu.py"""
     script_path = os.path.join(os.path.dirname(__file__), "deauth", "deauth-menu.py")
     if os.path.exists(script_path):
         os.execvp(sys.executable, [sys.executable, script_path])
@@ -182,7 +206,6 @@ def launch_deauth():
         input("\n  Tekan Enter untuk kembali...")
 
 def launch_mdk4():
-    """Menjalankan mdk4-menu.py"""
     script_path = os.path.join(os.path.dirname(__file__), "mdk4", "mdk4-menu.py")
     if os.path.exists(script_path):
         os.execvp(sys.executable, [sys.executable, script_path])
@@ -191,7 +214,6 @@ def launch_mdk4():
         input("\n  Tekan Enter untuk kembali...")
 
 def launch_airgeddon():
-    """Menjalankan Airgeddon dengan sudo"""
     print(f"\n  {COLORS['green']}[+] Menjalankan Airgeddon...{RESET}\n")
     try:
         os.execvp("sudo", ["sudo", "airgeddon"])
@@ -203,7 +225,6 @@ def launch_airgeddon():
         input("\n  Tekan Enter untuk kembali...")
 
 def return_to_main_menu():
-    """Kembali ke xforg3.py di parent directory"""
     script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "xforg3.py")
     
     if os.path.exists(script_path):
@@ -220,23 +241,22 @@ def exit_program():
 # ================= Main App =================
 
 def app_loop():
-    """Loop utama aplikasi"""
     while True:
         choice = frequency_menu()
 
-        if choice == "1":  # BETTERCAP
+        if choice == "1":
             launch_bettercap()
-        elif choice == "2":  # DEAUTH
+        elif choice == "2":
             launch_deauth()
-        elif choice == "3":  # MDK4
+        elif choice == "3":
             launch_mdk4()
-        elif choice == "4":  # AIRGEDDON
+        elif choice == "4":
             launch_airgeddon()
             input("\n  Tekan Enter untuk kembali...")
-        elif choice == "0":  # BACK TO MAIN MENU
+        elif choice == "0":
             return_to_main_menu()
             return
-        elif choice == "99":  # EXIT
+        elif choice == "99":
             exit_program()
         else:
             print(f"\n  {COLORS['red']}[!] Pilihan tidak valid!{RESET}")
