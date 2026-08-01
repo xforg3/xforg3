@@ -3,17 +3,23 @@
 frequency.py - Frequency Menu
 ---------------------------------
 Menu untuk mengakses BETTERCAP, DEAUTH, MDK4, dan AIRGEDDON
+Dengan navigasi keyboard (arrow keys)
 """
 
 import os
 import sys
 import shutil
 import time
+import termios
+import tty
+import select
 
 # ---------- ANSI ----------
 RESET = "\033[0m"
 BOLD = "\033[1m"
 CLEAR = "\033[2J\033[H"
+HIDE_CURSOR = "\033[?25l"
+SHOW_CURSOR = "\033[?25h"
 
 COLORS = {
     "green": "\033[92m",
@@ -26,6 +32,32 @@ COLORS = {
 }
 
 BOX_WIDTH = 44  # lebar isi box (di antara ╔...╗)
+
+# ================= Keyboard Input =================
+
+def get_key():
+    """Membaca input keyboard tanpa Enter"""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+        
+        # Arrow keys are represented by escape sequences
+        if ch == '\x1b':
+            ch2 = sys.stdin.read(1)
+            if ch2 == '[':
+                ch3 = sys.stdin.read(1)
+                if ch3 in ['A', 'B', 'C', 'D']:
+                    return f'\x1b[{ch3}'
+            return ch
+        return ch
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+def kbhit():
+    """Cek apakah ada input keyboard"""
+    return select.select([sys.stdin], [], [], 0)[0] != []
 
 # ================= Util =================
 
@@ -43,8 +75,7 @@ def draw_box_bottom():
     print(f"{COLORS['yellow']}{BOLD}╚{'═' * BOX_WIDTH}╝{RESET}")
 
 def draw_box_title(title: str):
-    """Cetak baris judul dalam box, padding dihitung otomatis
-    biar sisi kanan box selalu nyambung rapi."""
+    """Cetak baris judul dalam box, padding dihitung otomatis"""
     inner = f" {title}"
     pad = BOX_WIDTH - len(inner)
     if pad < 0:
@@ -57,44 +88,78 @@ def draw_box_title(title: str):
         f"{COLORS['yellow']}{BOLD}║{RESET}"
     )
 
+def draw_menu_item(label, description, selected=False, icon="➜"):
+    """Menggambar item menu dengan highlight jika selected"""
+    if selected:
+        print(f"  {COLORS['cyan']}{BOLD}{icon}{RESET} {COLORS['green']}{BOLD}{description}{RESET}")
+        print(f"     {COLORS['gray']}{label}{RESET}")
+    else:
+        print(f"  {COLORS['gray']}  {RESET} {COLORS['green']}{description}{RESET}")
+
 # ================= Menu Frequency =================
 
 def frequency_menu():
-    """Menu utama frequency dengan 4 opsi - Rata Kiri"""
+    """Menu utama dengan navigasi arrow keys"""
     clear_screen()
-
-    # Header - Rata Kiri
-    draw_box_top()
-    draw_box_title("FREQUENCY MENU")
-    draw_box_bottom()
-
-    print()
-
-    # Menu Options - Rata Kiri
-    print(f"  {COLORS['cyan']}{BOLD}[1]{RESET} {COLORS['green']}BETTERCAP{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[2]{RESET} {COLORS['green']}DEAUTH{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[3]{RESET} {COLORS['green']}MDK4{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[4]{RESET} {COLORS['green']}AIRGEDDON{RESET}")
-    print()
-    print(f"  {COLORS['cyan']}{BOLD}[0]{RESET} {COLORS['red']}BACK TO MAIN MENU{RESET}")
-    print(f"  {COLORS['cyan']}{BOLD}[99]{RESET} {COLORS['red']}EXIT{RESET}")
-
-    print()
-    # Garis pemisah yang menyambung
-    terminal_width = shutil.get_terminal_size().columns
-    line_length = min(terminal_width - 4, 40)  # Max 40 karakter
-    print(f"  {COLORS['yellow']}{BOLD}{'=' * line_length}{RESET}")
-    print()
-
-    # Input
-    try:
-        choice = input(f"  {COLORS['yellow']}>> option : {RESET}")
-    except (KeyboardInterrupt, EOFError):
-        return "0"
-
-    if choice.strip() == "4":
-        return "0"
-    return choice.strip()
+    sys.stdout.write(HIDE_CURSOR)
+    
+    menu_items = [
+        {"id": "1", "label": "BETTERCAP", "desc": "BetterCAP Menu"},
+        {"id": "2", "label": "DEAUTH", "desc": "Deauth Attack Menu"},
+        {"id": "3", "label": "MDK4", "desc": "MDK4 Attack Menu"},
+        {"id": "4", "label": "AIRGEDDON", "desc": "Airgeddon Tool"},
+        {"id": "0", "label": "BACK", "desc": "Back to Main Menu"},
+        {"id": "99", "label": "EXIT", "desc": "Exit Program"},
+    ]
+    
+    current_selection = 0
+    
+    while True:
+        # Clear and redraw
+        clear_screen()
+        
+        # Header
+        draw_box_top()
+        draw_box_title("FREQUENCY MENU")
+        draw_box_bottom()
+        print()
+        
+        # Draw menu items
+        for idx, item in enumerate(menu_items):
+            if idx == current_selection:
+                draw_menu_item(item["label"], item["desc"], True)
+            else:
+                draw_menu_item(item["label"], item["desc"], False)
+        
+        print()
+        print(f"  {COLORS['gray']}Use {COLORS['cyan']}↑↓{COLORS['gray']} to navigate, {COLORS['green']}ENTER{COLORS['gray']} to select{RESET}")
+        
+        # Get key input
+        key = get_key()
+        
+        if key == '\x1b[A':  # Up arrow
+            current_selection = (current_selection - 1) % len(menu_items)
+        elif key == '\x1b[B':  # Down arrow
+            current_selection = (current_selection + 1) % len(menu_items)
+        elif key == '\r' or key == '\n':  # Enter
+            selected_item = menu_items[current_selection]
+            sys.stdout.write(SHOW_CURSOR)
+            return selected_item["id"]
+        elif key == 'q' or key == 'Q':  # Quick exit
+            sys.stdout.write(SHOW_CURSOR)
+            return "99"
+        elif key == 'b' or key == 'B':  # Quick back
+            sys.stdout.write(SHOW_CURSOR)
+            return "0"
+        elif key in ['1', '2', '3', '4']:  # Number shortcuts
+            sys.stdout.write(SHOW_CURSOR)
+            return key
+        elif key == '0':  # Number shortcut for back
+            sys.stdout.write(SHOW_CURSOR)
+            return "0"
+        elif key == '9':  # Number shortcut for exit
+            sys.stdout.write(SHOW_CURSOR)
+            return "99"
 
 # ================= Eksekusi Script =================
 
@@ -148,6 +213,7 @@ def return_to_main_menu():
         input("\n  Tekan Enter untuk kembali...")
 
 def exit_program():
+    sys.stdout.write(SHOW_CURSOR)
     clear_screen()
     sys.exit(0)
 
@@ -180,6 +246,7 @@ def main():
     try:
         app_loop()
     except KeyboardInterrupt:
+        sys.stdout.write(SHOW_CURSOR)
         clear_screen()
         print(f"\n  {COLORS['yellow']}[!] Program dihentikan oleh user{RESET}")
         sys.exit(0)
