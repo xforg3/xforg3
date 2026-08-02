@@ -354,21 +354,100 @@ def back_to_menu():
         print(f"\n  {RED}[✗] deauth-menu.py tidak ditemukan.{RESET}")
         input("\n  Tekan Enter untuk kembali...")
 
-def get_monitor_interface():
-    """Mendapatkan interface monitor yang aktif atau membuatnya dari wlan0"""
-    # Cek interface monitor yang sudah ada
-    ifaces = get_wireless_interfaces()
-    for iface in ifaces:
-        if iface.endswith("mon"):
-            return iface
+def select_interface():
+    """Fungsi untuk memilih interface wireless"""
+    interfaces = get_wireless_interfaces()
+    wireless_ifaces = []
     
-    # Jika tidak ada, coba wlan0
-    for iface in ifaces:
-        if iface.startswith("wlan"):
-            return start_monitor_mode(iface)
+    # Filter hanya interface wireless (biasanya wlan*, mon*, atau yang memiliki 'w' di awal)
+    for iface in interfaces:
+        if iface.startswith("wlan") or iface.endswith("mon") or iface.startswith("wlp") or iface.startswith("wlx"):
+            wireless_ifaces.append(iface)
     
-    # Fallback ke wlan0
-    return start_monitor_mode("wlan0")
+    # Jika tidak ada interface wireless yang terdeteksi, coba ambil semua interface kecuali lo
+    if not wireless_ifaces:
+        for iface in interfaces:
+            if iface != "lo":
+                wireless_ifaces.append(iface)
+    
+    if not wireless_ifaces:
+        print(f"\n  {RED}[✗] Tidak ada interface wireless ditemukan!{RESET}")
+        sys.exit(1)
+    
+    clear_screen()
+    draw_box_top(CYAN)
+    draw_box_title("PILIH INTERFACE", CYAN, YELLOW)
+    draw_box_bottom(CYAN)
+    
+    print(f"\n  {CYAN}[*] Daftar interface yang tersedia:{RESET}\n")
+    
+    for idx, iface in enumerate(wireless_ifaces, start=1):
+        # Cek apakah interface dalam mode monitor
+        is_monitor = iface.endswith("mon")
+        status = f"{GREEN}[✓ MONITOR]{RESET}" if is_monitor else f"{GRAY}[  NORMAL ]{RESET}"
+        
+        # Tampilkan informasi tambahan jika ada
+        try:
+            iw_info = subprocess.run(["iw", "dev", iface, "info"], capture_output=True, text=True)
+            if iw_info.returncode == 0:
+                # Coba dapatkan nama phy
+                phy_match = re.search(r"wiphy\s+(\d+)", iw_info.stdout)
+                phy = f"phy{phy_match.group(1)}" if phy_match else "?"
+                
+                # Coba dapatkan mode
+                type_match = re.search(r"type\s+(\w+)", iw_info.stdout)
+                mode = type_match.group(1) if type_match else "?"
+                
+                print(f"  {GREEN}{idx}.{RESET} {CYAN}{iface}{RESET} {status}  {GRAY}mode: {mode} | phy: {phy}{RESET}")
+            else:
+                print(f"  {GREEN}{idx}.{RESET} {CYAN}{iface}{RESET} {status}")
+        except:
+            print(f"  {GREEN}{idx}.{RESET} {CYAN}{iface}{RESET} {status}")
+    
+    print(f"\n  {YELLOW}[?] Pilih interface untuk digunakan{RESET}")
+    
+    while True:
+        choice = input(f"\n  {YELLOW}>> pilih [1-{len(wireless_ifaces)}] : {RESET}").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(wireless_ifaces):
+            selected = wireless_ifaces[int(choice) - 1]
+            
+            # Jika selected sudah dalam mode monitor, langsung gunakan
+            if selected.endswith("mon"):
+                glitch_print(f"INTERFACE SELECTED: {selected} (Monitor Mode)", CYAN)
+                time.sleep(0.5)
+                return selected, False  # Tidak perlu start monitor mode
+            
+            # Tanyakan apakah mau di-start monitor mode
+            print(f"\n  {YELLOW}[?] Aktifkan monitor mode untuk {selected}?{RESET}")
+            print(f"  {GREEN}1.{RESET} Ya")
+            print(f"  {GREEN}2.{RESET} Tidak (gunakan normal)")
+            
+            while True:
+                start_mon = input(f"\n  {YELLOW}>> pilih [1-2] : {RESET}").strip()
+                if start_mon == "1":
+                    return selected, True
+                elif start_mon == "2":
+                    print(f"\n  {YELLOW}[!] Menggunakan interface {selected} tanpa monitor mode{RESET}")
+                    time.sleep(0.5)
+                    return selected, False
+                print(f"  {RED}[!] Pilih 1 atau 2.{RESET}")
+        else:
+            print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
+
+def get_monitor_interface(selected_interface=None, start_monitor=True):
+    """Mendapatkan interface monitor berdasarkan pilihan user"""
+    if selected_interface is None:
+        selected_interface, start_monitor = select_interface()
+    
+    if not start_monitor:
+        return selected_interface
+    
+    # Jika interface yang dipilih sudah monitor
+    if selected_interface.endswith("mon"):
+        return selected_interface
+    
+    # Start monitor mode
+    return start_monitor_mode(selected_interface)
 
 def select_target(networks):
     if not networks:
@@ -492,19 +571,29 @@ def get_attack_params():
 
 def main():
     monitor_iface = None
+    selected_interface = None
+    start_monitor = True
 
     while True:
         try:
-            if monitor_iface is None:
-                # Auto detect monitor interface
+            # Pilih interface di awal
+            if selected_interface is None:
                 clear_screen()
                 draw_box_top(CYAN)
                 draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
                 draw_box_bottom(CYAN)
                 
-                print(f"\n  {YELLOW}[*] Mencari interface monitor...{RESET}")
-                monitor_iface = get_monitor_interface()
-                glitch_print(f"MONITOR INTERFACE: {monitor_iface}", CYAN)
+                selected_interface, start_monitor = select_interface()
+            
+            if monitor_iface is None:
+                clear_screen()
+                draw_box_top(CYAN)
+                draw_box_title("DEAUTH ATTACK", CYAN, YELLOW)
+                draw_box_bottom(CYAN)
+                
+                print(f"\n  {YELLOW}[*] Menyiapkan interface...{RESET}")
+                monitor_iface = get_monitor_interface(selected_interface, start_monitor)
+                glitch_print(f"INTERFACE AKTIF: {monitor_iface}", CYAN)
                 time.sleep(0.5)
             
             clear_screen()
