@@ -103,6 +103,23 @@ def get_wireless_interfaces():
             interfaces.append(name)
     return interfaces
 
+def get_power_status(power):
+    """Mengembalikan status sinyal berdasarkan nilai power"""
+    if power == "N/A":
+        return "N/A", GRAY
+    try:
+        pwr = int(power)
+        if pwr >= -30:
+            return "Kuat", GREEN
+        elif pwr >= -50:
+            return "Kuat", CYAN
+        elif pwr >= -70:
+            return "Sedang", YELLOW
+        else:
+            return "Lemah", RED
+    except ValueError:
+        return "N/A", GRAY
+
 def get_monitor_interface_name(adapter, output):
     current_ifaces = get_wireless_interfaces()
     for iface in current_ifaces:
@@ -180,13 +197,19 @@ def scan_networks(adapter, duration=10):
                 bssid = row[0].strip()
                 channel = row[3].strip()
                 essid = row[13].strip()
+                power = row[8].strip() if len(row) > 8 else "N/A"
                 if not bssid or bssid.lower() == "bssid" or not essid:
                     continue
                 key = (bssid, channel, essid)
                 if key in seen:
                     continue
                 seen.add(key)
-                networks.append({"bssid": bssid, "channel": channel, "essid": essid})
+                networks.append({
+                    "bssid": bssid, 
+                    "channel": channel, 
+                    "essid": essid,
+                    "power": power
+                })
 
     for path in glob.glob(prefix + "-*.csv"):
         try:
@@ -252,19 +275,55 @@ def select_target(networks):
     draw_box_title("PILIH TARGET", CYAN, YELLOW)
     draw_box_bottom(CYAN)
 
-    header = f"{'No':<3} {'ESSID':<22} {'CH':<3} {'BSSID'}"
+    # Lebar kolom yang lebih rapi seperti di deauth.py
+    no_width = 4
+    essid_width = 22
+    ch_width = 4
+    pwr_width = 6
+    signal_width = 8
+    bssid_width = 17
+    
+    # Header
+    header = f"{'No':<{no_width}} {'ESSID':<{essid_width}} {'CH':<{ch_width}} {'PWR':<{pwr_width}} {'SINYAL':<{signal_width}} {'BSSID'}"
     print(f"\n  {header}")
-    print(f"  {YELLOW}{'=' * 50}{RESET}")
-
+    print(f"  {YELLOW}{'=' * (no_width + essid_width + ch_width + pwr_width + signal_width + bssid_width + 5)}{RESET}")
+    
     for idx, net in enumerate(networks, start=1):
-        essid = net["essid"][:22]
-        print(f"  {GREEN}{idx:<3}{RESET} {essid:<22} {net['channel']:<3} {net['bssid']}")
+        essid = net["essid"][:essid_width]
+        power = net.get("power", "N/A")
+        status, status_color = get_power_status(power)
+        
+        # Format power dengan warna
+        if power != "N/A":
+            try:
+                pwr = int(power)
+                if pwr >= -30:
+                    pwr_color = GREEN
+                elif pwr >= -50:
+                    pwr_color = CYAN
+                elif pwr >= -70:
+                    pwr_color = YELLOW
+                else:
+                    pwr_color = RED
+                power_display = f"{pwr_color}{power:>3}{RESET}"
+            except ValueError:
+                power_display = f"{GRAY}{power:>3}{RESET}"
+        else:
+            power_display = f"{GRAY}{power:>3}{RESET}"
+            
+        # Format status dengan lebar tetap
+        status_display = f"{status_color}{status:<{signal_width}}{RESET}"
+        
+        # Baris data dengan format yang rapi
+        print(f"  {GREEN}{idx:<{no_width}}{RESET} {essid:<{essid_width}} {net['channel']:<{ch_width}} {power_display}  {status_display} {net['bssid']}")
 
     while True:
         choice = input(f"\n  {YELLOW}>> nomor target : {RESET}").strip()
         if choice.isdigit() and 1 <= int(choice) <= len(networks):
             selected = networks[int(choice) - 1]
-            print(f"  {GREEN}TARGET LOCKED: {selected['essid']}{RESET}")
+            power = selected.get("power", "N/A")
+            status, _ = get_power_status(power)
+            print(f"  {GREEN}TARGET LOCKED: {selected['essid']} | PWR {power} | {status}{RESET}")
             time.sleep(0.3)
             return selected
         print(f"  {RED}[!] Input salah, coba lagi.{RESET}")
@@ -277,9 +336,14 @@ def run_attack(target, monitor_iface):
     draw_box_title("AUTH DOS ATTACK", RED, YELLOW)
     draw_box_bottom(RED)
 
+    power = target.get("power", "N/A")
+    status, status_color = get_power_status(power)
+    
     draw_box_line(f"  [*] Target  : {target['essid']}", CYAN)
     draw_box_line(f"  [*] BSSID   : {target['bssid']}", CYAN)
     draw_box_line(f"  [*] Channel : {target['channel']}", CYAN)
+    draw_box_line(f"  [*] Sinyal  : {status_color}{status}{RESET}", CYAN)
+    draw_box_line(f"  [*] PWR     : {power}", CYAN)
     draw_box_line(f"  [!] Tekan Ctrl+C untuk menghentikan", YELLOW)
     draw_box_bottom(RED)
 
